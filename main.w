@@ -1859,11 +1859,6 @@ character_get_health_percent, dialog_function, next_level выдуманые ф�
 Таймеры.
 
 
-@o timers.h @{
-@<Timer prototypes@>
-@<Timer public structs@>
-@}
-
 @o timers.c @{
 #include <stdio.h>
 #include <stdlib.h>
@@ -1876,105 +1871,10 @@ character_get_health_percent, dialog_function, next_level выдуманые ф�
 @<Timer functions@>
 @}
 
-Структура таймера:
-
-@d Timer public structs @{
-typedef struct {
-	int flag;
-	int time;
-} Timer;
-@}
-
-flag - этот флаг устанавливается, если таймер сработал.
-time - время которое осталось до того как flag будет установлен в 1.
-
-Чтобы активизировать таймер, нужно заполнить time и установить flag в 0.
-
-Всего таймеров TIMER_LIST_LEN:
-
-@d Timer public structs @{
-#define TIMER_LIST_LEN 20
-
-extern Timer timers[TIMER_LIST_LEN];
-extern int timers_pos;
-@}
-
-@d Timer private structs @{
-Timer timers[TIMER_LIST_LEN];
-int timers_pos;
-@}
-
-timers - список таймеров, timers_pos - количество таймеров на данный момент.
-
-Функция обновления списка таймеров:
-
-@d Timer prototypes @{
-void timers_update(void);
-@}
-
-@d Timer functions @{
-
-void timers_update(void) {
-	@<timers_update vars@>
-	@<timers_update first run check@>
-	@<timers_update iterate@>
-	@<timers_update update last@>
-}
-@}
-
-Проверим первый вызов функции или нет:
-@d timers_update first run check @{
-if(last == 0) {
-	last = new;
-	return;
-}
-@}
-last - значение таймера при прошлом вызове, если вызов первый то last == 0(т.к. static)
-new - значение таймера при текущем вызове.
-
-@d timers_update vars @{
-int new = SDL_GetTicks();
-static int last;
-@}
-
-Найдем разницу между прошлым вызовом и текущим:
-@d timers_update vars @{
-int diff = new - last;
-@}
-
-
-Пройдем по всем таймерам, пропустим не установленые, уменьшим время у установленых.
-Если это время <0 то установим его в 0:
-@d timers_update iterate @{
-for(i = 0; i < timers_pos; i++) {
-	if(timers[i].flag == 1)
-		continue;
-
-	timers[i].time -= diff;
-
-	if(timers[i].time <= 0) {
-		timers[i].time = 0;
-		timers[i].flag = 1;
-	}
-}
-@}
-После выполнения этой функции переменная flag у всех сработавших таймеров равна 1.
-
-@d timers_update vars @{
-int i;
-@}
-
-Присвоим last новое значение:
-@d timers_update update last @{
-last = new;
-@}
-
-
-Другой подход к таймерам.
 
 Для начала напишим функцию которая запоминает текущее значение таймера.
 Её нужно будет вызывать раз в цикл.
-@d Timer prototypes @{
+@o timers.h @{
 void timer_get_time(void);
 @}
 
@@ -2007,7 +1907,7 @@ static int last;
 Теперь напишем функцию для пересчетай таймеров. Она принимает время которое осталось до
 завершения работы таймера, вычитает из него время new-last и возвращает его. Функция
 всегда возвращает значение >=0.
-@d Timer prototypes @{
+@o timers.h @{
 int timer_calc(int time);
 @}
 
