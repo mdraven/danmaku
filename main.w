@@ -1970,6 +1970,66 @@ last = new;
 @}
 
 
+Другой подход к таймерам.
+
+Для начала напишим функцию которая запоминает текущее значение таймера.
+Её нужно будет вызывать раз в цикл.
+@d Timer prototypes @{
+void timer_get_time(void);
+@}
+
+@d Timer functions @{
+void timer_get_time(void) {
+	last = new;
+	new = SDL_GetTicks();
+	if(last == 0)
+		last = new;
+}
+@}
+У нас есть значение new от прошлого вызова функции(new - значение таймера). Присвоим его last:
+last = new;
+
+Теперь мы можем поместить в new новое значение таймера(значение текущего вызова функции):
+new = SDL_GetTicks();
+
+Так как при первом вызове функции new=0, то и last теперь 0. Это нехорошо, так как new-last очень
+большое число. Исправим это:
+if(last == 0)
+	last = new;
+
+
+Для функции нужны два поля. В одном будет хранится текущее значение таймера, а в другой прошлое:
+@d Timer private structs @{
+static int new;
+static int last;
+@}
+
+Теперь напишем функцию для пересчетай таймеров. Она принимает время которое осталось до
+завершения работы таймера, вычитает из него время new-last и возвращает его. Функция
+всегда возвращает значение >=0.
+@d Timer prototypes @{
+int timer_calc(int time);
+@}
+
+@d Timer functions @{
+int timer_calc(int time) {
+	time = time - (new - last);
+	if(time < 0)
+		time = 0;
+	return time;
+}
+@}
+
+Пример использования:
+	static int timer;
+
+	while(1) {
+		timer_get_time();
+		if(timer_calc(timer) == 0) {
+			printf("Alarm!");
+			timer = 100;
+		}
+	}
 
 
 =========================================================
