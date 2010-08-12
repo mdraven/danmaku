@@ -1757,7 +1757,34 @@ if(character->hp <= 0) {
 Флаг устанавливается для всех персонажей, у кого hp <= 0,
 вне зависимости от того "умерли" ли они сейчас или давно.
 
-TODO: дописать bullet_collide
+
+Напишем функцию bullet_collide:
+@d Bullet functions prototypes @{
+int bullet_collide(int bd, int x, int y, int radius);
+@}
+Принимает дискриптор пули, координаты хитбокса персонажа и радиус хитбокса.
+
+@d Bullet functions @{
+int bullet_collide(int bd, int x, int y, int radius) {
+	BulletList *bullet = &bullets[bd];
+
+	switch(bullet->bullet_type) {
+		case bullet_white:
+		case bullet_red:
+			return is_rad_collide(x, y, radius,
+				bullet->x, bullet->y, 3);
+
+		default:
+			fprintf(stderr, "\nUnknown bullet\n");
+			exit(1);
+	}
+}
+@}
+
+Для доступа к is_rad_collide добавим хедер:
+@d Bullet macros @{
+#include "collision.h"
+@}
 =========================================================
 
 Игровые этажи.
