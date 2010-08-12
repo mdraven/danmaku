@@ -2016,6 +2016,7 @@ int timer_calc(int time) {
 	time = time - (new - last);
 	if(time < 0)
 		time = 0;
+
 	return time;
 }
 @}
@@ -2025,7 +2026,9 @@ int timer_calc(int time) {
 
 	while(1) {
 		timer_get_time();
-		if(timer_calc(timer) == 0) {
+
+		timer = timer_calc(timer);
+		if(timer == 0) {
 			printf("Alarm!");
 			timer = 100;
 		}
@@ -2055,7 +2058,6 @@ int timer_calc(int time) {
 @d Main functions @{
 
 int main(void) {
-
 	window_init();
 	window_create();
 
@@ -2075,7 +2077,6 @@ int main(void) {
 				bullet_create(bullet_white, 100+i*10, 100+j*10, 0);
 	}
 
-	@<Main init timers@>
 	@<Main cycle@>
 }
 @}
@@ -2084,6 +2085,7 @@ int main(void) {
 
 @d Main cycle @{
 while(1) {
+	@<Update timers@>
 	@<Skip frames@>
 	@<FPS@>
 	@<Time points@>
@@ -2091,30 +2093,19 @@ while(1) {
 	@<Bullet movements@>
 	@<Player movements@>
 	@<Game menu@>
-	@<Update timers@>
 }
 @}
 
 Мы держим fps~60.
 Добавим таймер для контроля перерисовки экрана раз в 1000/60 мс:
-@d Main init timers @{
-enum {
-	main_timer_frame,
-	@<Main timers list@>
-};
-
-timers[main_timer_frame].time = 0;
-timers[main_timer_frame].flag = 0;
-//timers_pos = main_timer_frame + 1;
-@}
-
 @d Skip frames @{
 static int frames = 0;
+static int main_timer_frame = 0;
 
-if(timers[main_timer_frame].flag == 1) {
+main_timer_frame = timer_calc(main_timer_frame);
+if(main_timer_frame == 0) {
 
-	timers[main_timer_frame].time = 1000/60;
-	timers[main_timer_frame].flag = 0;
+	main_timer_frame = 1000/60;
 
 	frames++;
 
@@ -2127,23 +2118,14 @@ if(timers[main_timer_frame].flag == 1) {
 frames - необходим для подсчета FPS описаного ниже.
 
 
-Добавим таймер для обновления time points:
-@d Main timers list @{
-main_timer_time_points,
-@}
-
-@d Main init timers @{
-timers[main_timer_time_points].time = 0;
-timers[main_timer_time_points].flag = 0;
-//timers_pos = main_timer_time_points + 1;
-@}
-
-Пересчет очков перемещения(time point):
+Пересчет очков перемещения(time point). Добавим таймер для обновления time points:
 @d Time points @{
-if(timers[main_timer_time_points].flag == 1) {
+static int main_timer_time_points = 0;
 
-	timers[main_timer_time_points].time = 1;
-	timers[main_timer_time_points].flag = 0;
+main_timer_time_points = timer_calc(main_timer_time_points);
+if(main_timer_time_points == 0) {
+
+	main_timer_time_points = 1;
 
 	characters_update_all_time_points();
 	bullets_update_all_time_points();
@@ -2152,24 +2134,16 @@ if(timers[main_timer_time_points].flag == 1) {
 Функции characters_update_all_time_points и bullets_update_all_time_points вызываются раз в ~1 мс.
 
 
-Добавим таймер для FPS:
-@d Main timers list @{
-main_timer_fps,
-@}
-
-@d Main init timers @{
-timers[main_timer_fps].time = 0;
-timers[main_timer_fps].flag = 0;
-timers_pos = main_timer_fps + 1;
-@}
-
+Добавим таймер для FPS.
 Считаем fps за 5 сек:
 @d FPS @{
 {
-	if(timers[main_timer_fps].flag == 1) {
+	static int main_timer_fps = 0;
+	
+	main_timer_fps = timer_calc(main_timer_fps);
+	if(main_timer_fps == 0) {
 
-		timers[main_timer_fps].time = 5000;
-		timers[main_timer_fps].flag = 0;
+		main_timer_fps = 5000;
 
 		printf("%d frames  %d FPS\n", frames, frames/5);
 
@@ -2180,39 +2154,33 @@ timers_pos = main_timer_fps + 1;
 
 
 Отрисовка всех персонажей:
-
 @d Draw characters @{
 characters_draw();
 @}
 
 Отрисовка пуль:
-
 @d Draw bullets @{
 bullets_draw();
 @}
 
 Обновление экрана:
-
 @d Window update @{
 window_update();
 @}
 
 Игровое меню(оно вызывается из игры при нажатии ESC):
-
 @d Game menu @{
 if(is_keydown(key_escape)) {
 	window_set_fullscreen(0);
 	exit(1);
 }
 @}
-
 FIXME:Пока вместо меню заглушка
 
 
 
 
 Перемещение персонажа игроком:
-
 @d Player movements @{
 if(is_keydown(key_move_left))
 	character_move_to(main_character_player, character_move_to_left);
@@ -2241,5 +2209,5 @@ bullets_action();
 
 Обновим таймеры:
 @d Update timers @{
-timers_update();
+timer_get_time();
 @}
