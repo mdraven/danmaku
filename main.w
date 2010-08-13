@@ -7,10 +7,28 @@
 
 1)стараюсь делать по KISS
 2)делаю тяпляп, лишь бы работало
+3)я делаю Touhou, а не универсальный двиг
+
+==========================================================
+
+Игровые константы.
+
+Размер игрового поля, где происходит действие игры:
+@o const.h @{
+const int game_field_w = 380;
+const int game_field_h = 580;
+@}
+Использовать в алгоритмах. Начло в точке (0, 0).
+
+Левый верхний угол игрового поля, где происходит действие игры:
+@o const.h @{
+const int game_field_x = 10;
+const int game_field_y = 10;
+@}
+Лучше помещать эти константы в функции вырисовки, а не в алгоритмы.
 
 
-
-
+===========================================================
 Набор функция для работы с окном.
 
 @o os_specific.h @{
@@ -656,6 +674,7 @@ characters_pos вершина стека
 
 #include "characters.h"
 #include "os_specific.h"
+#include "const.h"
 
 CharacterList characters[CHARACTER_LIST_LEN];
 int characters_pos;
@@ -1052,6 +1071,20 @@ if(character->move_flag == 0) {
 
 Перемещаемся между точками.
 
+
+В будущем нам могут понадобиться две переменные:
+@d Character struct param @{
+int move_x;
+int move_y;
+@}
+Они требуются, когда нужно где-то сохранить точку куда двигается персонаж.
+Используются в ai.
+
+Иногда нужно ждать некоторое время, таймер можно хранить здесь:
+@d Character struct param @{
+int time;
+@}
+
 ===========================================================
 
 Функция которая рисует всех персонажей, которые не спят.
@@ -1163,12 +1196,14 @@ character_blue_moon_fairy,
 
 Функция создания персонажа:
 @o characters.c @{
-void character_blue_moon_fairy_create(int cd) {
+void character_blue_moon_fairy_create(int cd, int x, int y) {
 	CharacterList *character = &characters[cd];
 
+	character->x = x;
+	character->y = y;
 	character->hp = 100;
 	character->is_sleep = 1;
-	character->character_type = character_marisa;
+	character->character_type = character_blue_moon_fairy;
 	character->time_point_for_movement_to_x = 0;
 	character->time_point_for_movement_to_y = 0;
 	character->step_of_movement = 0;
@@ -1176,7 +1211,7 @@ void character_blue_moon_fairy_create(int cd) {
 @}
 
 @o characters.h @{
-void character_blue_moon_fairy_create(int cd);
+void character_blue_moon_fairy_create(int cd, int x, int y);
 @}
 
 Функции установки time points после совершения перемещения:
@@ -1231,9 +1266,63 @@ case character_blue_moon_fairy:
 @d AI functions for different characters @{
 static void character_blue_moon_fairy_ai_control(int cd) {
 	CharacterList *character = &characters[cd];
-
+	@<character_blue_moon_fairy_ai_control move to down and center@>
+	@<character_blue_moon_fairy_ai_control wait@>
+	@<character_blue_moon_fairy_ai_control go away@>
+	@<character_blue_moon_fairy_ai_control move and remove@>
 }
 @}
+
+Перемещаемся поближе к центру(чуть выше) игрового поля. Чем персонаж ближе к центру в
+начальный момент, тем ближе он подлетит в конце:
+@d character_blue_moon_fairy_ai_control move to down and center @{
+if(character->step_of_movement == 0) {
+	character->move_x = game_field_w/2 + (character->x - game_field_w/2)/2;
+	character->move_y = game_field_h/2 - game_field_h/4 + character->y;
+	character->step_of_movement = 1;
+}
+
+if(character->step_of_movement == 1) {
+	character_move_to_point(cd, character->move_x, character->move_y);
+	if(character->move_flag == 0) {
+		character->time = 500;
+		character->step_of_movement = 2;
+	}
+}
+@}
+
+Ждем полсекунды(character->time выше):
+@d character_blue_moon_fairy_ai_control wait @{
+if(character->step_of_movement == 2) {
+	character->time = timer_calc(character->time);
+	if(character->time == 0)
+		character->step_of_movement = 3;
+}
+@}
+
+Улетаем за край экрана. Те что слева от центра улетают направо, те что
+справа от центра налево:
+@d character_blue_moon_fairy_ai_control go away @{
+if(character->step_of_movement == 3) {
+	character->move_x = character->x < game_field_w/2 ? game_field_w + 200 : -200;
+	character->move_y = character->y - game_field_h/5;
+	character->step_of_movement = 4;
+}
+@}
+
+Перемещаемся в (move_x, move_y). Убираем тех, кто достиг края экрана:
+@d character_blue_moon_fairy_ai_control move and remove @{
+if(character->step_of_movement == 4) {
+	character_move_to_point(cd, character->move_x, character->move_y);
+	if(character->x > game_field_w+20 || character->y < -20) {
+		character->is_sleep = 1;
+		character->step_of_movement = 0;
+		character->move_flag = 0;
+	}
+}
+@}
+Очищаем step_of_movement и move_flag.
+
 
 Рисуем персонажа:
 @d characters_draw other characters @{
@@ -1244,12 +1333,19 @@ case character_blue_moon_fairy:
 
 @d Draw functions for different characters @{
 static void character_blue_moon_fairy_draw(int cd) {
+	CharacterList *character = &characters[cd];
 	static int id = -1;
 
 	if(id == -1)
-		id = image_load("aya.png");
+		id = image_load("blue_fairy.png");
 
-	image_draw(id, characters[cd].x, characters[cd].y, 0, 0.1);
+	if(character->is_sleep == 1)
+		return;
+
+	image_draw(id,
+		game_field_x + character->x,
+		game_field_y + character->y,
+		0, 0.4);
 }
 @}
 ===========================================================
@@ -2100,17 +2196,28 @@ int main(void) {
 
 	enum {
 		main_character_player,
+		main_character_blue_moon_fairy1,
+		main_character_blue_moon_fairy10 = main_character_blue_moon_fairy1 + 9,
 	};
 
 	character_reimu_create(main_character_player);
 	characters[main_character_player].ai = 1;
-	characters[main_character_player].is_sleep = 0;
-	characters_pos = main_character_player + 1;
+	characters[main_character_player].is_sleep = 1;
+
+	{
+		int i;
+		for(i = main_character_blue_moon_fairy1; i <= main_character_blue_moon_fairy10; i++) {
+			character_blue_moon_fairy_create(i, 30*i, 10);
+			characters[i].ai = 1;
+			characters[i].is_sleep = 0;
+		}
+		characters_pos = main_character_blue_moon_fairy10 + 1;
+	}
 
 	{
 		int i, j;
-		for(i=0; i<10; i++)
-			for(j=0; j<10; j++)
+		for(i=0; i<1; i++)
+			for(j=0; j<2; j++)
 				bullet_create(bullet_white, 100+i*10, 100+j*10, 0);
 	}
 
