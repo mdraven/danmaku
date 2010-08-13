@@ -573,6 +573,8 @@ int is_rad_collide(int x1, int y1, int r1, int x2, int y2, int r2) {
 
 ===========================================================
 
+Персонажи.
+
 Теперь стоит подумать о игровых персонажах.
 Они должны иметь возможность свободно перемещаться по игровому полю и исчезать когда им захочется.
 Для этого они должны знать размер окна, через которое игрок видит игровое поле. Допустим его размеры
@@ -670,7 +672,7 @@ int characters_pos;
 Типы персонажей:
 @o characters.c @{
 enum {
-	character_reimu, character_marisa
+	character_reimu, character_marisa, @<Character types@>
 };
 @}
 
@@ -684,7 +686,7 @@ void character_reimu_create(int cd) {
 	character->character_type = character_reimu;
 	character->time_point_for_movement_to_x = 0;
 	character->time_point_for_movement_to_y = 0;
-	@<Reimu create function@>
+	character->step_of_movement = 0;
 }
 @}
 
@@ -702,6 +704,7 @@ void character_marisa_create(int cd) {
 	character->character_type = character_marisa;
 	character->time_point_for_movement_to_x = 0;
 	character->time_point_for_movement_to_y = 0;
+	character->step_of_movement = 0;
 }
 @}
 
@@ -765,6 +768,7 @@ static void character_set_weak_time_point_x(int cd) {
 		case character_marisa:
 			character_marisa_set_weak_time_point_x(cd);
 			break;
+		@<character_set_weak_time_point_x other characters@>
 		default:
 			fprintf(stderr, "\nUnknown character\n");
 			exit(1);
@@ -779,6 +783,7 @@ static void character_set_weak_time_point_y(int cd) {
 		case character_marisa:
 			character_marisa_set_weak_time_point_y(cd);
 			break;
+		@<character_set_weak_time_point_y other characters@>
 		default:
 			fprintf(stderr, "\nUnknown character\n");
 			exit(1);
@@ -791,11 +796,11 @@ static void character_set_weak_time_point_y(int cd) {
 
 @d Different characters set weak time_point functions @{
 static void character_reimu_set_weak_time_point_x(int cd) {
-	characters[cd].time_point_for_movement_to_x = 1;
+	characters[cd].time_point_for_movement_to_x = 5;
 }
 
 static void character_reimu_set_weak_time_point_y(int cd) {
-	characters[cd].time_point_for_movement_to_y = 1;
+	characters[cd].time_point_for_movement_to_y = 5;
 }
 
 static void character_marisa_set_weak_time_point_x(int cd) {
@@ -826,6 +831,7 @@ void characters_update_all_time_points(void) {
 			case character_marisa:
 				character_marisa_update_time_points(i);
 				break;
+			@<characters_update_all_time_points other characters@>
 			default:
 				fprintf(stderr, "\nUnknown character\n");
 				exit(1);
@@ -883,6 +889,7 @@ void characters_ai_control(void) {
 			case character_marisa:
 				character_marisa_ai_control(i);
 				break;
+			@<characters_ai_control other characters@>
 			default:
 				fprintf(stderr, "\nUnknown character\n");
 				exit(1);
@@ -903,7 +910,6 @@ static void character_marisa_ai_control(int cd) {
 	exit(1); // FIXME
 }
 @}
-
 
 
 ==============================================================
@@ -1018,9 +1024,9 @@ int fx = 0, fy = 0;
 int step_of_movement;
 @}
 
-@d Reimu create function @{
+Добавим такую строку в функцию create всем персонажам:
 character->step_of_movement = 0;
-@}
+
 
 Босс движется из точки в точку. Достигает её. Мы изменяем step_of_movement,
 чтобы знать какой шаг делать потом.
@@ -1067,6 +1073,7 @@ void characters_draw(void) {
 			case character_marisa:
 				character_marisa_draw(i);
 				break;
+			@<characters_draw other characters@>
 			default:
 				fprintf(stderr, "\nUnknown character\n");
 				exit(1);
@@ -1141,7 +1148,110 @@ void level02(void) {
 С помощью такого механизма мы можем не бороться с дескрипторами и переносить в
 следующий этаж только нужных персонажей.
 
+======================================================================
 
+Начнем добавлять персонажей:
+
+Лунные феи.
+
+Синие феи.
+
+Добавим в список:
+@d Character types @{
+character_blue_moon_fairy,
+@}
+
+Функция создания персонажа:
+@o characters.c @{
+void character_blue_moon_fairy_create(int cd) {
+	CharacterList *character = &characters[cd];
+
+	character->hp = 100;
+	character->is_sleep = 1;
+	character->character_type = character_marisa;
+	character->time_point_for_movement_to_x = 0;
+	character->time_point_for_movement_to_y = 0;
+	character->step_of_movement = 0;
+}
+@}
+
+@o characters.h @{
+void character_blue_moon_fairy_create(int cd);
+@}
+
+Функции установки time points после совершения перемещения:
+@d character_set_weak_time_point_x other characters @{
+case character_blue_moon_fairy:
+	character_blue_moon_fairy_set_weak_time_point_x(cd);
+	break;
+@}
+
+@d character_set_weak_time_point_y other characters @{
+case character_blue_moon_fairy:
+	character_blue_moon_fairy_set_weak_time_point_y(cd);
+	break;
+@}
+
+@d Different characters set weak time_point functions @{
+static void character_blue_moon_fairy_set_weak_time_point_x(int cd) {
+	characters[cd].time_point_for_movement_to_x = 5;
+}
+
+static void character_blue_moon_fairy_set_weak_time_point_y(int cd) {
+	characters[cd].time_point_for_movement_to_y = 5;
+}
+@}
+
+Функции обновления time points:
+@d characters_update_all_time_points other characters @{
+case character_blue_moon_fairy:
+	character_blue_moon_fairy_update_time_points(i);
+	break;
+@}
+
+@d Update time point for different characters @{
+static void character_blue_moon_fairy_update_time_points(int cd) {
+	CharacterList *character = &characters[cd];
+
+	if(character->time_point_for_movement_to_x > 0)
+		character->time_point_for_movement_to_x--;
+
+	if(character->time_point_for_movement_to_y > 0)
+		character->time_point_for_movement_to_y--; 
+}
+@}
+
+AI феи:
+@d characters_ai_control other characters @{
+case character_blue_moon_fairy:
+	character_blue_moon_fairy_ai_control(i);
+	break;
+@}
+
+@d AI functions for different characters @{
+static void character_blue_moon_fairy_ai_control(int cd) {
+	CharacterList *character = &characters[cd];
+
+}
+@}
+
+Рисуем персонажа:
+@d characters_draw other characters @{
+case character_blue_moon_fairy:
+	character_blue_moon_fairy_draw(i);
+	break;
+@}
+
+@d Draw functions for different characters @{
+static void character_blue_moon_fairy_draw(int cd) {
+	static int id = -1;
+
+	if(id == -1)
+		id = image_load("aya.png");
+
+	image_draw(id, characters[cd].x, characters[cd].y, 0, 0.1);
+}
+@}
 ===========================================================
 
 Пули.
