@@ -13,17 +13,27 @@
 
 Игровые константы.
 
-Размер игрового поля, где происходит действие игры:
 @o const.h @{
-const int game_field_w = 380;
-const int game_field_h = 580;
+#ifndef _CONST_H_
+#define _CONST_H_
+
+@<const.h game field width and height@>
+@<const.h game field coodinate@>
+
+#endif
+@}
+
+Размер игрового поля, где происходит действие игры:
+@d const.h game field width and height @{
+#define GAME_FIELD_W 380
+#define GAME_FIELD_H 580
 @}
 Использовать в алгоритмах. Начло в точке (0, 0).
 
 Левый верхний угол игрового поля, где происходит действие игры:
-@o const.h @{
-const int game_field_x = 10;
-const int game_field_y = 10;
+@d const.h game field coodinate @{
+#define GAME_FIELD_X 10
+#define GAME_FIELD_Y 10
 @}
 Лучше помещать эти константы в функции вырисовки, а не в алгоритмы.
 
@@ -658,7 +668,7 @@ characters_pos вершина стека
 О структуре:
   hp - количество жизней персонажа
   x, y - координаты, когда он не спит
-  ai - флаг, этот персонаж управляется компьютером
+  ai - флаг, этот персонаж управляется компьютером(существует только один не спящий(is_sleep=0) с ai=0)
   is_sleep - флаг, спит персонаж или действует на поле игр. Если персонаж умер,
   		   	 то флаг устанавливается(true).
   character_type - тип персонажа, основной параметр для диспетчеризации
@@ -675,6 +685,7 @@ characters_pos вершина стека
 #include "characters.h"
 #include "os_specific.h"
 #include "const.h"
+#include "player_coord.h"
 
 CharacterList characters[CHARACTER_LIST_LEN];
 int characters_pos;
@@ -706,8 +717,12 @@ void character_reimu_create(int cd) {
 	character->time_point_for_movement_to_x = 0;
 	character->time_point_for_movement_to_y = 0;
 	character->step_of_movement = 0;
+
+	character->x = player_coord_x;
+	character->y = player_coord_y;
 }
 @}
+player_coord_x, player_coord_y - глобальные координаты игрока.
 
 @o characters.h @{
 void character_reimu_create(int cd);
@@ -724,6 +739,9 @@ void character_marisa_create(int cd) {
 	character->time_point_for_movement_to_x = 0;
 	character->time_point_for_movement_to_y = 0;
 	character->step_of_movement = 0;
+
+	character->x = player_coord_x;
+	character->y = player_coord_y;
 }
 @}
 
@@ -752,6 +770,9 @@ void character_move_to(int cd, int move_to) {
 			character_set_weak_time_point_x(cd);
 			character->x++;
 		}
+
+		if(character->ai == 0)
+			player_coord_x = character->x;
 	}
 
 	if(character->time_point_for_movement_to_y == 0) {
@@ -763,6 +784,9 @@ void character_move_to(int cd, int move_to) {
 			character_set_weak_time_point_y(cd);
 			character->y++;
 		}
+
+		if(character->ai == 0)
+			player_coord_y = character->y;
 	}
 }
 @}
@@ -775,9 +799,12 @@ character_set_weak_time_point_y. Они определяют тип персон
 
 Как видно, ход по x или y возможен только если соответствующий time_point равен нулю.
 
+player_coord_x и player_coord_y - глобальные координаты игрока. Они меняются, если перемещается
+персонаж у которого ai = 0(персонаж не управляется компьютером).
+Когда нам нужно будет менять персонажа при нажатии Shift мы установим у другого флаг is_sleep,
+тогда не будет двух активных персонажей с ai = 0.
 
 Опишем character_set_weak_time_point_x и character_set_weak_time_point_y:
-
 @d character_set_weak_time_point functions @{
 static void character_set_weak_time_point_x(int cd) {
 	switch(characters[cd].character_type) {
@@ -1277,8 +1304,8 @@ static void character_blue_moon_fairy_ai_control(int cd) {
 начальный момент, тем ближе он подлетит в конце:
 @d character_blue_moon_fairy_ai_control move to down and center @{
 if(character->step_of_movement == 0) {
-	character->move_x = game_field_w/2 + (character->x - game_field_w/2)/2;
-	character->move_y = game_field_h/2 - game_field_h/4 + character->y;
+	character->move_x = GAME_FIELD_W/2 + (character->x - GAME_FIELD_W/2)/2;
+	character->move_y = GAME_FIELD_H/2 - GAME_FIELD_H/4 + character->y;
 	character->step_of_movement = 1;
 }
 
@@ -1304,8 +1331,8 @@ if(character->step_of_movement == 2) {
 справа от центра налево:
 @d character_blue_moon_fairy_ai_control go away @{
 if(character->step_of_movement == 3) {
-	character->move_x = character->x < game_field_w/2 ? game_field_w + 200 : -200;
-	character->move_y = character->y - game_field_h/5;
+	character->move_x = character->x < GAME_FIELD_W/2 ? GAME_FIELD_W + 200 : -200;
+	character->move_y = character->y - GAME_FIELD_H/5;
 	character->step_of_movement = 4;
 }
 @}
@@ -1314,7 +1341,7 @@ if(character->step_of_movement == 3) {
 @d character_blue_moon_fairy_ai_control move and remove @{
 if(character->step_of_movement == 4) {
 	character_move_to_point(cd, character->move_x, character->move_y);
-	if(character->x > game_field_w+20 || character->y < -20) {
+	if(character->x > GAME_FIELD_W+20 || character->y < -20) {
 		character->is_sleep = 1;
 		character->step_of_movement = 0;
 		character->move_flag = 0;
@@ -1343,11 +1370,30 @@ static void character_blue_moon_fairy_draw(int cd) {
 		return;
 
 	image_draw(id,
-		game_field_x + character->x,
-		game_field_y + character->y,
+		GAME_FIELD_X + character->x,
+		GAME_FIELD_Y + character->y,
 		0, 0.4);
 }
 @}
+===========================================================
+
+Координаты игрока.
+
+Очень маленький модуль в котором храняться координаты игрока.
+
+@o player_coord.h @{
+extern int player_coord_x;
+extern int player_coord_y;
+@}
+
+@o player_coord.c @{
+int player_coord_x;
+int player_coord_y;
+@}
+
+Мы будем менять эти координты где-то в character_blabla_move_to персонажей за
+которых можно играть.
+
 ===========================================================
 
 Пули.
@@ -1364,6 +1410,8 @@ static void character_blue_moon_fairy_draw(int cd) {
 
 #include "bullets.h"
 #include "os_specific.h"
+#include "const.h"
+#include "player_coord.h"
 
 @<Bullet macros@>
 @<Bullet structs@>
@@ -1401,71 +1449,72 @@ BULLET_LIST_LEN - максимальное количество пуль
 #define BULLET_LIST_LEN 2048
 @}
 
-Функции создания пули не возвращают дескриптор. Пуля сразу начинает дейчтвовать после
-создания.
-
-@d Bullet functions prototypes @{
-void bullet_create(int bullet_type, int x, int y, float angle);
-@}
 
 Типы пуль:
-
-@d Bullet types @{
+@d Bullet structs @{
 enum {
-	bullet_white, bullet_red
+	bullet_white,
+	bullet_red,
+	@<Bullet types@>
 };
 @}
 
+Функция создания белой круглой пули:
 @d Bullet functions @{
-@<Different bullet create functions@>
-
-void bullet_create(int bullet_type, int x, int y, float angle) {
-	if(bullets_pos == BULLET_LIST_LEN) {
-		fprintf(stderr, "\nBullet list full\n");
-		exit(1);
-	}
-
-	switch(bullet_type) {
-		case bullet_white:
-			bullet_white_create(bullets_pos, x, y, angle);
-			break;
-		case bullet_red:
-			bullet_red_create(bullets_pos, x, y, angle);
-			break;
-		default:
-			fprintf(stderr, "\nUnknown bullet\n");
-			exit(1);
-	}
-
-	bullets_pos++;
-}
-@}
-
-@d Different bullet create functions @{
-static void bullet_white_create(int bullets_pos, int x, int y, float angle) {
+void bullet_white_create(int x, int y, float angle) {
 	BulletList *bullet = &bullets[bullets_pos];
+
+	@<Check bullets_pos overfull@>
 
 	bullet->x = x;
 	bullet->y = y;
 	bullet->angle = angle;
 	bullet->bullet_type = bullet_white;
-	@<Bullet create@>
-}
+	bullet->move_flag = 0;
 
-static void bullet_red_create(int bullets_pos, int x, int y, float angle) {
+	bullets_pos++;
+}
+@}
+Увеличиваем вершину стека(bullets_pos++).
+
+@o bullets.h @{
+void bullet_white_create(int x, int y, float angle);
+@}
+
+Функция создания красной круглой пули:
+@d Bullet functions @{
+void bullet_red_create(int x, int y, float angle) {
 	BulletList *bullet = &bullets[bullets_pos];
+
+	@<Check bullets_pos overfull@>
 
 	bullet->x = x;
 	bullet->y = y;
 	bullet->angle = angle;
 	bullet->bullet_type = bullet_red;
-	@<Bullet create@>
+	bullet->move_flag = 0;
+
+	bullets_pos++;
 }
 @}
 
+@o bullets.h @{
+void bullet_red_create(int x, int y, float angle);
+@}
+
+
+Проверка на переполнение bullets_pos(вершина стека):
+@d Check bullets_pos overfull @{
+if(bullets_pos == BULLET_LIST_LEN) {
+	fprintf(stderr, "\nBullet list is full\n");
+	exit(1);
+}
+@}
+
+
 AI пуль:
 
-@d Bullet functions prototypes @{
+@o bullets.h @{
 void bullets_action(void);
 @}
 
@@ -1488,6 +1537,7 @@ void bullets_action(void) {
 			case bullet_red:
 				bullet_red_action(i);
 				break;
+			@<bullets_action other bullets@>
 			default:
 				fprintf(stderr, "\nUnknown bullet\n");
 				exit(1);
@@ -1514,7 +1564,6 @@ if(bullet->kill_me == 1) {
 Начнется цикл и i увеличится на 1 => i = 0 и цикл завершится.
 
 Функция удаления пули:
-
 @d Bullet action helpers @{
 static void bullet_delete(int bd) {
 	bullets_pos--;
@@ -1526,7 +1575,6 @@ static void bullet_delete(int bd) {
 Удаленная пуля исчезает, её место занимает последняя в списке.
 
 Конкретые функции действия пуль:
-
 @d Bullet actions @{
 static void bullet_white_action(int bd) {
 	BulletList *bullet = &bullets[bd];
@@ -1540,6 +1588,18 @@ static void bullet_white_action(int bd) {
 static void bullet_red_action(int bd) {
 	BulletList *bullet = &bullets[bd];
 
+	if(bullet->move_flag == 0) {
+	//	bullet->move_x = player_coord_x*1000-bullet->x*999;
+	//	bullet->move_y = player_coord_y*1000-bullet->y*999;
+		int dx = player_coord_x - bullet->x;
+		int dy = player_coord_y - bullet->y;
+		if(dx != 0)
+			bullet->angle = atan2(dy, dx)*(180.0/M_PI);
+		else
+			bullet->angle = 0; Проверить angle=0
+printf("%f\n", bullet->angle);
+	}
+	//bullet_move_to_point(bd, bullet->move_x, bullet->move_y);
 	bullet_move_to_angle_and_radius(bd, bullet->angle, 1000.0);
 }
 @}
@@ -1565,9 +1625,10 @@ move_flag - устанавливается в 0, если движение ок�
 если он установлен, то продолжается старое движение. То есть чтобы начать новое движение нужно вначале
 установить move_flag в 0, иначе будет продолжаться старое движение.
 
-@d Bullet create @{
+
+Это строка долна быть в функциях создания пуль:
 bullet->move_flag = 0;
-@}
+
 
 @d Bullet action helpers @{
 static void bullet_move_to_angle_and_radius(int bd, float angle, float radius) {
@@ -1859,7 +1920,7 @@ static void bullet_red_draw(int bd) {
 	if(id == -1)
 		id = image_load("bullet_green.png");
 
-	image_draw(id, bullets[bd].x, bullets[bd].y, 0, 1);
+	image_draw(id, bullets[bd].x, bullets[bd].y, bullets[bd].angle+90, 0.3);
 }
 @}
 
@@ -2218,7 +2279,7 @@ int main(void) {
 		int i, j;
 		for(i=0; i<1; i++)
 			for(j=0; j<2; j++)
-				bullet_create(bullet_white, 100+i*10, 100+j*10, 0);
+				bullet_red_create(100+i*10, 100+j*10, 0);
 	}
 
 	@<Main cycle@>
