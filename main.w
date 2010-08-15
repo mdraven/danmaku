@@ -8,10 +8,28 @@
 1)стараюсь делать по KISS
 2)делаю тяпляп, лишь бы работало
 3)я делаю Touhou, а не универсальный двиг
+4)смотри как на пример: bullet_red_action calculate angle
 
 ==========================================================
 
 Игровые константы.
+
+Размер игрового поля, где происходит действие игры:
+@d const.h game field width and height @{
+#define GAME_FIELD_W 380
+#define GAME_FIELD_H 580
+@}
+Использовать в алгоритмах. Начало в точке (0, 0).
+
+
+
+Левый верхний угол игрового поля, где происходит действие игры:
+@d const.h game field coodinate @{
+#define GAME_FIELD_X 10
+#define GAME_FIELD_Y 10
+@}
+Лучше помещать эти константы в функции вырисовки, а не в алгоритмы.
+
 
 @o const.h @{
 #ifndef _CONST_H_
@@ -22,21 +40,6 @@
 
 #endif
 @}
-
-Размер игрового поля, где происходит действие игры:
-@d const.h game field width and height @{
-#define GAME_FIELD_W 380
-#define GAME_FIELD_H 580
-@}
-Использовать в алгоритмах. Начло в точке (0, 0).
-
-Левый верхний угол игрового поля, где происходит действие игры:
-@d const.h game field coodinate @{
-#define GAME_FIELD_X 10
-#define GAME_FIELD_Y 10
-@}
-Лучше помещать эти константы в функции вырисовки, а не в алгоритмы.
-
 
 ===========================================================
 Набор функция для работы с окном.
@@ -1571,10 +1574,12 @@ static void bullet_delete(int bd) {
 	bullets[bd] = bullets[bullets_pos];
 }
 @}
-
 Удаленная пуля исчезает, её место занимает последняя в списке.
 
-Конкретые функции действия пуль:
+
+Конкретые функции действия пуль.
+
+Белая пуля делает круги:
 @d Bullet actions @{
 static void bullet_white_action(int bd) {
 	BulletList *bullet = &bullets[bd];
@@ -1584,30 +1589,47 @@ static void bullet_white_action(int bd) {
 	if(bullet->move_flag == 0)
 		bullet->angle += 5;
 }
+@}
 
+
+
+Красная пуля улетает за край экрана по прямой.
+
+Для этого вначале мы вычисляем угол между игроком и пулей с помощью арктангенса:
+@d bullet_red_action calculate angle @{
+int dx = player_coord_x - bullet->x;
+int dy = player_coord_y - bullet->y;
+
+bullet->angle = atan2(dy, dx)*(180.0/M_PI);
+@}
+atan2 корректно обрабатывает dx = 0.
+
+Полученный угол angle мы используем чтобы направить пулю в направлении игрока:
+@d bullet_red_action move bullet to player @{
+bullet_move_to_angle_and_radius(bd, bullet->angle,
+	GAME_FIELD_W * GAME_FIELD_H);
+@}
+Теперь пуля гарантировано улетит за край экрана.
+
+bullet_move_to_angle_and_radius - переместить пулю по направлению angel на радиус W*H. Когда
+пуля достигнет цели, то move_flag сбросится в 0.
+
+Вычислим угол до персонажа, если пуля не перемещается и передадим в функцию
+перемещения:
+@d Bullet actions @{
 static void bullet_red_action(int bd) {
 	BulletList *bullet = &bullets[bd];
 
 	if(bullet->move_flag == 0) {
-	//	bullet->move_x = player_coord_x*1000-bullet->x*999;
-	//	bullet->move_y = player_coord_y*1000-bullet->y*999;
-		int dx = player_coord_x - bullet->x;
-		int dy = player_coord_y - bullet->y;
-		if(dx != 0)
-			bullet->angle = atan2(dy, dx)*(180.0/M_PI);
-		else
-			bullet->angle = 0; Проверить angle=0
-printf("%f\n", bullet->angle);
+		@<bullet_red_action calculate angle@>
 	}
-	//bullet_move_to_point(bd, bullet->move_x, bullet->move_y);
-	bullet_move_to_angle_and_radius(bd, bullet->angle, 1000.0);
+
+	@<bullet_red_action move bullet to player@>
 }
 @}
 
-bullet_move_to_angle - переместить пулю по направлению angel на радиус radius. Когда
-пуля достигнет цели, то move_flag сброситься в 0.
 
-Белая пуля делает круги, а красная улетает за край экрана по прямой.
+
 
 Сложные пули делаются так: мы создаем "главную" пулю, которая создаёт "дочерние"
 и сама удаляется(всегда). Весь "танец" делает ai дочерних пуль.
@@ -1813,11 +1835,11 @@ static void bullet_white_set_weak_time_point_y(int bd) {
 }
 
 static void bullet_red_set_weak_time_point_x(int bd) {
-	bullets[bd].time_point_for_movement_to_x = 1;
+	bullets[bd].time_point_for_movement_to_x = 5;
 }
 
 static void bullet_red_set_weak_time_point_y(int bd) {
-	bullets[bd].time_point_for_movement_to_y = 1;
+	bullets[bd].time_point_for_movement_to_y = 5;
 }
 @}
 
@@ -2270,7 +2292,7 @@ int main(void) {
 		for(i = main_character_blue_moon_fairy1; i <= main_character_blue_moon_fairy10; i++) {
 			character_blue_moon_fairy_create(i, 30*i, 10);
 			characters[i].ai = 1;
-			characters[i].is_sleep = 0;
+			characters[i].is_sleep = 1;
 		}
 		characters_pos = main_character_blue_moon_fairy10 + 1;
 	}
