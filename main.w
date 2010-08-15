@@ -42,65 +42,12 @@
 @}
 
 ===========================================================
-Набор функция для работы с окном.
-
-@o os_specific.h @{
-@<Window functions prototypes@>
-@<Image functions prototypes@>
-@}
+Набор функция для работы с окном(создание, рисование...).
 
 
 
-window_init вызывается один раз, где-то в начале функции main.
-Ресурсы при закрытии чистить не буду :3
-
-Этот кусок я не обдумывал, возможно набор функций не удачный :(
-
-@d Window functions prototypes @{
-void window_init(void);
-void window_create(void);
-
-void window_set_fullscreen(int flag);
-int window_is_fullscreen(void);
-
-void window_set_size(int w, int h);
-
-void window_update(void);
-@}
-
-@o os_specific.c @{
-
-#include <SDL.h>
-#include <GL/gl.h>
-#include <GL/glu.h>
-
-#include <stdlib.h>
-
-#include "os_specific.h"
-
-static SDL_Surface *surface;
-
-
-
-@<Window functions@>
-@<Image functions@>
-
-@}
-
-
-
-@d Window functions @{
-
-@<Window init function@>
-@<Window create function@>
-@<Window set size function@>
-@<Functions for fullscreen@>
-@<Window update function@>
-@}
-
-Эту функцию вызывают один раз, когда программа запускается:
-
-@d Window init function @{
+Эту функцию вызывают один раз, когда программа запускается(в начале функции main):
+@d os_specific functions @{
 void window_init(void) {
 	if(SDL_Init(SDL_INIT_VIDEO|SDL_INIT_TIMER) != 0) {
 		fprintf(stderr, "\nUnable to initialize SDL:  %s\n",
@@ -116,10 +63,49 @@ void window_init(void) {
 }
 @}
 
-Эту функцию вызывают, когда окно нужно создать или после
-изменения её характеристик:
+@d os_specific public prototypes @{
+void window_init(void);
+@}
 
-@d Window create function @{
+
+
+
+Нам нужна функция, которая создаёт окно(window_create). Её также нужно вызывать после изменения
+характеристик окна.
+Изменение характеристик приводит к изменению настроек OGL, следовательно OGL стоит
+настраивать в этой функции.
+
+Нам нужна поддержка прозрачности для вывода спрайтов с alpha каналом:
+@d os_specific OGL blend @{
+glEnable(GL_BLEND);
+glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+@}
+
+Настройки OGL для вывода 2D графики:
+@d os_specific OGL config @{
+glClearColor(0, 0, 0, 0);
+glClear(GL_COLOR_BUFFER_BIT);
+
+glEnable(GL_TEXTURE_2D);
+
+@<os_specific OGL blend@>
+
+glViewport(0, 0, w, h);
+
+glMatrixMode(GL_PROJECTION);
+glLoadIdentity();
+
+glOrtho(0, game_w, game_h, 0, 0, 1);
+
+glDisable(GL_DEPTH_TEST);
+
+glMatrixMode(GL_MODELVIEW);
+glLoadIdentity();
+@}
+w, h - размеры окна
+game_w, game_h - размеры окна в игре, они будут растягиваться под w, h
+
+@d os_specific functions @{
 static int w = 800, h = 600, fullscreen;
 static int game_w = 800, game_h = 600;
 static Uint32 flags = SDL_OPENGL;
@@ -134,49 +120,20 @@ void window_create(void) {
 		exit(1);
 	}
 
-	@<OGL config@>
+	@<os_specific OGL config@>
 
 	return;
 }
 @}
 
-w, h - размеры окна
-game_w, game_h - размеры окна в игре, они будут растягиваться под w, h
-
-Гастроим ogl для вывода 2D графики:
-
-@d OGL config @{
-glClearColor(0, 0, 0, 0);
-glClear(GL_COLOR_BUFFER_BIT);
-
-glEnable(GL_TEXTURE_2D);
-
-@<OGL blend@>
-
-glViewport(0, 0, w, h);
-
-glMatrixMode(GL_PROJECTION);
-glLoadIdentity();
-
-glOrtho(0, game_w, game_h, 0, 0, 1);
-
-glDisable(GL_DEPTH_TEST);
-
-glMatrixMode(GL_MODELVIEW);
-glLoadIdentity();
+@d os_specific public prototypes @{
+void window_create(void);
 @}
 
-Это нужно, чтобы у текстур была прозрачность:
-
-@d OGL blend @{
-glEnable(GL_BLEND);
-glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-@}
 
 
 Функция изменения размера окна:
-
-@d Window set size function @{
+@d os_specific functions @{
 void window_set_size(int w_, int h_) {
 	w = w_;
 	h = h_;
@@ -184,69 +141,61 @@ void window_set_size(int w_, int h_) {
 	window_create();
 }
 @}
-
 Как видно window_create она запускает сама. Может кому-то и не нравятся мелькающие окна, а мне
 пофиг.
 
+@d os_specific public prototypes @{
+void window_set_size(int w_, int h_);
+@}
+
+
 
 Очень простые функции для работы с fullscreen:
-
-@d Functions for fullscreen @{
+@d os_specific functions @{
 void window_set_fullscreen(int flag) {
 	fullscreen = flag;
 
 	window_create();
 }
 
-int window_is_fullscreen() {
+int window_is_fullscreen(void) {
 	return fullscreen;
 }
 @}
 
-Эту фунцию вызывают когда уже все нарисовано в буфере:
+@d os_specific public prototypes @{
+void window_set_fullscreen(int flag);
+int window_is_fullscreen(void);
+@}
 
-@d Window update function @{
+
+
+Эту фунцию вызывают когда уже все нарисовано в буфере:
+@d os_specific functions @{
 void window_update(void) {
 	SDL_GL_SwapBuffers();
 }
 @}
 
-Перейдём к функциям по работе с изображениями
-
-image_load будет кроме возвращения дескриптора ещё сохранять имя файла для загрузки при изменении
-размера окна
-
-@d Image functions prototypes @{
-/* принимает имя файла, возвращает дескриптор или -1 */
-int image_load(char *filename);
-void image_draw(int id, int x, int y, float rot, float scale);
-
-int image_size_h(int id);
-int image_size_w(int id);
+@d os_specific public prototypes @{
+void window_update(void);
 @}
 
 
-Так как нам придётся перегружать все рисунки, то мы будем их хранить в
-массиве.
+
+
+Перейдём к функциям по работе с изображениями.
+
+image_load будет кроме возвращения дескриптора ещё сохранять имя файла для защиты от
+двойной загрузки файла(FIXME:надо реализовать).
+
+Так как нам придётся проверять все рисунки, то мы будем их хранить в массиве.
 Для начала, почему массив? Этот массив похож на стек. Список рисунков всё равно не
 имеет дыр, поэтому будем использовать этот достаточно простой вариант.
-Кроме имен файлов там будут хранится старые surface, чтобы мы могли легко удалять их.
 id который возвращает image_load и есть номер элемента в массиве.
 
-@d Image functions @{
-
-#include <SDL_image.h>
-
-@<Struct for image list@>
-@<load_from_file helper function@>
-@<image_load function@>
-@<image_draw function@>
-@<image_size_w and image_size_h@>
-@}
-
-Опишем структуру в которой будет храниться список открытых изображений
-
-@d Struct for image list @{
+Опишем структуру в которой будет храниться список открытых изображений:
+@d os_specific structs @{
 #define IMAGE_LIST_LEN 1024
 #define IMG_FILE_NAME_SIZE 30
 
@@ -259,7 +208,6 @@ typedef struct {
 static ImageList image_list[IMAGE_LIST_LEN];
 static int image_list_pos;
 @}
-
 Это стек, image_list_pos его вершина.
 IMG_FILE_NAME_SIZE длинна массива под имя файла включая и путь к файлу.
 IMAGE_LIST_LEN количество изображений или иными словами размер стека.
@@ -269,10 +217,41 @@ w, h - размеры картинки
 tex_id - дескриптор текстуры в opengl
 
 
-Функция загрузки изображения:
 
-@d image_load function @{
+Функция загрузки изображения image_load.
 
+В ней используется проверка на корректность файла, кроме того, проверяется
+тип файла:
+@d os_specific image file check @{
+if((img->w & (img->w - 1)) != 0 ||
+	(img->h & (img->h - 1)) != 0) {
+	fprintf(stderr, "\nImage size isn't power of 2: %s\n", filename);
+	exit(1);
+}
+
+bytes_per_pixel = img->format->BytesPerPixel;
+
+switch(bytes_per_pixel) {
+	case 4:
+		if(img->format->Rmask == 0x000000ff)
+			texture_format = GL_RGBA;
+		else
+			texture_format = GL_BGRA;
+		break;
+	case 3:
+		if(img->format->Rmask == 0x000000ff)
+			texture_format = GL_RGB;
+		else
+			texture_format = GL_BGR;
+		break;
+	default:
+		fprintf(stderr, "\nIncorect color type: %s\n", filename);
+		exit(1);
+}
+@}
+Размер должен быть кратен 2, и допустимо только 4 или 3 байта на пиксел.
+
+@d os_specific functions @{
 int image_load(char *filename) {
 	if(image_list_pos == IMAGE_LIST_LEN) {
 		fprintf(stderr, "\nImage list full\n");
@@ -290,31 +269,7 @@ int image_load(char *filename) {
 
 		SDL_Surface *img = load_from_file(filename);
 
-		if((img->w & (img->w - 1)) != 0 ||
-			(img->h & (img->h - 1)) != 0) {
-			fprintf(stderr, "\nImage size isn't power of 2: %s\n", filename);
-			exit(1);
-		}
-
-		bytes_per_pixel = img->format->BytesPerPixel;
-
-		switch(bytes_per_pixel) {
-			case 4:
-				if(img->format->Rmask == 0x000000ff)
-					texture_format = GL_RGBA;
-				else
-					texture_format = GL_BGRA;
-				break;
-			case 3:
-				if(img->format->Rmask == 0x000000ff)
-					texture_format = GL_RGB;
-				else
-					texture_format = GL_BGR;
-				break;
-			default:
-				fprintf(stderr, "\nIncorect color type: %s\n", filename);
-				exit(1);
-		}
+		@<os_specific image file check@>
 
 		image->w = img->w;
 		image->h = img->h;
@@ -335,15 +290,18 @@ int image_load(char *filename) {
 	return image_list_pos++;
 }
 @}
-
 Как видно есть контроль переполнения буфера, где хранится имя файла.
 То есть в структуре-стеке всегда валидное имя.
 Используется вспомогательная функция load_from_file, она загружает картинку по заданому пути.
 Функция image_load возвращает позицию в стеке, она служит дескриптором изображения.
 
-Теперь о вспомогательной функции подробнее:
+@d os_specific public prototypes @{
+int image_load(char *filename);
+@}
 
-@d load_from_file helper function @{
+
+Теперь о вспомогательной функции подробнее:
+@d os_specific functions @{
 static SDL_Surface *load_from_file(char *filename) {
 	SDL_Surface *img;
 	char dirname[] = "images/";
@@ -359,15 +317,20 @@ static SDL_Surface *load_from_file(char *filename) {
 	}
 }
 @}
-
 У функция подсчитывает количество символов в имени директории и создаёт подходящий массив.
 Она не проверяет есть ли '.' в пути к файлу, это потенциальная уязвимость, но пока это меня
 не беспокоит :3
 
-Функция вывода изображения:
+@d os_specific private prototypes @{
+static SDL_Surface *load_from_file(char *filename);
+@}
 
-@d image_draw function @{
-void image_draw(int id, int x, int y, float rot, float scale) {
+
+
+
+Функция вывода изображения с левого-верхнего края:
+@d os_specific functions @{
+void image_draw_corner(int id, int x, int y, float rot, float scale) {
 	ImageList *img = &image_list[id];
 
 	glLoadIdentity();
@@ -380,49 +343,87 @@ void image_draw(int id, int x, int y, float rot, float scale) {
 
 	glBegin(GL_QUADS);
 		glTexCoord2i(0, 0);
-		//glVertex2i(0, 0);
+		glVertex2i(0, 0);
+
+		glTexCoord2i(1, 0);
+		glVertex2i(img->w, 0);
+
+		glTexCoord2i(1, 1);
+		glVertex2i(img->w, img->h);
+
+
+		glTexCoord2i(0, 1);
+		glVertex2i(0, img->h);
+	glEnd();
+}
+@}
+
+@d os_specific public prototypes @{
+void image_draw_corner(int id, int x, int y, float rot, float scale);
+@}
+
+
+
+Функция вывода изображения с центра:
+@d os_specific functions @{
+void image_draw_center(int id, int x, int y, float rot, float scale) {
+	ImageList *img = &image_list[id];
+
+	glLoadIdentity();
+
+	glBindTexture(GL_TEXTURE_2D, img->tex_id);
+
+	glTranslatef(x, y, 0);
+	glRotatef(rot, 0, 0, 1);
+	glScalef(scale, scale, 0);
+
+	glBegin(GL_QUADS);
+		glTexCoord2i(0, 0);
 		glVertex2i(-img->w/2, -img->h/2);
 
 		glTexCoord2i(1, 0);
-		//glVertex2i(img->w, 0);
 		glVertex2i(img->w/2, -img->h/2);
 
 		glTexCoord2i(1, 1);
-		//glVertex2i(img->w, img->h);
 		glVertex2i(img->w/2, img->h/2);
 
 		glTexCoord2i(0, 1);
-		//glVertex2i(0, img->h);
 		glVertex2i(-img->w/2, img->h/2);
 	glEnd();
 }
 @}
 
-Очень простая функция. Я решил не делать списка картинок и использовать вместо
-них директории с множеством файлов с картинками в них. Это позволит делать разные
-картинки разного размера, что было бы трудно сделать для списка картинок.
-
-Так как размеры разные то функций вывода две, одна выводит относительно края картинки,
-а другая относительно центра. В этом месте представлена низкоуровневая функция, которая
-выводит с края.
-
-
-Иногда нам понадобится узнавать размеры изображений:
-FIXME: Зачем понадобиться узнавать размеры?
-
-@d image_size_w and image_size_h @{
-int image_size_h(int id) {
-	return image_list[id].h;
-}
-
-int image_size_w(int id) {
-	return image_list[id].w;
-}
+@d os_specific public prototypes @{
+void image_draw_center(int id, int x, int y, float rot, float scale);
 @}
 
-Они элементарны и не требуют пояснений.
 
 
+Структура файла функций зависимых от ОС:
+@o os_specific.c @{
+#include <SDL.h>
+#include <SDL_image.h>
+
+#include <GL/gl.h>
+#include <GL/glu.h>
+
+#include <stdlib.h>
+
+#include "os_specific.h"
+
+static SDL_Surface *surface;
+
+@<os_specific structs@>
+@<os_specific private prototypes@>
+@<os_specific functions@>
+@}
+
+@o os_specific.h @{
+@<os_specific public prototypes@>
+@}
+
+
+===============================================================
 
 Переходим к реализации событий.
 
@@ -1153,7 +1154,7 @@ static void character_reimu_draw(int cd) {
 	if(id == -1)
 		id = image_load("aya.png");
 
-	image_draw(id, characters[cd].x, characters[cd].y, 0, 0.1);
+	image_draw_center(id, characters[cd].x, characters[cd].y, 0, 0.1);
 }
 
 static void character_marisa_draw(int cd) {
@@ -1162,7 +1163,7 @@ static void character_marisa_draw(int cd) {
 	if(id == -1)
 		id = image_load("marisa.png");
 
-	image_draw(id, characters[cd].x, characters[cd].y, 0, 1);
+	image_draw_center(id, characters[cd].x, characters[cd].y, 0, 1);
 }
 @}
 
@@ -1372,7 +1373,7 @@ static void character_blue_moon_fairy_draw(int cd) {
 	if(character->is_sleep == 1)
 		return;
 
-	image_draw(id,
+	image_draw_center(id,
 		GAME_FIELD_X + character->x,
 		GAME_FIELD_Y + character->y,
 		0, 0.4);
@@ -1933,7 +1934,10 @@ static void bullet_white_draw(int bd) {
 	if(id == -1)
 		id = image_load("bullet_green.png");
 
-	image_draw(id, bullets[bd].x, bullets[bd].y, bullets[bd].angle+90, 0.3);
+	image_draw_center(id,
+		GAME_FIELD_X + bullets[bd].x,
+		GAME_FIELD_Y + bullets[bd].y,
+		bullets[bd].angle+90, 0.3);
 }
 
 static void bullet_red_draw(int bd) {
@@ -1942,7 +1946,10 @@ static void bullet_red_draw(int bd) {
 	if(id == -1)
 		id = image_load("bullet_green.png");
 
-	image_draw(id, bullets[bd].x, bullets[bd].y, bullets[bd].angle+90, 0.3);
+	image_draw_center(id,
+		GAME_FIELD_X + bullets[bd].x,
+		GAME_FIELD_Y + bullets[bd].y,
+		bullets[bd].angle+90, 0.3);
 }
 @}
 
@@ -2292,7 +2299,7 @@ int main(void) {
 		for(i = main_character_blue_moon_fairy1; i <= main_character_blue_moon_fairy10; i++) {
 			character_blue_moon_fairy_create(i, 30*i, 10);
 			characters[i].ai = 1;
-			characters[i].is_sleep = 1;
+			characters[i].is_sleep = 0;
 		}
 		characters_pos = main_character_blue_moon_fairy10 + 1;
 	}
@@ -2336,8 +2343,8 @@ if(main_timer_frame == 0) {
 
 	frames++;
 
-	@<Draw characters@>
 	@<Draw bullets@>
+	@<Draw characters@>
 	@<Draw panel@>
 	@<Window update@>
 }
