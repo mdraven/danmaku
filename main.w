@@ -701,6 +701,9 @@ characters_pos вершина стека
 #include "os_specific.h"
 #include "const.h"
 #include "player_coord.h"
+#include "bullets.h"
+#include "timers.h"
+
 
 CharacterList characters[CHARACTER_LIST_LEN];
 int characters_pos;
@@ -1160,26 +1163,34 @@ void characters_draw(void) {
 
 @d Draw functions for different characters @{
 static void character_reimu_draw(int cd) {
+	CharacterList *character = &characters[cd];
 	static int id = -1;
 
 	if(id == -1)
 		id = image_load("aya.png");
 
+	if(character->is_sleep == 1)
+		return;
+
 	image_draw_center(id,
-		GAME_FIELD_X + characters[cd].x,
-		GAME_FIELD_Y + characters[cd].y,
+		GAME_FIELD_X + character->x,
+		GAME_FIELD_Y + character->y,
 		0, 0.1);
 }
 
 static void character_marisa_draw(int cd) {
+	CharacterList *character = &characters[cd];
 	static int id = -1;
 
 	if(id == -1)
 		id = image_load("marisa.png");
 
+	if(character->is_sleep == 1)
+		return;
+
 	image_draw_center(id,
-		GAME_FIELD_X + characters[cd].x,
-		GAME_FIELD_Y + characters[cd].y,
+		GAME_FIELD_X + character->x,
+		GAME_FIELD_Y + character->y,
 		0, 0.1);
 }
 @}
@@ -1333,6 +1344,10 @@ if(character->step_of_movement == 0) {
 if(character->step_of_movement == 1) {
 	character_move_to_point(cd, character->move_x, character->move_y);
 	if(character->move_flag == 0) {
+		bullet_red_create(character->x, character->y, 0.0);
+		bullet_red_create(character->x, character->y, 4.0);
+		bullet_red_create(character->x, character->y, -4.0);
+
 		character->time = 500;
 		character->step_of_movement = 2;
 	}
@@ -1504,23 +1519,27 @@ void bullet_white_create(int x, int y, float angle);
 
 Функция создания красной круглой пули:
 @d Bullet functions @{
-void bullet_red_create(int x, int y, float angle) {
+void bullet_red_create(int x, int y, float shift_angle) {
 	BulletList *bullet = &bullets[bullets_pos];
 
 	@<Check bullets_pos overfull@>
 
 	bullet->x = x;
 	bullet->y = y;
-	bullet->angle = angle;
+	bullet->angle = shift_angle;
 	bullet->bullet_type = bullet_red;
 	bullet->move_flag = 0;
 
 	bullets_pos++;
 }
 @}
+Пуля летит в сторону главного игрового персонажа.
+Параметр shift_angle используется для задания отклонения пули от
+игрового персонажа.
+Позже параметр angle начинает использоваться как обычный угол для пули.
 
 @o bullets.h @{
-void bullet_red_create(int x, int y, float angle);
+void bullet_red_create(int x, int y, float shift_angle);
 @}
 
 
@@ -1632,9 +1651,12 @@ static void bullet_red_action(int bd) {
 int dx = player_coord_x - bullet->x;
 int dy = player_coord_y - bullet->y;
 
-bullet->angle = atan2(dy, dx)*(180.0/M_PI);
+bullet->angle += atan2(dy, dx)*(180.0/M_PI);
+printf("%f\n", bullet->angle);
 @}
 atan2 корректно обрабатывает dx = 0.
+У данного типа пуль параметр angle при создании пули используется как отклонение,
+именно поэтому мы прибавляем к нему значение полученое от atan2, а не присваиваем.
 
 Полученный угол angle мы используем чтобы направить пулю в направлении игрока:
 @d bullet_red_action move bullet to player @{
@@ -2320,17 +2342,19 @@ int main(void) {
 		for(i = main_character_blue_moon_fairy1; i <= main_character_blue_moon_fairy10; i++) {
 			character_blue_moon_fairy_create(i, 30*i, 10);
 			characters[i].ai = 1;
-			characters[i].is_sleep = 0;
+			characters[i].is_sleep = 1;
 		}
 		characters_pos = main_character_blue_moon_fairy10 + 1;
+
+		characters[main_character_blue_moon_fairy1].is_sleep = 0;
 	}
 
-	{
+/*	{
 		int i, j;
 		for(i=0; i<1; i++)
 			for(j=0; j<2; j++)
-				bullet_red_create(100+i*10, 100+j*10, 0);
-	}
+				bullet_red_create(100+i*10, 100+j*10);
+	}*/
 
 	@<Main cycle@>
 }
