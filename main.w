@@ -988,82 +988,116 @@ static void character_move_to_point(int cd, int x, int y) {
 	CharacterList *character = &characters[cd];
 
 	@<character_move_to_point params@>
-	@<Is end of movement?@>
-	@<Coef calculation@>
-	@<Choose direction@>
+	@<character_move_to_point is end of movement?@>
+	@<character_move_to_point save start coordinate@>
+	@<character_move_to_point calculate percent of movement@>
+	@<character_move_to_point choose direction@>
 }
 @}
 
-@d character_move_to_point params @{
-int dx = character->x - x;
-int dy = character->y - y;
-@}
-
-dx, dy - разница между текущими координатами и конечной точкой.
-
-Если они равны нулю, то мы достигли конечной точки:
-
-@d Is end of movement? @{
-if(dx == 0 && dy == 0) {
-	character->move_flag = 0;
+Проверим достигли мы конечной точки или нет:
+@d character_move_to_point is end of movement? @{
+if(character->x == x && character->y == y) {
+	character->move_percent = 0;
 	return;
 }
 @}
+Мы не забыли установить процент движения move_percent в 0. Движения больше нет.
 
-Мы не забыли установить флаг движения move_flag в 0. Движения больше нет.
 
-Добавим к структуре этот флаг:
-
-@d Character struct param @{
-int move_flag;
-float move_coef;
-@}
-
-Кроме него мы добавили move_coef так как нам придётся так или иначе хранить начальную точку
-маршрута. move_coef это dx/dy при начале движения.
-
-Запишем присваивание этого коэффициента:
-
-@d Coef calculation @{
-if(dy == 0)
-	k = 100.0;
-else
-	k = fabs((float)dx/(float)dy);
-
-if(character->move_flag == 0) {
-	character->move_flag = 1;
-	character->move_coef = k;
+Если мы только начали движение, то нужно запомнить начальные координаты
+движения:
+@d character_move_to_point save start coordinate @{
+if(character->move_percent == 0) {
+	character->move_begin_x = character->x;
+	character->move_begin_y = character->y;
 }
 @}
+Можно считать, что move_percent = 100.
 
-Вначале мы считаем значение k=dx/dy, оно нам пригодится позже, если движение только начато(move_flag = 0),
-то присваиваем этот коэффициент.
+Посчитаем какой процент расстояния осталось пройти. Для этого поделим расстояние
+до конечной точки на длину всего маршрута:
+@d character_move_to_point calculate percent of movement @{
+{
+	int dx, dy;
+	float all, last;
 
-@d character_move_to_point params @{
-float k;
+	dx = character->move_begin_x - x;
+	dy = character->move_begin_y - y;
+	@<character_move_to_point find correction coef@>
+
+	all = sqrt(dx*dx + dy*dy);
+
+	dx = character->x - x;
+	dy = character->y - y;
+	@<character_move_to_point correction coef at this time@>
+
+	last = sqrt(dx*dx + dy*dy);
+
+	character->move_percent = (int)((last/all) * 100.0);
+}
+@}
+Поиски correction coef не относятся к этой задаче, зачем они написано ниже.
+
+
+Добавим к структуре новые параметры:
+@d Character struct param @{
+int move_percent;
+int move_begin_x;
+int move_begin_y;
+@}
+move_percent - процент пути который осталось пройти. В конце пути он равен 0.
+Для того чтобы сбросить старое движение и начать новое, нужно присвоить move_percent 0.
+move_begin_x, move_begin_y - начальные координаты движения.
+
+
+Найдем коэффициент с которого мы будем сверять отклонение от маршрута:
+@d character_move_to_point find correction coef @{
+if(dy == 0)
+	correction_coef = 100.0;
+else
+	correction_coef = fabs((float)dx/(float)dy);
 @}
 
-этот коэффициет равен tg(alpha) = dx/dy, с помощью него мы можем выбрать направление движения:
+@d character_move_to_point params @{
+float correction_coef;
+@}
 
-@d Choose direction @{
-if(k < character->move_coef)
+
+Найдем значение этого же коффициента, но не для всего маршрута, а для
+оставшейся части:
+@d character_move_to_point correction coef at this time @{
+if(dy == 0)
+	now_coef = 100.0;
+else
+	now_coef = fabs((float)dx/(float)dy);
+@}
+
+@d character_move_to_point params @{
+float now_coef;
+@}
+
+
+Выберем направление движения:
+@d character_move_to_point choose direction @{
+if(now_coef < correction_coef)
 	fy = 1;
-else if(k > character->move_coef)
+else if(now_coef > correction_coef)
 	fx = 1;
 else {
 	fx = 1;
 	fy = 1;
 }
 
-if(fx == 1 && dx != 0) {
-	if(dx > 0)
+if(fx == 1 && character->x != x) {
+	if(character->x > x)
 		character_move_to(cd, character_move_to_left);
 	else
 		character_move_to(cd, character_move_to_right);
 }
 
-if(fy == 1 && dy != 0) {
-	if(dy > 0)
+if(fy == 1 && character->y != y) {
+	if(character->y > y)
 		character_move_to(cd, character_move_to_up);
 	else
 		character_move_to(cd, character_move_to_down);
@@ -1109,7 +1143,7 @@ if(character->step_of_movement == 5)
 
 character_move_to_point(cd, p[character->step_of_movement].x, p[character->step_of_movement].y);
 
-if(character->move_flag == 0) {
+if(character->move_percent == 0) {
 	character->step_of_movement++;
 }
 @}
@@ -1333,7 +1367,8 @@ static void character_blue_moon_fairy_ai_control(int cd) {
 @}
 
 Перемещаемся поближе к центру(чуть выше) игрового поля. Чем персонаж ближе к центру в
-начальный момент, тем ближе он подлетит в конце:
+начальный момент, тем ближе он подлетит в конце.
+Для начала пройдём полмаршрута и выстрелим:
 @d character_blue_moon_fairy_ai_control move to down and center @{
 if(character->step_of_movement == 0) {
 	character->move_x = GAME_FIELD_W/2 + (character->x - GAME_FIELD_W/2)/2;
@@ -1343,48 +1378,74 @@ if(character->step_of_movement == 0) {
 
 if(character->step_of_movement == 1) {
 	character_move_to_point(cd, character->move_x, character->move_y);
-	if(character->move_flag == 0) {
+	if(character->move_percent < 50) {
+		bullet_red_create(character->x, character->y, 0.0);
+		bullet_red_create(character->x, character->y, 4.0);
+		bullet_red_create(character->x, character->y, -4.0);
+		character->step_of_movement = 2;
+	}
+}
+@}
+
+Потом пройдем остаток маршрута и выстрелим:
+@d character_blue_moon_fairy_ai_control move to down and center @{
+if(character->step_of_movement == 2) {
+	character_move_to_point(cd, character->move_x, character->move_y);
+	if(character->move_percent == 0) {
 		bullet_red_create(character->x, character->y, 0.0);
 		bullet_red_create(character->x, character->y, 4.0);
 		bullet_red_create(character->x, character->y, -4.0);
 
 		character->time = 500;
-		character->step_of_movement = 2;
+		character->step_of_movement = 3;
 	}
 }
 @}
 
 Ждем полсекунды(character->time выше):
 @d character_blue_moon_fairy_ai_control wait @{
-if(character->step_of_movement == 2) {
+if(character->step_of_movement == 3) {
 	character->time = timer_calc(character->time);
 	if(character->time == 0)
-		character->step_of_movement = 3;
+		character->step_of_movement = 4;
 }
 @}
 
 Улетаем за край экрана. Те что слева от центра улетают направо, те что
 справа от центра налево:
 @d character_blue_moon_fairy_ai_control go away @{
-if(character->step_of_movement == 3) {
-	character->move_x = character->x < GAME_FIELD_W/2 ? GAME_FIELD_W + 200 : -200;
+if(character->step_of_movement == 4) {
+	character->move_x = character->x < GAME_FIELD_W/2 ? GAME_FIELD_W + 30 : -30;
 	character->move_y = character->y - GAME_FIELD_H/5;
-	character->step_of_movement = 4;
+	character->step_of_movement = 5;
 }
 @}
 
-Перемещаемся в (move_x, move_y). Убираем тех, кто достиг края экрана:
+Перемещаемся в (move_x, move_y). Стреляем на половине пути:
 @d character_blue_moon_fairy_ai_control move and remove @{
-if(character->step_of_movement == 4) {
+if(character->step_of_movement == 5) {
+	character_move_to_point(cd, character->move_x, character->move_y);
+	if(character->move_percent < 50) {
+		bullet_red_create(character->x, character->y, 0.0);/*!!!!!!!ВМЕСТО ЭТОГО СДЕЛАТЬ ОДНУ СПЕЦ ПУЛЮ!!!!*/
+		bullet_red_create(character->x, character->y, 4.0);
+		bullet_red_create(character->x, character->y, -4.0);
+		character->step_of_movement = 6;
+	}
+}
+@}
+
+Перемещаемся остаток пути. Убираем тех, кто достиг края экрана:
+@d character_blue_moon_fairy_ai_control move and remove @{
+if(character->step_of_movement == 6) {
 	character_move_to_point(cd, character->move_x, character->move_y);
 	if(character->x > GAME_FIELD_W+20 || character->y < -20) {
 		character->is_sleep = 1;
 		character->step_of_movement = 0;
-		character->move_flag = 0;
+		character->move_percent = 0;
 	}
 }
 @}
-Очищаем step_of_movement и move_flag.
+Очищаем step_of_movement и move_percent.
 
 
 Рисуем персонажа:
@@ -1652,7 +1713,6 @@ int dx = player_coord_x - bullet->x;
 int dy = player_coord_y - bullet->y;
 
 bullet->angle += atan2(dy, dx)*(180.0/M_PI);
-printf("%f\n", bullet->angle);
 @}
 atan2 корректно обрабатывает dx = 0.
 У данного типа пуль параметр angle при создании пули используется как отклонение,
@@ -2155,7 +2215,7 @@ int bullet_collide(int bd, int x, int y, int radius) {
 
 Все эти действия можно написать на pure C и при этом не прибегать к сложным механизмам.
 Для этого надо сделать всё также как и при реализации ai персонажей или поведения
-пуль. Заведем счетчик действий step_of_movement, а вместо move_flag будем использовать
+пуль. Заведем счетчик действий step_of_movement, а вместо move_flag(move_percent) будем использовать
 is_sleep различных персонажей.
 
 Напишем пример. Пусть вначале появляются два монстра(mon1, mon2), после их смерти
@@ -2342,11 +2402,11 @@ int main(void) {
 		for(i = main_character_blue_moon_fairy1; i <= main_character_blue_moon_fairy10; i++) {
 			character_blue_moon_fairy_create(i, 30*i, 10);
 			characters[i].ai = 1;
-			characters[i].is_sleep = 1;
+			characters[i].is_sleep = 0;
 		}
 		characters_pos = main_character_blue_moon_fairy10 + 1;
 
-		characters[main_character_blue_moon_fairy1].is_sleep = 0;
+//		characters[main_character_blue_moon_fairy1].is_sleep = 0;
 	}
 
 /*	{
