@@ -8,27 +8,11 @@
 1)стараюсь делать по KISS
 2)делаю тяпляп, лишь бы работало
 3)я делаю Touhou, а не универсальный двиг
-4)смотри как на пример: bullet_red_action calculate angle
+
 
 ==========================================================
 
 Игровые константы.
-
-Размер игрового поля, где происходит действие игры:
-@d const.h game field width and height @{
-#define GAME_FIELD_W 380
-#define GAME_FIELD_H 580
-@}
-Использовать в алгоритмах. Начало в точке (0, 0).
-
-
-
-Левый верхний угол игрового поля, где происходит действие игры:
-@d const.h game field coodinate @{
-#define GAME_FIELD_X 10
-#define GAME_FIELD_Y 10
-@}
-Лучше помещать эти константы в функции вырисовки, а не в алгоритмы.
 
 
 @o const.h @{
@@ -41,9 +25,50 @@
 #endif
 @}
 
+
+Размер игрового поля, где происходит действие игры:
+@d const.h game field width and height @{
+#define GAME_FIELD_W 380
+#define GAME_FIELD_H 580
+@}
+Использовать в алгоритмах. Начало в точке (0, 0).
+
+
+Левый верхний угол игрового поля, где происходит действие игры:
+@d const.h game field coodinate @{
+#define GAME_FIELD_X 10
+#define GAME_FIELD_Y 10
+@}
+Лучше помещать эти константы в функции вырисовки, а не в алгоритмы.
+
 ===========================================================
+
 Набор функция для работы с окном(создание, рисование...).
 
+
+
+Структура файла функций зависимых от ОС:
+@o os_specific.c @{
+#include <SDL.h>
+#include <SDL_image.h>
+
+#include <GL/gl.h>
+#include <GL/glu.h>
+
+#include <stdlib.h>
+
+#include "os_specific.h"
+
+static SDL_Surface *surface;
+
+@<os_specific structs@>
+@<os_specific private prototypes@>
+@<os_specific functions@>
+@}
+
+@o os_specific.h @{
+@<os_specific public prototypes@>
+@}
 
 
 Эту функцию вызывают один раз, когда программа запускается(в начале функции main):
@@ -75,11 +100,36 @@ void window_init(void);
 Изменение характеристик приводит к изменению настроек OGL, следовательно OGL стоит
 настраивать в этой функции.
 
-Нам нужна поддержка прозрачности для вывода спрайтов с alpha каналом:
-@d os_specific OGL blend @{
-glEnable(GL_BLEND);
-glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+
+
+@d os_specific functions @{
+static int w = 800, h = 600, fullscreen;
+static int game_w = 800, game_h = 600;
+static Uint32 flags = SDL_OPENGL;
+
+void window_create(void) {
+
+	flags = fullscreen ? flags | SDL_FULLSCREEN : flags & ~SDL_FULLSCREEN;
+
+	surface = SDL_SetVideoMode(w, h, 16, flags);
+	if(surface == NULL) {
+		fprintf(stderr, "Unable to set 640x480 video: %s\n", SDL_GetError());
+		exit(1);
+	}
+
+	@<os_specific OGL config@>
+
+	return;
+}
 @}
+w, h - размеры окна
+game_w, game_h - размеры окна в игре, они будут растягиваться под w, h
+
+@d os_specific public prototypes @{
+void window_create(void);
+@}
+
 
 Настройки OGL для вывода 2D графики:
 @d os_specific OGL config @{
@@ -102,32 +152,12 @@ glDisable(GL_DEPTH_TEST);
 glMatrixMode(GL_MODELVIEW);
 glLoadIdentity();
 @}
-w, h - размеры окна
-game_w, game_h - размеры окна в игре, они будут растягиваться под w, h
 
-@d os_specific functions @{
-static int w = 800, h = 600, fullscreen;
-static int game_w = 800, game_h = 600;
-static Uint32 flags = SDL_OPENGL;
 
-void window_create(void) {
-
-	flags = fullscreen ? flags | SDL_FULLSCREEN : flags & ~SDL_FULLSCREEN;
-
-	surface = SDL_SetVideoMode(w, h, 16, flags);
-	if(surface == NULL) {
-		fprintf(stderr, "Unable to set 640x480 video: %s\n", SDL_GetError());
-		exit(1);
-	}
-
-	@<os_specific OGL config@>
-
-	return;
-}
-@}
-
-@d os_specific public prototypes @{
-void window_create(void);
+Нам нужна поддержка прозрачности для вывода спрайтов с alpha каналом:
+@d os_specific OGL blend @{
+glEnable(GL_BLEND);
+glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 @}
 
 
@@ -218,39 +248,7 @@ tex_id - дескриптор текстуры в opengl
 
 
 
-Функция загрузки изображения image_load.
-
-В ней используется проверка на корректность файла, кроме того, проверяется
-тип файла:
-@d os_specific image file check @{
-if((img->w & (img->w - 1)) != 0 ||
-	(img->h & (img->h - 1)) != 0) {
-	fprintf(stderr, "\nImage size isn't power of 2: %s\n", filename);
-	exit(1);
-}
-
-bytes_per_pixel = img->format->BytesPerPixel;
-
-switch(bytes_per_pixel) {
-	case 4:
-		if(img->format->Rmask == 0x000000ff)
-			texture_format = GL_RGBA;
-		else
-			texture_format = GL_BGRA;
-		break;
-	case 3:
-		if(img->format->Rmask == 0x000000ff)
-			texture_format = GL_RGB;
-		else
-			texture_format = GL_BGR;
-		break;
-	default:
-		fprintf(stderr, "\nIncorect color type: %s\n", filename);
-		exit(1);
-}
-@}
-Размер должен быть кратен 2, и допустимо только 4 или 3 байта на пиксел.
-
+Функция загрузки изображения image_load:
 @d os_specific functions @{
 int image_load(char *filename) {
 	if(image_list_pos == IMAGE_LIST_LEN) {
@@ -269,7 +267,8 @@ int image_load(char *filename) {
 
 		SDL_Surface *img = load_from_file(filename);
 
-		@<os_specific image file check@>
+		@<os_specific image file size check@>
+		@<os_specific set bytes_per_pixel and texture_format@>
 
 		image->w = img->w;
 		image->h = img->h;
@@ -298,6 +297,41 @@ int image_load(char *filename) {
 @d os_specific public prototypes @{
 int image_load(char *filename);
 @}
+
+
+Размер должен быть кратен 2:
+@d os_specific image file size check @{
+if((img->w & (img->w - 1)) != 0 ||
+	(img->h & (img->h - 1)) != 0) {
+	fprintf(stderr, "\nImage size isn't power of 2: %s\n", filename);
+	exit(1);
+}
+@}
+
+Получить количество байтов на пиксел и формат изображения:
+@d os_specific set bytes_per_pixel and texture_format @{
+bytes_per_pixel = img->format->BytesPerPixel;
+
+switch(bytes_per_pixel) {
+	case 4:
+		if(img->format->Rmask == 0x000000ff)
+			texture_format = GL_RGBA;
+		else
+			texture_format = GL_BGRA;
+		break;
+	case 3:
+		if(img->format->Rmask == 0x000000ff)
+			texture_format = GL_RGB;
+		else
+			texture_format = GL_BGR;
+		break;
+	default:
+		fprintf(stderr, "\nIncorect color type: %s\n", filename);
+		exit(1);
+}
+@}
+Допустимо только 4 или 3 байта на пиксел.
+
 
 
 Теперь о вспомогательной функции подробнее:
@@ -398,29 +432,6 @@ void image_draw_center(int id, int x, int y, float rot, float scale);
 @}
 
 
-
-Структура файла функций зависимых от ОС:
-@o os_specific.c @{
-#include <SDL.h>
-#include <SDL_image.h>
-
-#include <GL/gl.h>
-#include <GL/glu.h>
-
-#include <stdlib.h>
-
-#include "os_specific.h"
-
-static SDL_Surface *surface;
-
-@<os_specific structs@>
-@<os_specific private prototypes@>
-@<os_specific functions@>
-@}
-
-@o os_specific.h @{
-@<os_specific public prototypes@>
-@}
 
 
 ===============================================================
@@ -1154,7 +1165,10 @@ static void character_reimu_draw(int cd) {
 	if(id == -1)
 		id = image_load("aya.png");
 
-	image_draw_center(id, characters[cd].x, characters[cd].y, 0, 0.1);
+	image_draw_center(id,
+		GAME_FIELD_X + characters[cd].x,
+		GAME_FIELD_Y + characters[cd].y,
+		0, 0.1);
 }
 
 static void character_marisa_draw(int cd) {
@@ -1163,7 +1177,10 @@ static void character_marisa_draw(int cd) {
 	if(id == -1)
 		id = image_load("marisa.png");
 
-	image_draw_center(id, characters[cd].x, characters[cd].y, 0, 1);
+	image_draw_center(id,
+		GAME_FIELD_X + characters[cd].x,
+		GAME_FIELD_Y + characters[cd].y,
+		0, 0.1);
 }
 @}
 
@@ -1596,7 +1613,21 @@ static void bullet_white_action(int bd) {
 
 Красная пуля улетает за край экрана по прямой.
 
-Для этого вначале мы вычисляем угол между игроком и пулей с помощью арктангенса:
+Вычислим угол до персонажа, если пуля не перемещается и передадим в функцию
+перемещения:
+@d Bullet actions @{
+static void bullet_red_action(int bd) {
+	BulletList *bullet = &bullets[bd];
+
+	if(bullet->move_flag == 0) {
+		@<bullet_red_action calculate angle@>
+	}
+
+	@<bullet_red_action move bullet to player@>
+}
+@}
+
+Вычисляем угол между игроком и пулей с помощью арктангенса:
 @d bullet_red_action calculate angle @{
 int dx = player_coord_x - bullet->x;
 int dy = player_coord_y - bullet->y;
@@ -1615,26 +1646,16 @@ bullet_move_to_angle_and_radius(bd, bullet->angle,
 bullet_move_to_angle_and_radius - переместить пулю по направлению angel на радиус W*H. Когда
 пуля достигнет цели, то move_flag сбросится в 0.
 
-Вычислим угол до персонажа, если пуля не перемещается и передадим в функцию
-перемещения:
-@d Bullet actions @{
-static void bullet_red_action(int bd) {
-	BulletList *bullet = &bullets[bd];
-
-	if(bullet->move_flag == 0) {
-		@<bullet_red_action calculate angle@>
-	}
-
-	@<bullet_red_action move bullet to player@>
-}
-@}
 
 
 
 
-Сложные пули делаются так: мы создаем "главную" пулю, которая создаёт "дочерние"
-и сама удаляется(всегда). Весь "танец" делает ai дочерних пуль.
-Не стоит забывать, что у пуль нет дескрипторов.
+Сложные пули делаются так: мы создаем "главную" пулю, которая создаёт дочерние.
+Дочерние пули имеют номер дескриптора родителя. Родитель меняет у дочерних пуль параметр
+step_of_movement и тем самым меняет их поведение. Родитель должен находится
+раньше всех дочерних пуль, иначе замена местами двух пуль при удалении повредит его
+дескриптор.
+Не стоит забывать, что у пуль "нет" дескрипторов.
 
 
 @d Bullet params @{
