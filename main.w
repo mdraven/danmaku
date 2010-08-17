@@ -1690,6 +1690,7 @@ static void bullet_red_action(int bd) {
 	}
 
 	@<bullet_red_action move bullet to player@>
+	@<bullet_red_action destroy bullet@>
 }
 @}
 
@@ -1714,7 +1715,12 @@ bullet_move_to_angle_and_radius(bd, bullet->angle,
 bullet_move_to_angle_and_radius - переместить пулю по направлению angel на радиус W*H. Когда
 пуля достигнет цели, то move_flag сбросится в 0.
 
-
+Уничтожем пулю когда она вылетит за пределы экрана:
+@d bullet_red_action destroy bullet @{
+if(bullet->x < -5 || bullet->x > GAME_FIELD_W + 5 ||
+	bullet->y < -5 || bullet->y > GAME_FIELD_H + 5)
+	bullet->is_noempty = 0;
+@}
 
 
 
