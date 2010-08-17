@@ -1038,7 +1038,8 @@ if(character->move_percent == 0) {
 }
 @}
 Поиски correction coef не относятся к этой задаче, зачем они написано ниже.
-
+FIXME: возможно стоит перенести поиск процента оставшегося растояния в отдельную функцию,
+а атрибут move_percent убрать. (+) освободим память, (-) чаще будем пересчитывать move_percent.
 
 Добавим к структуре новые параметры:
 @d Character struct param @{
@@ -2421,11 +2422,11 @@ int main(void) {
 		for(i = main_character_blue_moon_fairy1; i <= main_character_blue_moon_fairy10; i++) {
 			character_blue_moon_fairy_create(i, 30*i, 10);
 			characters[i].ai = 1;
-			characters[i].is_sleep = 1;
+			characters[i].is_sleep = 0;
 		}
 		characters_pos = main_character_blue_moon_fairy10 + 1;
 
-		characters[main_character_blue_moon_fairy1].is_sleep = 0;
+//		characters[main_character_blue_moon_fairy1].is_sleep = 0;
 	}
 
 /*	{
