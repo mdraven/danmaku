@@ -1379,9 +1379,7 @@ if(character->step_of_movement == 0) {
 if(character->step_of_movement == 1) {
 	character_move_to_point(cd, character->move_x, character->move_y);
 	if(character->move_percent < 50) {
-		bullet_red_create(character->x, character->y, 0.0);
-		bullet_red_create(character->x, character->y, 4.0);
-		bullet_red_create(character->x, character->y, -4.0);
+		bullet_white_spray3_create(character->x, character->y);
 		character->step_of_movement = 2;
 	}
 }
@@ -1392,9 +1390,7 @@ if(character->step_of_movement == 1) {
 if(character->step_of_movement == 2) {
 	character_move_to_point(cd, character->move_x, character->move_y);
 	if(character->move_percent == 0) {
-		bullet_red_create(character->x, character->y, 0.0);
-		bullet_red_create(character->x, character->y, 4.0);
-		bullet_red_create(character->x, character->y, -4.0);
+		bullet_white_spray3_create(character->x, character->y);
 
 		character->time = 500;
 		character->step_of_movement = 3;
@@ -1426,9 +1422,7 @@ if(character->step_of_movement == 4) {
 if(character->step_of_movement == 5) {
 	character_move_to_point(cd, character->move_x, character->move_y);
 	if(character->move_percent < 50) {
-		bullet_red_create(character->x, character->y, 0.0);
-		bullet_red_create(character->x, character->y, 4.0);
-		bullet_red_create(character->x, character->y, -4.0);
+		bullet_white_spray3_create(character->x, character->y);
 		character->step_of_movement = 6;
 	}
 }
@@ -1569,7 +1563,7 @@ void bullet_white_create(int x, int y, float angle) {
 }
 @}
 
-@o bullets.h @{
+@d Bullet functions prototypes @{
 void bullet_white_create(int x, int y, float angle);
 @}
 
@@ -2066,6 +2060,20 @@ static void bullet_red_draw(int bd) {
 
 
 Веер пуль(spray).
+
+Выпускает веер из 3-х белых круглых пуль по игроку.
+Функция создания:
+@d Bullet functions @{
+void bullet_white_spray3_create(int x, int y) {
+	bullet_red_create(x, y, 0.0);
+	bullet_red_create(x, y, 4.0);
+	bullet_red_create(x, y, -4.0);
+}
+@}
+
+@d Bullet functions prototypes @{
+void bullet_white_spray3_create(int x, int y);
+@}
 
 ==========================================================
 
