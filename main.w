@@ -1426,7 +1426,7 @@ if(character->step_of_movement == 4) {
 if(character->step_of_movement == 5) {
 	character_move_to_point(cd, character->move_x, character->move_y);
 	if(character->move_percent < 50) {
-		bullet_red_create(character->x, character->y, 0.0);/*!!!!!!!ВМЕСТО ЭТОГО СДЕЛАТЬ ОДНУ СПЕЦ ПУЛЮ!!!!*/
+		bullet_red_create(character->x, character->y, 0.0);
 		bullet_red_create(character->x, character->y, 4.0);
 		bullet_red_create(character->x, character->y, -4.0);
 		character->step_of_movement = 6;
@@ -1523,7 +1523,7 @@ typedef struct {
 	int y;
 	float angle;
 	int bullet_type;
-	int kill_me;
+	int is_noempty;
 	@<Bullet params@>
 } BulletList;
 @}
@@ -1531,16 +1531,16 @@ typedef struct {
 x, y - коодинаты пули
 angle - угол поворота
 bullet_type - тип
-kill_me - удалить пулю при попытке следующей вырисовки или перемещения
+is_noempty - не пустая ячейка для пули. Если флаг установлен, то эта ячейка занята.
 
 Стек пуль:
 
 @d Bullet structs @{
 static BulletList bullets[BULLET_LIST_LEN];
-static int bullets_pos;
 @}
 
 BULLET_LIST_LEN - максимальное количество пуль
+
 
 @d Bullet macros @{
 #define BULLET_LIST_LEN 2048
@@ -1559,39 +1559,53 @@ enum {
 Функция создания белой круглой пули:
 @d Bullet functions @{
 void bullet_white_create(int x, int y, float angle) {
-	BulletList *bullet = &bullets[bullets_pos];
-
-	@<Check bullets_pos overfull@>
+	BulletList *bullet = bullet_get_free_cell();
 
 	bullet->x = x;
 	bullet->y = y;
 	bullet->angle = angle;
 	bullet->bullet_type = bullet_white;
 	bullet->move_flag = 0;
-
-	bullets_pos++;
 }
 @}
-Увеличиваем вершину стека(bullets_pos++).
 
 @o bullets.h @{
 void bullet_white_create(int x, int y, float angle);
 @}
 
+
+bullet_get_free_cell - функция возвращающая свободный дескриптор.
+Она устанавливает флаг is_noempty.
+@d Bullet functions @{
+static BulletList *bullet_get_free_cell(void) {
+	int i;
+
+	for(i = 0; i < BULLET_LIST_LEN; i++)
+		if(bullets[i].is_noempty == 0) {
+			bullets[i].is_noempty = 1;
+			return &bullets[i];
+		}
+
+	fprintf(stderr, "\nBullet list is full\n");
+	exit(1);
+}
+@}
+
+@d Bullet structs @{
+static BulletList *bullet_get_free_cell(void);
+@}
+
+
 Функция создания красной круглой пули:
 @d Bullet functions @{
 void bullet_red_create(int x, int y, float shift_angle) {
-	BulletList *bullet = &bullets[bullets_pos];
-
-	@<Check bullets_pos overfull@>
+	BulletList *bullet = bullet_get_free_cell();
 
 	bullet->x = x;
 	bullet->y = y;
 	bullet->angle = shift_angle;
 	bullet->bullet_type = bullet_red;
 	bullet->move_flag = 0;
-
-	bullets_pos++;
 }
 @}
 Пуля летит в сторону главного игрового персонажа.
@@ -1603,14 +1617,6 @@ void bullet_red_create(int x, int y, float shift_angle) {
 void bullet_red_create(int x, int y, float shift_angle);
 @}
 
-
-Проверка на переполнение bullets_pos(вершина стека):
-@d Check bullets_pos overfull @{
-if(bullets_pos == BULLET_LIST_LEN) {
-	fprintf(stderr, "\nBullet list is full\n");
-	exit(1);
-}
-@}
 
 
 AI пуль:
@@ -1626,10 +1632,10 @@ void bullets_action(void);
 void bullets_action(void) {
 	int i;
 
-	for(i = 0; i < bullets_pos; i++) {
+	for(i = 0; i < BULLET_LIST_LEN; i++) {
 		BulletList *bullet = &bullets[i];
 
-		@<Kill bullet if need@>
+		@<Skip cycle if bullet slot empty@>
 
 		switch(bullet->bullet_type) {
 			case bullet_white:
@@ -1647,32 +1653,12 @@ void bullets_action(void) {
 }
 @}
 
-Если пуля отмечена для удаления, то удалим её. При этом bullet указывает на
-ту же ячейку, что и раньше. bullet_delete - помещает туда ещё не обработаную пулю,
-она тоже может быть помеченой к удалению, поэтому мы уменьшаем i и повторяем цикл.
-bullet_delete декрементирует bullets_pos, но этот побочный эффект не должен повлиять,
-если только не вмешается оптимизатор.
-
-@d Kill bullet if need @{
-if(bullet->kill_me == 1) {
-	bullet_delete(i);
-	i--;
+Пропустим один цикл for, если ячейка для пули пуста:
+@d Skip cycle if bullet slot empty @{
+if(bullet->is_noempty == 0)
 	continue;
-}
 @}
 
-если последняя пуля будет отмечена как удаленная, то станет i = -1, а bullets_pos = 0.
-Начнется цикл и i увеличится на 1 => i = 0 и цикл завершится.
-
-Функция удаления пули:
-@d Bullet action helpers @{
-static void bullet_delete(int bd) {
-	bullets_pos--;
-
-	bullets[bd] = bullets[bullets_pos];
-}
-@}
-Удаленная пуля исчезает, её место занимает последняя в списке.
 
 
 Конкретые функции действия пуль.
@@ -1957,8 +1943,12 @@ void bullets_update_all_time_points(void);
 void bullets_update_all_time_points(void) {
 	int i;
 
-	for(i = 0; i < bullets_pos; i++)
-		switch(bullets[i].bullet_type) {
+	for(i = 0; i < BULLET_LIST_LEN; i++) {
+		BulletList *bullet = &bullets[i];
+
+		@<Skip cycle if bullet slot empty@>
+
+		switch(bullet->bullet_type) {
 			case bullet_white:
 				bullet_white_update_time_points(i);
 				break;
@@ -1969,6 +1959,7 @@ void bullets_update_all_time_points(void) {
 				fprintf(stderr, "\nUnknown bullet\n");
 				exit(1);
 		}
+	}
 }
 @}
 
@@ -2008,8 +1999,12 @@ void bullets_draw(void);
 void bullets_draw(void) {
 	int i;
 
-	for(i = 0; i < bullets_pos; i++)
-		switch(bullets[i].bullet_type) {
+	for(i = 0; i < BULLET_LIST_LEN; i++) {
+		BulletList *bullet = &bullets[i];
+
+		@<Skip cycle if bullet slot empty@>
+
+		switch(bullet->bullet_type) {
 			case bullet_white:
 				bullet_white_draw(i);
 				break;
@@ -2020,6 +2015,7 @@ void bullets_draw(void) {
 				fprintf(stderr, "\nUnknown bullet\n");
 				exit(1);
 		}
+	}
 }
 @}
 
@@ -2057,6 +2053,13 @@ static void bullet_red_draw(int bd) {
 @}
 
 У пуль спрайт повёрнут на 90 градусов, исправляем.
+
+==========================================================
+
+Различные пули.
+
+
+Веер пуль(spray).
 
 ==========================================================
 
@@ -2098,7 +2101,7 @@ void damage_calculate(void) {
 @}
 
 Функция перебирает всех персонажей, перебирает все пули,
-передаёт хитбоксы пурсоныжей внутрь функции проверки пересечения пули,
+передаёт хитбоксы пурсонажей внутрь функции проверки пересечения пули,
 фукнция пересечения возвращает истину или ложь, мы проверяем особые случаи повреждения и
 отнимаем у персонажа сколько нужно жизней:
 @d damage_calculate body @{
@@ -2108,8 +2111,10 @@ for(i = 0; i < characters_pos; i++) {
 	CharacterList *character = &characters[i];
 
 	if(character->is_sleep == 0)
-		for(j = 0; j < bullets_pos; j++) {
+		for(j = 0; j < BULLET_LIST_LEN; j++) {
 			BulletList *bullet = &bullets[j];
+
+			@<Skip cycle if bullet slot empty@>
 
 			@<damage_calculate character and bullet team check@>
 			@<damage_calculate collision check@>
@@ -2402,11 +2407,11 @@ int main(void) {
 		for(i = main_character_blue_moon_fairy1; i <= main_character_blue_moon_fairy10; i++) {
 			character_blue_moon_fairy_create(i, 30*i, 10);
 			characters[i].ai = 1;
-			characters[i].is_sleep = 0;
+			characters[i].is_sleep = 1;
 		}
 		characters_pos = main_character_blue_moon_fairy10 + 1;
 
-//		characters[main_character_blue_moon_fairy1].is_sleep = 0;
+		characters[main_character_blue_moon_fairy1].is_sleep = 0;
 	}
 
 /*	{
