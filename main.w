@@ -738,9 +738,14 @@ void character_reimu_create(int cd) {
 
 	character->x = player_coord_x;
 	character->y = player_coord_y;
+
+	character->team = 0;
+	character->radius = 10;
 }
 @}
 player_coord_x, player_coord_y - глобальные координаты игрока.
+team - комманда. 0 - игрок, 1 - противник.
+radius - радиус хитбокса.
 
 @o characters.h @{
 void character_reimu_create(int cd);
@@ -760,6 +765,9 @@ void character_marisa_create(int cd) {
 
 	character->x = player_coord_x;
 	character->y = player_coord_y;
+
+	character->team = 0;
+	character->radius = 10;
 }
 @}
 
@@ -1301,8 +1309,12 @@ void character_blue_moon_fairy_create(int cd, int x, int y) {
 	character->time_point_for_movement_to_x = 0;
 	character->time_point_for_movement_to_y = 0;
 	character->step_of_movement = 0;
+	character->team = 1;
+	character->radius = 20;
 }
 @}
+team = 1 - комманда противников.
+radius - радиус хитбокса.
 
 @o characters.h @{
 void character_blue_moon_fairy_create(int cd, int x, int y);
@@ -1492,7 +1504,9 @@ int player_coord_y;
 
 @o bullets.h @{
 @<Bullet types@>
-@<Bullet functions prototypes@>
+@<Bullet public macros@>
+@<Bullet public structs@>
+@<Bullet public prototypes@>
 @}
 
 @o bullets.c @{
@@ -1505,14 +1519,15 @@ int player_coord_y;
 #include "const.h"
 #include "player_coord.h"
 
-@<Bullet macros@>
-@<Bullet structs@>
+@<Bullet private macros@>
+@<Bullet private structs@>
+@<Bullet private prototypes@>
 @<Bullet functions@>
 @}
 
 Структура для хранения пуль:
 
-@d Bullet structs @{
+@d Bullet public structs @{
 typedef struct {
 	int x;
 	int y;
@@ -1528,22 +1543,24 @@ angle - угол поворота
 bullet_type - тип
 is_noempty - не пустая ячейка для пули. Если флаг установлен, то эта ячейка занята.
 
-Стек пуль:
+Массив пуль:
+@d Bullet public structs @{
+extern BulletList bullets[BULLET_LIST_LEN];
+@}
 
-@d Bullet structs @{
-static BulletList bullets[BULLET_LIST_LEN];
+@d Bullet private structs @{
+BulletList bullets[BULLET_LIST_LEN];
 @}
 
 BULLET_LIST_LEN - максимальное количество пуль
 
-
-@d Bullet macros @{
+@d Bullet public macros @{
 #define BULLET_LIST_LEN 2048
 @}
 
 
 Типы пуль:
-@d Bullet structs @{
+@d Bullet private structs @{
 enum {
 	bullet_white,
 	bullet_red,
@@ -1564,7 +1581,7 @@ void bullet_white_create(int x, int y, float angle) {
 }
 @}
 
-@d Bullet functions prototypes @{
+@d Bullet public prototypes @{
 void bullet_white_create(int x, int y, float angle);
 @}
 
@@ -1586,7 +1603,7 @@ static BulletList *bullet_get_free_cell(void) {
 }
 @}
 
-@d Bullet structs @{
+@d Bullet private prototypes @{
 static BulletList *bullet_get_free_cell(void);
 @}
 
@@ -1601,14 +1618,19 @@ void bullet_red_create(int x, int y, float shift_angle) {
 	bullet->angle = shift_angle;
 	bullet->bullet_type = bullet_red;
 	bullet->move_flag = 0;
+
+	bullet->team = 1;
 }
 @}
 Пуля летит в сторону главного игрового персонажа.
 Параметр shift_angle используется для задания отклонения пули от
-игрового персонажа.
-Позже параметр angle начинает использоваться как обычный угол для пули.
+игрового персонажа. Позже параметр angle начинает использоваться
+как обычный угол для пули.
+Параметр team обозначает комманду к которой принадлежит пуля. Единица
+значит, что это команда противников и пуля напралена против игрока.
 
-@o bullets.h @{
+
+@d Bullet public prototypes @{
 void bullet_red_create(int x, int y, float shift_angle);
 @}
 
@@ -1616,7 +1638,7 @@ void bullet_red_create(int x, int y, float shift_angle);
 
 AI пуль:
 
-@o bullets.h @{
+@d Bullet public prototypes @{
 void bullets_action(void);
 @}
 
@@ -1762,7 +1784,7 @@ static void bullet_move_to_angle_and_radius(int bd, float angle, float radius) {
 radius*cos(angle*deg2rad) пришлось приводить к int так как он давал погрешность и пуля не летала
 по кругу, а улетала за край экрана.
 
-@d Bullet structs @{
+@d Bullet private prototypes @{
 static void bullet_move_to_point(int bd, int x, int y);
 @}
 
@@ -1823,11 +1845,13 @@ static void bullet_move_to_point(int bd, int x, int y) {
 сильно связаны со структорой CharacterList и поэтому я не рискнул делать их универсальными.
 Можно лишь порадоваться тому, что здесь они будут static и скрыты внутри bullets.c
 
-@d Bullet structs @{
+@d Bullet private structs @{
 enum {
 	bullet_move_to_left, bullet_move_to_right, bullet_move_to_up, bullet_move_to_down
 };
+@}
 
+@d Bullet private prototypes @{
 static void bullet_move_to(int bd, int move_to);
 @}
 
@@ -1871,7 +1895,7 @@ int time_point_for_movement_to_y;
 Сейчас определим bullet_set_weak_time_point_x и bullet_set_weak_time_point_y
 аналогично character_set_weak_time_point_x и character_set_weak_time_point_y:
 
-@d Bullet structs @{
+@d Bullet private prototypes @{
 static void bullet_set_weak_time_point_x(int bd);
 static void bullet_set_weak_time_point_y(int bd);
 @}
@@ -1908,7 +1932,7 @@ static void bullet_set_weak_time_point_y(int bd) {
 
 Конкретные реализации функции восстановления очков времени для разных видов пуль:
 
-@d Bullet structs @{
+@d Bullet private prototypes @{
 static void bullet_white_set_weak_time_point_x(int bd);
 static void bullet_white_set_weak_time_point_y(int bd);
 
@@ -1936,11 +1960,13 @@ static void bullet_red_set_weak_time_point_y(int bd) {
 
 Функция восстановления time points:
 
-@d Bullet functions prototypes @{
+@d Bullet public prototypes @{
 void bullets_update_all_time_points(void);
 @}
 
 @d Bullet functions @{
+@<Update time point for different bullets@>
+
 void bullets_update_all_time_points(void) {
 	int i;
 
@@ -1966,7 +1992,7 @@ void bullets_update_all_time_points(void) {
 
 Функции восстановления для конкретных пуль:
 
-@d Bullet structs @{
+@d Update time point for different bullets @{
 static void bullet_white_update_time_points(int bd) {
 	BulletList *bullet = &bullets[bd];
 
@@ -1992,7 +2018,7 @@ static void bullet_red_update_time_points(int bd) {
 
 Нарисуем пули:
 
-@d Bullet functions prototypes @{
+@d Bullet public prototypes @{
 void bullets_draw(void);
 @}
 
@@ -2022,7 +2048,7 @@ void bullets_draw(void) {
 
 Рисуем конкретные:
 
-@d Bullet structs @{
+@d Bullet private prototypes @{
 static void bullet_white_draw(int bd);
 static void bullet_red_draw(int bd);
 @}
@@ -2072,7 +2098,7 @@ void bullet_white_spray3_create(int x, int y) {
 }
 @}
 
-@d Bullet functions prototypes @{
+@d Bullet public prototypes @{
 void bullet_white_spray3_create(int x, int y);
 @}
 
@@ -2154,15 +2180,16 @@ if(bullet_collide(j, character->x, character->y, character->radius) == 0)
 
 Особенности повреждения различных персонажей:
 @d damage_calculate character's damage unique @{
-switch(character->type) {
+switch(character->character_type) {
 /*
 	case character_reimu:
-		if(bullet->type == bullet_white)
+		if(bullet->bullet_type == bullet_white)
 			character->hp -= 100000;
 		break;
 */
 	default:
-		character->hp = 0;
+		fprintf(stderr, "\nUnknown character\n");
+		exit(1);
 }
 @}
 
@@ -2178,7 +2205,7 @@ if(character->hp <= 0) {
 
 
 Напишем функцию bullet_collide:
-@d Bullet functions prototypes @{
+@d Bullet public prototypes @{
 int bullet_collide(int bd, int x, int y, int radius);
 @}
 Принимает дискриптор пули, координаты хитбокса персонажа и радиус хитбокса.
@@ -2201,9 +2228,26 @@ int bullet_collide(int bd, int x, int y, int radius) {
 @}
 
 Для доступа к is_rad_collide добавим хедер:
-@d Bullet macros @{
+@d Bullet private macros @{
 #include "collision.h"
 @}
+
+Добавим параметры team:
+@d Bullet params @{
+int team;
+@}
+
+@d Character struct param @{
+int team;
+@}
+Если команда пули и персонажа совпадают, то пуля безвредна.
+В данной версии touhou только две команды: 0 - игрок, 1 - противники.
+
+Добавим радиус хитбокса для персонажей:
+@d Character struct param @{
+int radius;
+@}
+
 =========================================================
 
 Игровые этажи.
