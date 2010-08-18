@@ -718,7 +718,7 @@ int characters_pos;
 Функции создания персонажей.
 
 Типы персонажей:
-@o characters.c @{
+@o characters.h @{
 enum {
 	character_reimu, character_marisa, @<Character types@>
 };
@@ -2157,6 +2157,7 @@ for(i = 0; i < characters_pos; i++) {
 
 			@<Skip cycle if bullet slot empty@>
 
+			@<damage_calculate character hp=0 or is_sleep=1@>
 			@<damage_calculate character and bullet team check@>
 			@<damage_calculate collision check@>
 			@<damage_calculate character's damage unique@>
@@ -2164,6 +2165,12 @@ for(i = 0; i < characters_pos; i++) {
 
 	@<damage_calculate if hp<0 then character died@>
 }
+@}
+
+Проверяемый персонаж уже мертв или спит и не выводится на экран:
+@d damage_calculate character hp=0 or is_sleep=1 @{
+if(character->hp <= 0 || character->is_sleep == 1)
+	continue;
 @}
 
 В одной команде пуля и персонаж?
@@ -2181,12 +2188,10 @@ if(bullet_collide(j, character->x, character->y, character->radius) == 0)
 Особенности повреждения различных персонажей:
 @d damage_calculate character's damage unique @{
 switch(character->character_type) {
-/*
 	case character_reimu:
-		if(bullet->bullet_type == bullet_white)
-			character->hp -= 100000;
+//		if(bullet->bullet_type == bullet_red)
+			character->hp = 0;
 		break;
-*/
 	default:
 		fprintf(stderr, "\nUnknown character\n");
 		exit(1);
@@ -2217,15 +2222,25 @@ int bullet_collide(int bd, int x, int y, int radius) {
 	switch(bullet->bullet_type) {
 		case bullet_white:
 		case bullet_red:
-			return is_rad_collide(x, y, radius,
-				bullet->x, bullet->y, 3);
-
+			@<bullet_collide if bullet_red collide@>
 		default:
 			fprintf(stderr, "\nUnknown bullet\n");
 			exit(1);
 	}
+
+	return 0;
 }
 @}
+
+Проверим красную пулю на пересечение. Если его небыло то выходим из switch, позже
+вызовется return 0. Иначе уничтожаем пулю и вовращаем 1.
+@d bullet_collide if bullet_red collide @{
+if(is_rad_collide(x, y, radius, bullet->x, bullet->y, 3) == 0)
+	break;
+bullet->is_noempty = 0;
+return 1;
+@}
+
 
 Для доступа к is_rad_collide добавим хедер:
 @d Bullet private macros @{
@@ -2432,12 +2447,18 @@ int timer_calc(int time) {
 
 @o main.c @{
 
+#include <stdlib.h>
+
 #include "os_specific.h"
 #include "event.h"
 #include "collision.h"
 #include "characters.h"
 #include "bullets.h"
 #include "timers.h"
+#include "damage.h"
+#include "player_coord.h"
+#include "const.h"
+
 
 @<Main functions@>
 @}
@@ -2457,9 +2478,12 @@ int main(void) {
 		main_character_blue_moon_fairy10 = main_character_blue_moon_fairy1 + 9,
 	};
 
+	player_coord_x = GAME_FIELD_W/2;
+	player_coord_y = GAME_FIELD_H - GAME_FIELD_H/8;
+
 	character_reimu_create(main_character_player);
-	characters[main_character_player].ai = 1;
-	characters[main_character_player].is_sleep = 1;
+	characters[main_character_player].ai = 0;
+	characters[main_character_player].is_sleep = 0;
 
 	{
 		int i;
@@ -2495,6 +2519,7 @@ while(1) {
 	@<Computer movements@>
 	@<Bullet movements@>
 	@<Player movements@>
+	@<Damage calculate@>
 	@<Game menu@>
 }
 @}
@@ -2613,4 +2638,9 @@ bullets_action();
 Обновим таймеры:
 @d Update timers @{
 timer_get_time();
+@}
+
+Подсчитаем повреждения от пуль:
+@d Damage calculate @{
+damage_calculate();
 @}
