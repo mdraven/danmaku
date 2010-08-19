@@ -462,7 +462,7 @@ get_scan_keyup() -- какая была отпущена последней.
 @d keys' events for is_keydown @{
 
 enum {
-	key_attack, key_move_left, key_move_right, key_move_up, key_move_down,
+	key_fire, key_move_left, key_move_right, key_move_up, key_move_down,
 	key_menu_up, key_menu_down, key_menu_select, key_escape
 };
 
@@ -471,9 +471,7 @@ enum {
 Интересно, есть устройства где для перемещению по меню используются другие кнопки? Пусть будут.
 
 @d is_keydown function prototype @{
-
 int is_keydown(int key_type);
-
 @}
 
 Реализация is_keydown:
@@ -498,9 +496,8 @@ int is_keydown(int key_type) {
 @}
 
 Эти флаги устанавливаются в 1, если кнопка нажата и в 0, если нет:
-
 @d Key flags @{
-static int attack, move_left, move_right, move_up, move_down, escape;
+static int fire, move_left, move_right, move_up, move_down, escape;
 @}
 
 Здесь мы устанавливаем и сбрасываем флаги:
@@ -511,7 +508,7 @@ while(SDL_PollEvent(&event)) {
 
 	switch(event.key.keysym.sym) {
 		case SDLK_SPACE:
-			attack = key;
+			fire = key;
 			break;
 		case SDLK_LEFT:
 			move_left = key;
@@ -536,8 +533,8 @@ while(SDL_PollEvent(&event)) {
 
 @d Return key state @{
 switch(key_type) {
-	case key_attack:
-		return attack;
+	case key_fire:
+		return fire;
 	case key_move_left:
 		return move_left;
 	case key_move_right:
@@ -700,7 +697,7 @@ characters_pos вершина стека
 #include "characters.h"
 #include "os_specific.h"
 #include "const.h"
-#include "player_coord.h"
+#include "player.h"
 #include "bullets.h"
 #include "timers.h"
 
@@ -736,8 +733,8 @@ void character_reimu_create(int cd) {
 	character->time_point_for_movement_to_y = 0;
 	character->step_of_movement = 0;
 
-	character->x = player_coord_x;
-	character->y = player_coord_y;
+	character->x = player_x;
+	character->y = player_y;
 
 	character->team = 0;
 	character->radius = 10;
@@ -763,8 +760,8 @@ void character_marisa_create(int cd) {
 	character->time_point_for_movement_to_y = 0;
 	character->step_of_movement = 0;
 
-	character->x = player_coord_x;
-	character->y = player_coord_y;
+	character->x = player_x;
+	character->y = player_y;
 
 	character->team = 0;
 	character->radius = 10;
@@ -798,7 +795,7 @@ void character_move_to(int cd, int move_to) {
 		}
 
 		if(character->ai == 0)
-			player_coord_x = character->x;
+			player_x = character->x;
 	}
 
 	if(character->time_point_for_movement_to_y == 0) {
@@ -812,7 +809,7 @@ void character_move_to(int cd, int move_to) {
 		}
 
 		if(character->ai == 0)
-			player_coord_y = character->y;
+			player_y = character->y;
 	}
 }
 @}
@@ -1481,22 +1478,272 @@ static void character_blue_moon_fairy_draw(int cd) {
 @}
 ===========================================================
 
-Координаты игрока.
+Игровой персонаж.
 
-Очень маленький модуль в котором храняться координаты игрока.
-
-@o player_coord.h @{
-extern int player_coord_x;
-extern int player_coord_y;
+@o player.h @{
+@<Player public structs@>
+@<Player public prototypes@>
 @}
 
-@o player_coord.c @{
-int player_coord_x;
-int player_coord_y;
+@o player.c @{
+#include <stdlib.h>
+#include <stdio.h>
+
+#include "player.h"
+
+@<Player private macros@>
+@<Player private structs@>
+@<Player private prototypes@>
+@<Player functions@>
 @}
 
-Мы будем менять эти координты где-то в character_blabla_move_to персонажей за
-которых можно играть.
+Координаты игрового персонажа(у обоих форм совпадают):
+@d Player public structs @{
+extern int player_x;
+extern int player_y;
+@}
+
+@d Player private structs @{
+int player_x;
+int player_y;
+@}
+
+Тип игрового персонажа:
+@d Player private structs @{
+static int player_type;
+@}
+
+Доступные типы персонажей:
+@d Player public structs @{
+enum {
+	player_reimu, player_yukari,
+	player_marisa, player_alice,
+	@<Player other player types@>
+};
+@}
+
+Функция выбора команды из двух персонажей.
+Её вызывают когда в игровом меню выбирают какой командой будут играть:
+@d Player public prototypes @{
+void player_select_team(int team);
+@}
+
+@d Player functions @{
+void player_select_team(int team) {
+	player_team = team;
+	player_type = team*2;
+}
+@}
+Используем свойство, что первый персонаж в команде имеет номер *2 от номера команды.
+
+Объявим глобальную переменную в которой будем хранить тип команды:
+@d Player private structs @{
+static int player_team;
+@}
+
+Перечислим возможные команды:
+@d Player public structs @{
+enum {
+	player_team_reimu,
+	player_team_marisa,
+	@<Player other player's teams@>
+};
+@}
+
+Функции переключения персонажей:
+@d Player public prototypes @{
+void player_shadow_character(void);
+void player_human_character(void);
+@}
+
+@d Player functions @{
+void player_shadow_character(void) {
+	if(player_type % 2 == 0)
+		player_type++;
+}
+
+void player_human_character(void) {
+	if(player_type % 2 == 1)
+		player_type--;
+}
+@}
+С помощью этих функции выбирается человек или ёкай.
+
+Функция выстрела:
+@d Player public prototypes @{
+void player_fire(void);
+@}
+
+@d Player functions @{
+void player_fire(void) {
+	switch(player_type) {
+		case player_reimu:
+			//bullet_player_reimu_first_create();
+			break;
+		@<player_fire other players' fires@>
+		default:
+			fprintf(stderr, "\nUnknown player type\n");
+			exit(1);
+	}
+}
+@}
+
+@d Player private macros @{
+#include "bullets.h"
+@}
+
+Использование карты:
+@d Player public prototypes @{
+void player_use_card(void);
+@}
+
+@d Player functions @{
+void player_use_card(void) {
+	if(player_powers == 0)
+		return;
+
+	switch(player_type) {
+		case player_reimu:
+			//bullet_player_reimu_card_bullet();
+			break;
+		@<player_fire other players' card@>
+		default:
+			fprintf(stderr, "\nUnknown player type\n");
+			exit(1);
+	}
+	player_powers--;
+}
+@}
+Уменьшаем количество карт.
+
+Количество карт:
+@d Player public structs @{
+extern int player_powers;
+@}
+
+@d Player private structs @{
+int player_powers;
+@}
+
+Очки времени, которые тратятся на перемещение:
+@d Player private structs @{
+static int player_time_point_for_movement_to_x;
+static int player_time_point_for_movement_to_y;
+@}
+
+Функции для задания штрафа к time points:
+@d Player functions @{
+void player_set_weak_time_point_x(void) {
+	switch(player_type) {
+		case player_reimu:
+		case player_marisa:
+			player_time_point_for_movement_to_x = 5;
+			break;
+		default:
+			fprintf(stderr, "\nUnknown player type\n");
+			exit(1);
+	}
+}
+
+void player_set_weak_time_point_y(void) {
+	switch(player_type) {
+		case player_reimu:
+		case player_marisa:
+			player_time_point_for_movement_to_y = 5;
+			break;
+		default:
+			fprintf(stderr, "\nUnknown player type\n");
+			exit(1);
+	}
+}
+@}
+
+Функции перемещения:
+@d Player public prototypes @{
+void player_move_to(int move_to);
+@}
+
+@d Player functions @{
+void player_move_to(int move_to) {
+	if(player_time_point_for_movement_to_x == 0) {
+		if(move_to == player_move_to_left) {
+			player_set_weak_time_point_x();
+			player_x--;
+		}
+		else if(move_to == player_move_to_right) {
+			player_set_weak_time_point_x();
+			player_x++;
+		}
+	}
+
+	if(player_time_point_for_movement_to_y == 0) {
+		if(move_to == player_move_to_up) {
+			player_set_weak_time_point_y();
+			player_y--;
+		}
+		else if(move_to == player_move_to_down) {
+			player_set_weak_time_point_y();
+			player_y++;
+		}
+	}
+}
+@}
+
+Перечислим направления перемещения:
+@d Player public structs @{
+enum {
+	player_move_to_left, player_move_to_right, player_move_to_up, player_move_to_down
+};
+@}
+
+Функция которая уменьшает time points, что в итоге приводит к тому, что
+персонаж может сдвинуться на позицию:
+@d Player public prototypes @{
+void player_update_all_time_points(void);
+@}
+
+@d Player functions @{
+void player_update_all_time_points(void) {
+	if(player_time_point_for_movement_to_x > 0)
+		player_time_point_for_movement_to_x--;
+
+	if(player_time_point_for_movement_to_y > 0)
+		player_time_point_for_movement_to_y--; 
+}
+@}
+
+Рисуем персонажей:
+@d Player public prototypes @{
+void player_draw(void);
+@}
+
+@d Player functions @{
+void player_draw(void) {
+	switch(player_type) {
+		case player_reimu: {
+			static int id = -1;
+
+			if(id == -1)
+				id = image_load("aya.png");
+
+			image_draw_center(id,
+				GAME_FIELD_X + player_x,
+				GAME_FIELD_Y + player_y,
+				0, 0.1);
+			
+			break;
+		}
+		default:
+			fprintf(stderr, "\nUnknown player type\n");
+			exit(1);
+	}
+}
+@}
+
+@d Player private macros @{
+#include "os_specific.h"
+#include "const.h"
+@}
 
 ===========================================================
 
@@ -1517,7 +1764,7 @@ int player_coord_y;
 #include "bullets.h"
 #include "os_specific.h"
 #include "const.h"
-#include "player_coord.h"
+#include "player.h"
 
 @<Bullet private macros@>
 @<Bullet private structs@>
@@ -1713,8 +1960,8 @@ static void bullet_red_action(int bd) {
 
 Вычисляем угол между игроком и пулей с помощью арктангенса:
 @d bullet_red_action calculate angle @{
-int dx = player_coord_x - bullet->x;
-int dy = player_coord_y - bullet->y;
+int dx = player_x - bullet->x;
+int dy = player_y - bullet->y;
 
 bullet->angle += atan2(dy, dx)*(180.0/M_PI);
 @}
@@ -2456,7 +2703,7 @@ int timer_calc(int time) {
 #include "bullets.h"
 #include "timers.h"
 #include "damage.h"
-#include "player_coord.h"
+#include "player.h"
 #include "const.h"
 
 
@@ -2478,12 +2725,13 @@ int main(void) {
 		main_character_blue_moon_fairy10 = main_character_blue_moon_fairy1 + 9,
 	};
 
-	player_coord_x = GAME_FIELD_W/2;
-	player_coord_y = GAME_FIELD_H - GAME_FIELD_H/8;
+	player_x = GAME_FIELD_W/2;
+	player_y = GAME_FIELD_H - GAME_FIELD_H/8;
 
-	character_reimu_create(main_character_player);
-	characters[main_character_player].ai = 0;
-	characters[main_character_player].is_sleep = 0;
+	//character_reimu_create(main_character_player);
+	//characters[main_character_player].ai = 0;
+	//characters[main_character_player].is_sleep = 0;
+	player_select_team(player_team_reimu);
 
 	{
 		int i;
@@ -2519,6 +2767,7 @@ while(1) {
 	@<Computer movements@>
 	@<Bullet movements@>
 	@<Player movements@>
+	@<Player press fire button@>
 	@<Damage calculate@>
 	@<Game menu@>
 }
@@ -2539,6 +2788,7 @@ if(main_timer_frame == 0) {
 
 	@<Draw bullets@>
 	@<Draw characters@>
+	@<Draw player@>
 	@<Draw panel@>
 	@<Window update@>
 }
@@ -2556,10 +2806,12 @@ if(main_timer_time_points == 0) {
 	main_timer_time_points = 1;
 
 	characters_update_all_time_points();
+	player_update_all_time_points();
 	bullets_update_all_time_points();
 }
 @}
-Функции characters_update_all_time_points и bullets_update_all_time_points вызываются раз в ~1 мс.
+Функции characters_update_all_time_points, player_update_all_time_points
+и bullets_update_all_time_points вызываются раз в ~1 мс.
 
 
 Добавим таймер для FPS.
@@ -2584,6 +2836,11 @@ if(main_timer_time_points == 0) {
 Отрисовка всех персонажей:
 @d Draw characters @{
 characters_draw();
+@}
+
+Отрисовка главного персонажа:
+@d Draw player @{
+player_draw();
 @}
 
 Отрисовка пуль:
@@ -2611,19 +2868,22 @@ FIXME:Пока вместо меню заглушка
 Перемещение персонажа игроком:
 @d Player movements @{
 if(is_keydown(key_move_left))
-	character_move_to(main_character_player, character_move_to_left);
+	player_move_to(player_move_to_left);
 else if(is_keydown(key_move_right))
-	character_move_to(main_character_player, character_move_to_right);
+	player_move_to(player_move_to_right);
 
 if(is_keydown(key_move_up))
-	character_move_to(main_character_player, character_move_to_up);
+	player_move_to(player_move_to_up);
 else if(is_keydown(key_move_down))
-	character_move_to(main_character_player, character_move_to_down);
+	player_move_to(player_move_to_down);
 @}
-
 Кнопки влево, вправо и вверх, вниз разделены, чтобы была возможность перемещаться по диагонали.
 
-
+Игрок нажал кнопку "огонь":
+@d Player press fire button @{
+if(is_keydown(key_fire))
+	player_fire();
+@}
 
 Перемещение персонажей управляемых компьютером:
 @d Computer movements @{
