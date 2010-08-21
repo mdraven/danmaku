@@ -432,6 +432,16 @@ void image_draw_center(int id, int x, int y, float rot, float scale);
 @}
 
 
+Функция возврата процессорного времени OS:
+@d os_specific public prototypes @{
+void get_processor_time(void);
+@}
+
+@d os_specific functions @{
+void get_processor_time(void) {
+	SDL_Delay(0);
+}
+@}
 
 
 ===============================================================
@@ -736,12 +746,10 @@ void character_reimu_create(int cd) {
 	character->x = player_x;
 	character->y = player_y;
 
-	character->team = 0;
 	character->radius = 10;
 }
 @}
 player_coord_x, player_coord_y - глобальные координаты игрока.
-team - комманда. 0 - игрок, 1 - противник.
 radius - радиус хитбокса.
 
 @o characters.h @{
@@ -763,7 +771,6 @@ void character_marisa_create(int cd) {
 	character->x = player_x;
 	character->y = player_y;
 
-	character->team = 0;
 	character->radius = 10;
 }
 @}
@@ -1306,11 +1313,9 @@ void character_blue_moon_fairy_create(int cd, int x, int y) {
 	character->time_point_for_movement_to_x = 0;
 	character->time_point_for_movement_to_y = 0;
 	character->step_of_movement = 0;
-	character->team = 1;
 	character->radius = 20;
 }
 @}
-team = 1 - комманда противников.
 radius - радиус хитбокса.
 
 @o characters.h @{
@@ -1508,6 +1513,7 @@ int player_x;
 int player_y;
 @}
 
+
 Тип игрового персонажа:
 @d Player private structs @{
 static int player_type;
@@ -1532,9 +1538,36 @@ void player_select_team(int team);
 void player_select_team(int team) {
 	player_team = team;
 	player_type = team*2;
+	player_update_hitbox_radius();
 }
 @}
 Используем свойство, что первый персонаж в команде имеет номер *2 от номера команды.
+Обновим радиус хитбокса.
+
+Функция проверяет тип персонажа и устанавливает нужный радиус хитбокса:
+@d Player private prototypes @{
+static void player_update_hitbox_radius(void) {
+	switch(player_type) {
+		case player_reimu:
+			player_radius = 10;
+			break;
+		default:
+			fprintf(stderr, "\nUnknown player type\n");
+			exit(1);
+	}
+}
+@}
+
+Радиус хитбокса:
+@d Player public structs @{
+extern int player_radius;
+@}
+
+@d Player private structs @{
+int player_radius;
+@}
+
+
 
 Объявим глобальную переменную в которой будем хранить тип команды:
 @d Player private structs @{
@@ -1560,14 +1593,17 @@ void player_human_character(void);
 void player_shadow_character(void) {
 	if(player_type % 2 == 0)
 		player_type++;
+	player_update_hitbox_radius();
 }
 
 void player_human_character(void) {
 	if(player_type % 2 == 1)
 		player_type--;
+	player_update_hitbox_radius();
 }
 @}
 С помощью этих функции выбирается человек или ёкай.
+Обновляем радиус хитбокса с помощью player_update_hitbox_radius.
 
 Функция выстрела:
 @d Player public prototypes @{
@@ -1740,6 +1776,16 @@ void player_draw(void) {
 }
 @}
 
+Число попыток до того как появится окно продолжений:
+@d Player public structs @{
+extern int player_players;
+@}
+
+@d Player private structs @{
+int player_players;
+@}
+
+
 @d Player private macros @{
 #include "os_specific.h"
 #include "const.h"
@@ -1866,15 +1912,14 @@ void bullet_red_create(int x, int y, float shift_angle) {
 	bullet->bullet_type = bullet_red;
 	bullet->move_flag = 0;
 
-	bullet->team = 1;
+	bullet->is_enemys = 1;
 }
 @}
 Пуля летит в сторону главного игрового персонажа.
 Параметр shift_angle используется для задания отклонения пули от
 игрового персонажа. Позже параметр angle начинает использоваться
 как обычный угол для пули.
-Параметр team обозначает комманду к которой принадлежит пуля. Единица
-значит, что это команда противников и пуля напралена против игрока.
+Пуля выпущена врагом, поэтому is_enemys = 1.
 
 
 @d Bullet public prototypes @{
@@ -2382,10 +2427,11 @@ void damage_calculate(void) {
 #include <stdlib.h>
 @}
 
-Нам нужен доступ к списку пуль и списку персонажей:
+Нам нужен доступ к списку пуль и списку вражеских персонажей и персонажем игрока:
 @d Damage header @{
 #include "characters.h"
 #include "bullets.h"
+#include "player.h"
 @}
 
 Функция перебирает всех персонажей, перебирает все пули,
@@ -2395,22 +2441,23 @@ void damage_calculate(void) {
 @d damage_calculate body @{
 int i, j;
 
-for(i = 0; i < characters_pos; i++) {
-	CharacterList *character = &characters[i];
+for(i = 0; i < BULLET_LIST_LEN; i++) {
+	BulletList *bullet = &bullets[i];
 
-	if(character->is_sleep == 0)
-		for(j = 0; j < BULLET_LIST_LEN; j++) {
-			BulletList *bullet = &bullets[j];
+	@<Skip cycle if bullet slot empty@>
 
-			@<Skip cycle if bullet slot empty@>
+	@<damage_calculate is enemy's bullet?@>
 
-			@<damage_calculate character hp=0 or is_sleep=1@>
-			@<damage_calculate character and bullet team check@>
-			@<damage_calculate collision check@>
-			@<damage_calculate character's damage unique@>
-		}
+	for(j = 0; j < characters_pos; j++) {
+		CharacterList *character = &characters[i];
 
-	@<damage_calculate if hp<0 then character died@>
+		@<damage_calculate character hp=0 or is_sleep=1@>
+
+		@<damage_calculate collision check@>
+		@<damage_calculate character's damage unique@>
+
+		@<damage_calculate if hp<0 then character died@>
+	}
 }
 @}
 
@@ -2420,19 +2467,35 @@ if(character->hp <= 0 || character->is_sleep == 1)
 	continue;
 @}
 
-В одной команде пуля и персонаж?
-@d damage_calculate character and bullet team check @{
-if(bullet->team == character->team)
+Если пуля выпущена врагом, то проверим пересечение с персонажем игрока,
+иначе перейдем к проверке вражеских персонажей:
+@d damage_calculate is enemy's bullet? @{
+if(bullet->is_enemys == 1) {
+	if(bullet_collide(i, player_x, player_y, player_radius) == 1) {
+		@<damage_calculate check collision with player@>
+	}
 	continue;
+}
 @}
+
+Если пересечение было, то уменьшаем число попыток, если попыток больше нет,
+то выводим continue-окно:
+@d damage_calculate check collision with player @{
+if(player_players == 0) {
+	fprintf(stderr, "continue-window stub\n");
+	exit(1);
+}
+player_players--;
+@}
+
 
 Проверка пересечения:
 @d damage_calculate collision check @{
-if(bullet_collide(j, character->x, character->y, character->radius) == 0)
+if(bullet_collide(i, character->x, character->y, character->radius) == 0)
 	continue;
 @}
 
-Особенности повреждения различных персонажей:
+Особенности повреждения различных вражеских персонажей:
 @d damage_calculate character's damage unique @{
 switch(character->character_type) {
 	case character_reimu:
@@ -2480,7 +2543,7 @@ int bullet_collide(int bd, int x, int y, int radius) {
 @}
 
 Проверим красную пулю на пересечение. Если его небыло то выходим из switch, позже
-вызовется return 0. Иначе уничтожаем пулю и вовращаем 1.
+вызовется return 0. Иначе уничтожаем пулю и возвращаем 1.
 @d bullet_collide if bullet_red collide @{
 if(is_rad_collide(x, y, radius, bullet->x, bullet->y, 3) == 0)
 	break;
@@ -2494,16 +2557,11 @@ return 1;
 #include "collision.h"
 @}
 
-Добавим параметры team:
+Добавим параметр is_enemys:
 @d Bullet params @{
-int team;
+int is_enemys;
 @}
-
-@d Character struct param @{
-int team;
-@}
-Если команда пули и персонажа совпадают, то пуля безвредна.
-В данной версии touhou только две команды: 0 - игрок, 1 - противники.
+Если он установлен, то пуля выпущена врагом.
 
 Добавим радиус хитбокса для персонажей:
 @d Character struct param @{
@@ -2720,7 +2778,6 @@ int main(void) {
 	window_create();
 
 	enum {
-		main_character_player,
 		main_character_blue_moon_fairy1,
 		main_character_blue_moon_fairy10 = main_character_blue_moon_fairy1 + 9,
 	};
@@ -2728,9 +2785,6 @@ int main(void) {
 	player_x = GAME_FIELD_W/2;
 	player_y = GAME_FIELD_H - GAME_FIELD_H/8;
 
-	//character_reimu_create(main_character_player);
-	//characters[main_character_player].ai = 0;
-	//characters[main_character_player].is_sleep = 0;
 	player_select_team(player_team_reimu);
 
 	{
@@ -2770,6 +2824,7 @@ while(1) {
 	@<Player press fire button@>
 	@<Damage calculate@>
 	@<Game menu@>
+	@<Get processor time to OS@>
 }
 @}
 
@@ -2903,4 +2958,9 @@ timer_get_time();
 Подсчитаем повреждения от пуль:
 @d Damage calculate @{
 damage_calculate();
+@}
+
+Отдадим процессору немного времени:
+@d Get processor time to OS @{
+get_processor_time();
 @}
