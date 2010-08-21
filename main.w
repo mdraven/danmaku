@@ -662,7 +662,6 @@ typedef struct {
 	int hp;
 	int x;
 	int y;
-	int ai;
 	int is_sleep;
 	int character_type;
 	int time_point_for_movement_to_x;
@@ -680,7 +679,6 @@ characters_pos вершина стека
 О структуре:
   hp - количество жизней персонажа
   x, y - координаты, когда он не спит
-  ai - флаг, этот персонаж управляется компьютером(существует только один не спящий(is_sleep=0) с ai=0)
   is_sleep - флаг, спит персонаж или действует на поле игр. Если персонаж умер,
   		   	 то флаг устанавливается(true).
   character_type - тип персонажа, основной параметр для диспетчеризации
@@ -792,9 +790,6 @@ static void character_move_to(int cd, int move_to) {
 			character_set_weak_time_point_x(cd);
 			character->x++;
 		}
-
-		if(character->ai == 0)
-			player_x = character->x;
 	}
 
 	if(character->time_point_for_movement_to_y == 0) {
@@ -806,9 +801,6 @@ static void character_move_to(int cd, int move_to) {
 			character_set_weak_time_point_y(cd);
 			character->y++;
 		}
-
-		if(character->ai == 0)
-			player_y = character->y;
 	}
 }
 @}
@@ -820,11 +812,6 @@ character_set_weak_time_point_y. Они определяют тип персон
 после того как было сделано перемещение.
 
 Как видно, ход по x или y возможен только если соответствующий time_point равен нулю.
-
-player_coord_x и player_coord_y - глобальные координаты игрока. Они меняются, если перемещается
-персонаж у которого ai = 0(персонаж не управляется компьютером).
-Когда нам нужно будет менять персонажа при нажатии Shift мы установим у другого флаг is_sleep,
-тогда не будет двух активных персонажей с ai = 0.
 
 Направления в которые может перемещаться персонаж:
 @d Character private structs @{
@@ -955,8 +942,8 @@ static void character_marisa_update_time_points(int cd) {
 
 
 
-Сделаем ход всеми компьютерными персонажами. Персонажи которые спят,
-мертвы и которыми не управляет компьютер(ai = false) пропускают ход.
+Сделаем ход всеми компьютерными персонажами. Вражеские персонажи которые спят или
+мертвы пропускают ход.
 
 @d Character functions @{
 @<Helper functions@>
@@ -968,7 +955,7 @@ void characters_ai_control(void) {
 	for(i = 0; i < characters_pos; i++) {
 		CharacterList *character = &characters[i];
 
-		if(character->ai == 0 || character->hp <= 0 || character->is_sleep == 1)
+		if(character->hp <= 0 || character->is_sleep == 1)
 			continue;
 
 		switch(character->character_type) {
@@ -2812,7 +2799,6 @@ int main(void) {
 		int i;
 		for(i = main_character_blue_moon_fairy1; i <= main_character_blue_moon_fairy10; i++) {
 			character_blue_moon_fairy_create(i, 30*i, 10);
-			characters[i].ai = 1;
 			characters[i].is_sleep = 0;
 		}
 		characters_pos = main_character_blue_moon_fairy10 + 1;
