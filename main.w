@@ -472,7 +472,8 @@ get_scan_keyup() -- какая была отпущена последней.
 @d keys' events for is_keydown @{
 
 enum {
-	key_fire, key_move_left, key_move_right, key_move_up, key_move_down,
+	key_fire, key_shadow_character, key_card,
+	key_move_left, key_move_right, key_move_up, key_move_down,
 	key_menu_up, key_menu_down, key_menu_select, key_escape
 };
 
@@ -507,19 +508,23 @@ int is_keydown(int key_type) {
 
 Эти флаги устанавливаются в 1, если кнопка нажата и в 0, если нет:
 @d Key flags @{
-static int fire, move_left, move_right, move_up, move_down, escape;
+static int fire, shadow_character, card, move_left, move_right, move_up, move_down, escape;
 @}
 
 Здесь мы устанавливаем и сбрасываем флаги:
-
 @d Get event @{
 while(SDL_PollEvent(&event)) {
 	int key = event.type == SDL_KEYDOWN;
 
 	switch(event.key.keysym.sym) {
-		case SDLK_SPACE:
+		case SDLK_z:
 			fire = key;
 			break;
+		case SDLK_x:
+			card = key;
+			break;
+		case SDLK_LSHIFT:
+			shadow_character = key;
 		case SDLK_LEFT:
 			move_left = key;
 			break;
@@ -545,6 +550,10 @@ while(SDL_PollEvent(&event)) {
 switch(key_type) {
 	case key_fire:
 		return fire;
+	case key_card:
+		return card;
+	case key_shadow_character:
+		return shadow_character;
 	case key_move_left:
 		return move_left;
 	case key_move_right:
@@ -627,8 +636,6 @@ int is_rad_collide(int x1, int y1, int r1, int x2, int y2, int r2) {
 
 Теперь стоит подумать о игровых персонажах.
 Они должны иметь возможность свободно перемещаться по игровому полю и исчезать когда им захочется.
-Для этого они должны знать размер окна, через которое игрок видит игровое поле. Допустим его размеры
-константа и описываются в каком-нибудь файле.
 
 -Должны ли пули и снаряды хранится с игровыми персонажами в одном списке?
 Пули не возвращают дескрипторы(их слишком много). Этим они отличаются от персонажей.
@@ -640,32 +647,15 @@ int is_rad_collide(int x1, int y1, int r1, int x2, int y2, int r2) {
 Функция перемещения, её вызов двигает снаряд на итерацию.
 
 
-
-Фунции для перемещения персонажей:
 @o characters.h @{
-enum {
-	character_move_to_left, character_move_to_right, character_move_to_up, character_move_to_down
-};
-
-void character_move_to(int cd, int move_to);
-void characters_update_all_time_points(void);
-void characters_ai_control(void);
+@<Character public structs@>
+@<Character public prototypes@>
 @}
 
-С первой функцией всё понятно. characters_update_all_time_points нужно вызывать в конце
-каждого опроса перемещений ВСЕХ персонажей. Она восстанавливает очки перемещения у
-всех персонажей, те после определённого количества вызовов этой функции,
-персонажы смогут сделать один ход.
-characters_ai_control - сделать ход всеми персонажами, которые не спят, у которых ai - истина.
-
-Рисуем:
-@o characters.h @{
-void characters_draw(void);
-@}
 
 
 Опишем структуру персонажа:
-@o characters.h @{
+@d Character public structs @{
 #define CHARACTER_LIST_LEN 2040
 
 typedef struct {
@@ -715,7 +705,9 @@ characters_pos вершина стека
 CharacterList characters[CHARACTER_LIST_LEN];
 int characters_pos;
 
-@<Character structs@>
+@<Character private structs@>
+@<Character private prototypes@>
+@<Character functions@>
 @}
 
 
@@ -788,7 +780,7 @@ void character_marisa_create(int cd);
 @<Different characters set weak time_point functions@>
 @<character_set_weak_time_point functions@>
 
-void character_move_to(int cd, int move_to) {
+static void character_move_to(int cd, int move_to) {
 	CharacterList *character = &characters[cd];
 
 	if(character->time_point_for_movement_to_x == 0) {
@@ -833,6 +825,19 @@ player_coord_x и player_coord_y - глобальные координаты и�
 персонаж у которого ai = 0(персонаж не управляется компьютером).
 Когда нам нужно будет менять персонажа при нажатии Shift мы установим у другого флаг is_sleep,
 тогда не будет двух активных персонажей с ai = 0.
+
+Направления в которые может перемещаться персонаж:
+@d Character private structs @{
+enum {
+	character_move_to_left, character_move_to_right, character_move_to_up, character_move_to_down
+};
+@}
+
+@d Character private prototypes @{
+static void character_move_to(int cd, int move_to);
+@}
+
+
 
 Опишем character_set_weak_time_point_x и character_set_weak_time_point_y:
 @d character_set_weak_time_point functions @{
@@ -893,7 +898,7 @@ static void character_marisa_set_weak_time_point_y(int cd) {
 Функция которая восстанавливает время до следующего хода
 у всех персонажей в игре:
 
-@o characters.c @{
+@d Character functions @{
 @<Update time point for different characters@>
 
 void characters_update_all_time_points(void) {
@@ -913,6 +918,14 @@ void characters_update_all_time_points(void) {
 				exit(1);
 		}
 }
+@}
+characters_update_all_time_points нужно вызывать в конце
+каждого опроса перемещений ВСЕХ персонажей. Она восстанавливает очки перемещения у
+всех персонажей, те после определённого количества вызовов этой функции,
+персонажы смогут сделать один ход.
+
+@d Character public prototypes @{
+void characters_update_all_time_points(void);
 @}
 
 Реализация обновления времени до следующего хода у конкретного вида
@@ -945,7 +958,7 @@ static void character_marisa_update_time_points(int cd) {
 Сделаем ход всеми компьютерными персонажами. Персонажи которые спят,
 мертвы и которыми не управляет компьютер(ai = false) пропускают ход.
 
-@o characters.c @{
+@d Character functions @{
 @<Helper functions@>
 @<AI functions for different characters@>
 
@@ -972,6 +985,10 @@ void characters_ai_control(void) {
 		}
 	}
 }
+@}
+
+@d Character public prototypes @{
+void characters_ai_control(void);
 @}
 
 Мозги для конкретных персонажей:
@@ -1142,7 +1159,7 @@ character->step_of_movement = 0;
 Босс движется из точки в точку. Достигает её. Мы изменяем step_of_movement,
 чтобы знать какой шаг делать потом.
 
-@d Character structs @{
+@d Character private structs @{
 typedef struct {
 	int x, y;
 } Point;
@@ -1204,6 +1221,10 @@ void characters_draw(void) {
 				exit(1);
 		}
 }
+@}
+
+@d Character public prototypes @{
+void characters_draw(void);
 @}
 
 Конкретные функции рисования для различных персонажей:
