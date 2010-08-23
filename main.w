@@ -525,6 +525,7 @@ while(SDL_PollEvent(&event)) {
 			break;
 		case SDLK_LSHIFT:
 			shadow_character = key;
+			break;
 		case SDLK_LEFT:
 			move_left = key;
 			break;
@@ -1489,6 +1490,14 @@ static void character_blue_moon_fairy_draw(int cd) {
 		0, 0.4);
 }
 @}
+
+Повреждение от пуль:
+@d damage_calculate other enemy characters @{
+case character_blue_moon_fairy:
+	if(bullet->bullet_type == bullet_reimu_first)
+		character->hp -= 1000;
+	break;
+@}
 ===========================================================
 
 Игровой персонаж.
@@ -1804,7 +1813,6 @@ int player_players;
 Пули.
 
 @o bullets.h @{
-@<Bullet types@>
 @<Bullet public macros@>
 @<Bullet public structs@>
 @<Bullet public prototypes@>
@@ -1861,7 +1869,7 @@ BULLET_LIST_LEN - максимальное количество пуль
 
 
 Типы пуль:
-@d Bullet private structs @{
+@d Bullet public structs @{
 enum {
 	bullet_white,
 	bullet_red,
@@ -2275,15 +2283,13 @@ void bullets_update_all_time_points(void) {
 }
 @}
 
-
-
 Нарисуем пули:
-
 @d Bullet public prototypes @{
 void bullets_draw(void);
 @}
 
 @d Bullet functions @{
+@<Concrete functions for bullets drawing@>
 void bullets_draw(void) {
 	int i;
 
@@ -2299,6 +2305,7 @@ void bullets_draw(void) {
 			case bullet_red:
 				bullet_red_draw(i);
 				break;
+			@<bullets_draw other bullets@>
 			default:
 				fprintf(stderr, "\nUnknown bullet\n");
 				exit(1);
@@ -2308,13 +2315,7 @@ void bullets_draw(void) {
 @}
 
 Рисуем конкретные:
-
-@d Bullet private prototypes @{
-static void bullet_white_draw(int bd);
-static void bullet_red_draw(int bd);
-@}
-
-@d Bullet functions @{
+@d Concrete functions for bullets drawing @{
 static void bullet_white_draw(int bd) {
 	static int id = -1;
 
@@ -2447,8 +2448,36 @@ case bullet_reimu_first:
 	break;
 @}
 
+Рисуем летящие карты Рейму:
+@d Concrete functions for bullets drawing @{
+static void bullet_reimu_first_draw(int bd) {
+	static int id = -1;
 
+	if(id == -1)
+		id = image_load("bullet_white_card.png");
 
+	image_draw_center(id,
+		GAME_FIELD_X + bullets[bd].x,
+		GAME_FIELD_Y + bullets[bd].y,
+		0, 0.6);
+}
+@}
+
+Добавим функцию рисования в диспетчер:
+@d bullets_draw other bullets @{
+case bullet_reimu_first:
+	bullet_reimu_first_draw(i);
+	break;
+@}
+
+Повреждение от пули:
+@d bullet_collide other bullets @{
+case bullet_reimu_first:
+	if(is_rad_collide(x, y, radius, bullet->x, bullet->y, 3) == 0)
+	  	break;
+	bullet->is_noempty = 0;
+	return 1;
+@}
 ==========================================================
 
 Повреждения от пуль.
@@ -2557,6 +2586,7 @@ switch(character->character_type) {
 //		if(bullet->bullet_type == bullet_red)
 			character->hp = 0;
 		break;
+	@<damage_calculate other enemy characters@>
 	default:
 		fprintf(stderr, "\nUnknown character\n");
 		exit(1);
@@ -2588,6 +2618,7 @@ int bullet_collide(int bd, int x, int y, int radius) {
 		case bullet_white:
 		case bullet_red:
 			@<bullet_collide if bullet_red collide@>
+		@<bullet_collide other bullets@>
 		default:
 			fprintf(stderr, "\nUnknown bullet\n");
 			exit(1);
