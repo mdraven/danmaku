@@ -1622,7 +1622,7 @@ void player_fire(void);
 void player_fire(void) {
 	switch(player_type) {
 		case player_reimu:
-			//bullet_player_reimu_first_create();
+			bullet_player_reimu_first_create();
 			break;
 		@<player_fire other players' fires@>
 		default:
@@ -2402,6 +2402,13 @@ void bullet_white_spray3_create(int x, int y) {
 void bullet_white_spray3_create(int x, int y);
 @}
 
+
+Первый вид пуль Рейму, карты летящие вперёд.
+@d Bullet functions @{
+void bullet_player_reimu_first_create(void) {
+
+}
+@}
 ==========================================================
 
 Повреждения от пуль.
