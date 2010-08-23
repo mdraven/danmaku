@@ -2034,8 +2034,8 @@ bullet_move_to_angle_and_radius - переместить пулю по напр�
 
 Уничтожем пулю когда она вылетит за пределы экрана:
 @d bullet_red_action destroy bullet @{
-if(bullet->x < -5 || bullet->x > GAME_FIELD_W + 5 ||
-	bullet->y < -5 || bullet->y > GAME_FIELD_H + 5)
+if(bullet->x < -25 || bullet->x > GAME_FIELD_W + 25 ||
+	bullet->y < -25 || bullet->y > GAME_FIELD_H + 25)
 	bullet->is_noempty = 0;
 @}
 
@@ -2201,6 +2201,7 @@ static void bullet_set_weak_time_point_y(int bd);
 @}
 
 @d Bullet functions @{
+@<Set weak time points for concrete bullets@>
 static void bullet_set_weak_time_point_x(int bd) {
 	switch(bullets[bd].bullet_type) {
 		case bullet_white:
@@ -2209,6 +2210,7 @@ static void bullet_set_weak_time_point_x(int bd) {
 		case bullet_red:
 			bullet_red_set_weak_time_point_x(bd);
 			break;
+		@<bullet_set_weak_time_point_x other bullets@>
 		default:
 			fprintf(stderr, "\nUnknown bullex\n");
 			exit(1);
@@ -2223,6 +2225,7 @@ static void bullet_set_weak_time_point_y(int bd) {
 		case bullet_red:
 			bullet_red_set_weak_time_point_y(bd);
 			break;
+		@<bullet_set_weak_time_point_y other bullets@>
 		default:
 			fprintf(stderr, "\nUnknown bullet\n");
 			exit(1);
@@ -2231,16 +2234,7 @@ static void bullet_set_weak_time_point_y(int bd) {
 @}
 
 Конкретные реализации функции восстановления очков времени для разных видов пуль:
-
-@d Bullet private prototypes @{
-static void bullet_white_set_weak_time_point_x(int bd);
-static void bullet_white_set_weak_time_point_y(int bd);
-
-static void bullet_red_set_weak_time_point_x(int bd);
-static void bullet_red_set_weak_time_point_y(int bd);
-@}
-
-@d Bullet functions @{
+@d Set weak time points for concrete bullets @{
 static void bullet_white_set_weak_time_point_x(int bd) {
 	bullets[bd].time_point_for_movement_to_x = 1;
 }
@@ -2259,14 +2253,11 @@ static void bullet_red_set_weak_time_point_y(int bd) {
 @}
 
 Функция восстановления time points:
-
 @d Bullet public prototypes @{
 void bullets_update_all_time_points(void);
 @}
 
 @d Bullet functions @{
-@<Update time point for different bullets@>
-
 void bullets_update_all_time_points(void) {
 	int i;
 
@@ -2275,42 +2266,12 @@ void bullets_update_all_time_points(void) {
 
 		@<Skip cycle if bullet slot empty@>
 
-		switch(bullet->bullet_type) {
-			case bullet_white:
-				bullet_white_update_time_points(i);
-				break;
-			case bullet_red:
-				bullet_red_update_time_points(i);
-				break;
-			default:
-				fprintf(stderr, "\nUnknown bullet\n");
-				exit(1);
-		}
+		if(bullet->time_point_for_movement_to_x > 0)
+			bullet->time_point_for_movement_to_x--;
+
+		if(bullet->time_point_for_movement_to_y > 0)
+			bullet->time_point_for_movement_to_y--; 
 	}
-}
-@}
-
-Функции восстановления для конкретных пуль:
-
-@d Update time point for different bullets @{
-static void bullet_white_update_time_points(int bd) {
-	BulletList *bullet = &bullets[bd];
-
-	if(bullet->time_point_for_movement_to_x > 0)
-		bullet->time_point_for_movement_to_x--;
-
-	if(bullet->time_point_for_movement_to_y > 0)
-		bullet->time_point_for_movement_to_y--; 
-}
-
-static void bullet_red_update_time_points(int bd) {
-	BulletList *bullet = &bullets[bd];
-
-	if(bullet->time_point_for_movement_to_x > 0)
-		bullet->time_point_for_movement_to_x--;
-
-	if(bullet->time_point_for_movement_to_y > 0)
-		bullet->time_point_for_movement_to_y--; 
 }
 @}
 
@@ -2406,9 +2367,88 @@ void bullet_white_spray3_create(int x, int y);
 Первый вид пуль Рейму, карты летящие вперёд.
 @d Bullet functions @{
 void bullet_player_reimu_first_create(void) {
+	BulletList *bullet = bullet_get_free_cell();
 
+	bullet->x = player_x;
+	bullet->y = player_y;
+	//bullet->angle = shift_angle;
+	bullet->bullet_type = bullet_reimu_first;
+	bullet->move_flag = 0;
+
+	bullet->is_enemys = 0;
 }
 @}
+
+@d Bullet public prototypes @{
+void bullet_player_reimu_first_create(void);
+@}
+
+Добавим тип пули:
+@d Bullet types @{
+bullet_reimu_first,
+@}
+
+Карты летят снизу вверх за пределы экрана:
+@d Bullet actions @{
+static void bullet_reimu_first_action(int bd) {
+	BulletList *bullet = &bullets[bd];
+
+	@<bullet_reimu_first_action set move_x@>
+	@<bullet_reimu_first_action move bullet@>
+	@<bullet_reimu_first_action destroy bullet@>
+}
+@}
+
+Пуля только что была создана, запомним положение персонажа который её выпустил:
+@d bullet_reimu_first_action set move_x @{
+if(bullet->move_flag == 0)
+	bullet->move_x = player_x;
+@}
+
+Начнем перемещать пулю в этом направлении:
+@d bullet_reimu_first_action move bullet @{
+bullet_move_to_point(bd, bullet->move_x, -30);
+@}
+
+Уничтожим пулю когда она выйдет за пределы экрана:
+@d bullet_reimu_first_action destroy bullet @{
+if(bullet->x < -25)
+	bullet->is_noempty = 0;
+@}
+
+Добавим функцию поведения пули в диспетчер:
+@d bullets_action other bullets @{
+case bullet_reimu_first:
+	bullet_reimu_first_action(i);
+	break;
+@}
+
+Функции для установки очков времени для пули:
+@d Set weak time points for concrete bullets @{
+static void bullet_reimu_first_set_weak_time_point_x(int bd) {
+	bullets[bd].time_point_for_movement_to_x = 3;
+}
+
+static void bullet_reimu_first_set_weak_time_point_y(int bd) {
+	bullets[bd].time_point_for_movement_to_y = 3;
+}
+@}
+
+Добавим эти функции в диспетчеры:
+@d bullet_set_weak_time_point_x other bullets @{
+case bullet_reimu_first:
+	bullet_reimu_first_set_weak_time_point_x(bd);
+	break;
+@}
+
+@d bullet_set_weak_time_point_y other bullets @{
+case bullet_reimu_first:
+	bullet_reimu_first_set_weak_time_point_y(bd);
+	break;
+@}
+
+
+
 ==========================================================
 
 Повреждения от пуль.
