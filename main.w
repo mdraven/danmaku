@@ -1322,7 +1322,7 @@ void character_blue_moon_fairy_create(int cd, int x, int y) {
 	character->time_point_for_movement_to_x = 0;
 	character->time_point_for_movement_to_y = 0;
 	character->step_of_movement = 0;
-	character->radius = 20;
+	character->radius = 10;
 }
 @}
 radius - радиус хитбокса.
@@ -1487,7 +1487,7 @@ static void character_blue_moon_fairy_draw(int cd) {
 	image_draw_center(id,
 		GAME_FIELD_X + character->x,
 		GAME_FIELD_Y + character->y,
-		0, 0.4);
+		0, 0.4);Сделать замедление для выстрелов
 }
 @}
 
@@ -2413,7 +2413,7 @@ bullet_move_to_point(bd, bullet->move_x, -30);
 
 Уничтожим пулю когда она выйдет за пределы экрана:
 @d bullet_reimu_first_action destroy bullet @{
-if(bullet->x < -25)
+if(bullet->y < -25)
 	bullet->is_noempty = 0;
 @}
 
@@ -2473,7 +2473,7 @@ case bullet_reimu_first:
 Повреждение от пули:
 @d bullet_collide other bullets @{
 case bullet_reimu_first:
-	if(is_rad_collide(x, y, radius, bullet->x, bullet->y, 3) == 0)
+	if(is_rad_collide(x, y, radius, bullet->x, bullet->y, 10) == 0)
 	  	break;
 	bullet->is_noempty = 0;
 	return 1;
@@ -2533,7 +2533,7 @@ for(i = 0; i < BULLET_LIST_LEN; i++) {
 	@<damage_calculate is enemy's bullet?@>
 
 	for(j = 0; j < characters_pos; j++) {
-		CharacterList *character = &characters[i];
+		CharacterList *character = &characters[j];
 
 		@<damage_calculate character hp=0 or is_sleep=1@>
 
