@@ -1,4 +1,4 @@
-
+-*-nuweb-mode-*-
 
 2010 28 июля
 начинаю писать концепт даммаку
@@ -1487,7 +1487,7 @@ static void character_blue_moon_fairy_draw(int cd) {
 	image_draw_center(id,
 		GAME_FIELD_X + character->x,
 		GAME_FIELD_Y + character->y,
-		0, 0.4);Сделать замедление для выстрелов
+		0, 0.4);
 }
 @}
 
@@ -1628,22 +1628,46 @@ void player_fire(void);
 @}
 
 @d Player functions @{
+@<Player update fires' time points@>
+
 void player_fire(void) {
 	switch(player_type) {
-		case player_reimu:
-			bullet_player_reimu_first_create();
-			break;
-		@<player_fire other players' fires@>
+		@<player_fire players' fires@>
 		default:
 			fprintf(stderr, "\nUnknown player type\n");
 			exit(1);
 	}
+
+	@<player_fire set weak time point@>
 }
 @}
 
 @d Player private macros @{
 #include "bullets.h"
 @}
+
+Атака Рейму:
+@d player_fire players' fires @{
+case player_reimu:
+	if(player_time_point_first_fire == 0)
+		bullet_player_reimu_first_create();
+
+	break;
+@}
+player_time_point_first_fire - очки времени для первого типа пуль, когда они равны 0
+персонаж может выпустить одну пулю.
+
+@d Player private structs @{
+static int player_time_point_first_fire;
+@}
+
+Когда player_time_point_first_fire становится равным 0, нужно увеличить его
+чтобы он начал отсчёт до следующего выстрела:
+@d player_fire set weak time point @{
+if(player_time_point_first_fire == 0)
+	player_time_point_first_fire = 180;
+@}
+
 
 Использование карты:
 @d Player public prototypes @{
@@ -1750,7 +1774,7 @@ enum {
 @}
 
 Функция которая уменьшает time points, что в итоге приводит к тому, что
-персонаж может сдвинуться на позицию:
+персонаж может сдвинуться на позицию и производить выстрелы:
 @d Player public prototypes @{
 void player_update_all_time_points(void);
 @}
@@ -1761,7 +1785,10 @@ void player_update_all_time_points(void) {
 		player_time_point_for_movement_to_x--;
 
 	if(player_time_point_for_movement_to_y > 0)
-		player_time_point_for_movement_to_y--; 
+		player_time_point_for_movement_to_y--;
+
+	if(player_time_point_first_fire > 0)
+		player_time_point_first_fire--;
 }
 @}
 
@@ -1777,12 +1804,12 @@ void player_draw(void) {
 			static int id = -1;
 
 			if(id == -1)
-				id = image_load("aya.png");
+				id = image_load("reimu.png");
 
 			image_draw_center(id,
 				GAME_FIELD_X + player_x,
 				GAME_FIELD_Y + player_y,
-				0, 0.1);
+				0, 0.8);
 			
 			break;
 		}
