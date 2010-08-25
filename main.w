@@ -118,7 +118,7 @@ void window_create(void) {
 		exit(1);
 	}
 
-	@<os_specific OGL config@>
+	window_set_2d_config();
 
 	return;
 }
@@ -132,34 +132,66 @@ void window_create(void);
 
 
 Настройки OGL для вывода 2D графики:
-@d os_specific OGL config @{
-glClearColor(0, 0, 0, 0);
-glClear(GL_COLOR_BUFFER_BIT);
+@d os_specific functions @{
+void window_set_2d_config(void) {
+	glClearColor(0, 0, 0, 0);
+	glClear(GL_COLOR_BUFFER_BIT);
 
-glEnable(GL_TEXTURE_2D);
+	glEnable(GL_TEXTURE_2D);
 
-@<os_specific OGL blend@>
+	@<window_set_2d_config OGL blend@>
 
-glViewport(0, 0, w, h);
+	glViewport(0, 0, w, h);
 
-glMatrixMode(GL_PROJECTION);
-glLoadIdentity();
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
 
-glOrtho(0, game_w, game_h, 0, 0, 1);
+	glOrtho(0, game_w, game_h, 0, 0, 1);
 
-glDisable(GL_DEPTH_TEST);
+	glDisable(GL_DEPTH_TEST);
 
-glMatrixMode(GL_MODELVIEW);
-glLoadIdentity();
+	glMatrixMode(GL_MODELVIEW);
+	glLoadIdentity();
+}
 @}
 
-
 Нам нужна поддержка прозрачности для вывода спрайтов с alpha каналом:
-@d os_specific OGL blend @{
+@d window_set_2d_config OGL blend @{
 glEnable(GL_BLEND);
 glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 @}
 
+@d os_specific public prototypes @{
+void window_set_2d_config(void);
+@}
+
+
+Настройки OGL для вывода 3D задника:
+@d os_specific functions @{
+void window_set_3dbackground_config(void) {
+	glClearColor(0, 0, 0, 0);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	glEnable(GL_TEXTURE_2D);
+	glEnable(GL_DEPTH_TEST);
+
+	@<window_set_2d_config OGL blend@>
+
+	glViewport(GAME_FIELD_X, GAME_FIELD_Y, GAME_FIELD_W, GAME_FIELD_H);
+
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
+
+	glFrustum(0, GAME_FIELD_W, GAME_FIELD_H, 0, 0, GAME_FIELD_H);
+
+	glMatrixMode(GL_MODELVIEW);
+	glLoadIdentity();
+}
+@}
+
+@d os_specific public prototypes @{
+void window_set_3dbackground_config(void);
+@}
 
 
 Функция изменения размера окна:
@@ -377,7 +409,7 @@ void image_draw_corner(int id, int x, int y, float rot, float scale) {
 
 	glBegin(GL_QUADS);
 		glTexCoord2i(0, 0);
-		glVertex2i(0, 0);
+		glVertex2i(0, 0);Текстура к заднику
 
 		glTexCoord2i(1, 0);
 		glVertex2i(img->w, 0);
@@ -2777,6 +2809,93 @@ character_get_health_percent, dialog_function, next_level выдуманые ф�
 Таймеры нужны не только для скриптов, но я для отсчета действия карт, а возможно и для других игровых
 задумок.
 
+
+===================================================================
+
+Задники.
+
+
+Задники рисуются в первую очередь. Они трехмерные. На них расположены объекты,
+например деревья. Должны отслуживать процент прохождения этажа и менятся при
+этом, например изменяется освещённость.
+
+
+Функция изменения стиля задника:
+@d Background public prototypes @{
+void background_set_type(int type);
+@}
+
+@d Background functions @{
+void background_set_type(int type) {
+	background_type = type;
+	background_animation = 0;
+}
+@}
+
+background_animation - переменная в которой хранится сдвиг задника при
+анимации:
+@d Background private structs @{
+static int background_animation;
+@}
+
+В этой переменной будем хранить стиль задника:
+@d Background private structs @{
+static int background_type;
+@}
+
+Список доступных задников:
+@d Background public structs @{
+enum {
+	background_forest,
+	@<Background other types@>
+};
+@}
+
+Функция принимающая процент прохождения этажа и меняющая задник:
+@d Background public prototypes @{
+void background_set_percent(int per);
+@}
+
+@d Background functions @{
+void background_set_percent(int per) {
+	background_percent = per;
+}
+@}
+
+Переменная в которой хранится процент пройденности этажа:
+@d Background private structs @{
+static int background_percent;
+@}
+
+Функция рисования задника:
+@d Background public prototypes @{
+void background_draw(void);
+@}
+
+@d Background functions @{
+void background_draw(void) {
+	window_set_3d_config();
+
+	switch(background_type) {
+		@<background_draw backgrounds@>
+		default:
+			fprintf(stderr, "\nUnknown background\n");
+			exit(1);
+	}
+
+	window_set_2d_config();
+}
+@}
+window_set_3d_config, window_set_2d_config - удобные настройки окна(OGL) для
+вывода соответствующей графики.
+
+Рисуем лес:
+@d background_draw backgrounds @{
+case background_forest: {
+
+	break;
+}
+@}
 ===================================================================
 
 Таймеры.
