@@ -135,7 +135,7 @@ void window_create(void);
 @d os_specific functions @{
 void window_set_2d_config(void) {
 	glClearColor(0, 0, 0, 0);
-	glClear(GL_COLOR_BUFFER_BIT);
+	//glClear(GL_COLOR_BUFFER_BIT);
 
 	glEnable(GL_TEXTURE_2D);
 
@@ -165,33 +165,6 @@ glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 void window_set_2d_config(void);
 @}
 
-
-Настройки OGL для вывода 3D задника:
-@d os_specific functions @{
-void window_set_3dbackground_config(void) {
-	glClearColor(0, 0, 0, 0);
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-	glEnable(GL_TEXTURE_2D);
-	glEnable(GL_DEPTH_TEST);
-
-	@<window_set_2d_config OGL blend@>
-
-	glViewport(GAME_FIELD_X, GAME_FIELD_Y, GAME_FIELD_W, GAME_FIELD_H);
-
-	glMatrixMode(GL_PROJECTION);
-	glLoadIdentity();
-
-	glFrustum(0, GAME_FIELD_W, GAME_FIELD_H, 0, 0, GAME_FIELD_H);
-
-	glMatrixMode(GL_MODELVIEW);
-	glLoadIdentity();
-}
-@}
-
-@d os_specific public prototypes @{
-void window_set_3dbackground_config(void);
-@}
 
 
 Функция изменения размера окна:
@@ -409,7 +382,7 @@ void image_draw_corner(int id, int x, int y, float rot, float scale) {
 
 	glBegin(GL_QUADS);
 		glTexCoord2i(0, 0);
-		glVertex2i(0, 0);Текстура к заднику
+		glVertex2i(0, 0);
 
 		glTexCoord2i(1, 0);
 		glVertex2i(img->w, 0);
@@ -2874,7 +2847,7 @@ void background_draw(void);
 
 @d Background functions @{
 void background_draw(void) {
-	window_set_3d_config();
+	window_set_3dbackground_config();
 
 	switch(background_type) {
 		@<background_draw backgrounds@>
@@ -2889,13 +2862,93 @@ void background_draw(void) {
 window_set_3d_config, window_set_2d_config - удобные настройки окна(OGL) для
 вывода соответствующей графики.
 
+
+Настройки OGL для вывода 3D задника:
+@d Background functions @{
+static void window_set_3dbackground_config(void) {
+	glClearColor(0, 0, 0, 0);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+//	glDisable(GL_TEXTURE_2D);
+	glEnable(GL_DEPTH_TEST);
+
+	@<window_set_2d_config OGL blend@>
+
+	glViewport(GAME_FIELD_X, GAME_FIELD_Y, GAME_FIELD_W, GAME_FIELD_H);
+
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
+
+	gluPerspective(45.0f, ((float)GAME_FIELD_W)/((float)GAME_FIELD_H), 1.0f, 500.0f);
+	//glFrustum(0, GAME_FIELD_W, GAME_FIELD_H, 0, 1.0, 1000.0);
+	//glFrustum(0.0, 10.0, 10.0, 0.0, 1.0, 50.0);
+
+	glMatrixMode(GL_MODELVIEW);
+	glLoadIdentity();
+}
+@}
+Возможно стоит избавится от gluPerspective как от единственного glu.
+
+@d Background private prototypes @{
+static void window_set_3dbackground_config(void);
+@}
+
+
 Рисуем лес:
 @d background_draw backgrounds @{
 case background_forest: {
+	static int id = -1;
+
+	if(id == -1)
+		id = image_load("forest.png");
+
+	glTranslatef(0, 0, -1.5);
+	glRotatef(-30, 1.0, 0.0, 0.0);
+//	glScalef(scale, scale, 0);
+
+	glBindTexture(GL_TEXTURE_2D, image_list[id].tex_id);
+
+	glBegin(GL_QUADS);
+		glTexCoord2i(0, 0);
+		glVertex2i(-1, -1);
+
+		glTexCoord2i(1, 0);
+		glVertex2i(1, -1);
+
+		glTexCoord2i(1, 1);
+		glVertex2i(1, 1);
+
+		glTexCoord2i(0, 1);
+		glVertex2i(-1, 1);
+	glEnd();
 
 	break;
 }
 @}
+
+Файлы задников:
+@o os_specific.h @{
+@<Background public structs@>
+@<Background public prototypes@>
+@}
+
+@o os_specific.c @{
+
+//#include <GL/gl.h>
+//#include <GL/glu.h>
+
+//#include <stdio.h>
+//#include <stdlib.h>
+
+#include "const.h"
+//#include "os_specific.h"
+//#include "backgrounds.h"
+
+@<Background private structs@>
+@<Background private prototypes@>
+@<Background functions@>
+@}
+
 ===================================================================
 
 Таймеры.
@@ -2995,7 +3048,7 @@ int timer_calc(int time) {
 #include "damage.h"
 #include "player.h"
 #include "const.h"
-
+//#include "backgrounds.h"
 
 @<Main functions@>
 @}
@@ -3037,6 +3090,8 @@ int main(void) {
 				bullet_red_create(100+i*10, 100+j*10);
 	}*/
 
+	background_set_type(background_forest);
+
 	@<Main cycle@>
 }
 @}
@@ -3072,6 +3127,7 @@ if(main_timer_frame == 0) {
 
 	frames++;
 
+	@<Draw backgrounds@>
 	@<Draw bullets@>
 	@<Draw characters@>
 	@<Draw player@>
@@ -3118,6 +3174,10 @@ if(main_timer_time_points == 0) {
 }
 @}
 
+Рисуем задник:
+@d Draw backgrounds @{
+background_draw();
+@}
 
 Отрисовка всех персонажей:
 @d Draw characters @{
