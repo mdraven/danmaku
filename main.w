@@ -1461,7 +1461,7 @@ if(character->step_of_movement == 5) {
 @d character_blue_moon_fairy_ai_control move and remove @{
 if(character->step_of_movement == 6) {
 	character_move_to_point(cd, character->move_x, character->move_y);
-	if(character->x > GAME_FIELD_W+20 || character->y < -20) {
+	if(character->x > GAME_FIELD_W+20 || character->x < -20) {
 		character->is_sleep = 1;
 		character->step_of_movement = 0;
 		character->move_percent = 0;
