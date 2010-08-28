@@ -2824,6 +2824,34 @@ enum {
 };
 @}
 
+Функция которая изменяет значение background_animation и тем самым задаёт анимацию:
+@d Background public prototypes @{
+void background_update_animation(void);
+@}
+
+@d Background functions @{
+void background_update_animation(void) {
+	switch(background_type) {
+		@<background_update_animation backgrounds@>
+		default:
+			fprintf(stderr, "\nUnknown background\n");
+			exit(1);
+	}
+}
+@}
+
+Опишем значение "background_update_animation backgrounds" для магического леса:
+@d background_update_animation backgrounds @{
+case background_forest: {
+	background_animation++;
+
+	if(background_animation == 1280)
+		background_animation = 0;
+	break;
+}
+@}
+Берем в учёт что размер текстуры леса 256x256, умножаем на 5, получаем 1280.
+
 Функция принимающая процент прохождения этажа и меняющая задник:
 @d Background public prototypes @{
 void background_set_percent(int per);
@@ -2847,6 +2875,9 @@ void background_draw(void);
 
 @d Background functions @{
 void background_draw(void) {
+
+	background_update_animation();
+
 	window_set_3dbackground_config();
 
 	switch(background_type) {
@@ -2908,22 +2939,77 @@ case background_forest: {
 
 	glBindTexture(GL_TEXTURE_2D, image_list[id].tex_id);
 
-	glBegin(GL_QUADS);
-		glTexCoord2i(0, 0);
-		glVertex2i(-1, -1);
-
-		glTexCoord2i(1, 0);
-		glVertex2i(1, -1);
-
-		glTexCoord2i(1, 1);
-		glVertex2i(1, 1);
-
-		glTexCoord2i(0, 1);
-		glVertex2i(-1, 1);
-	glEnd();
-
+	@<background_draw draw background of forest@>
+	@<background_draw draw trees@>
 	break;
 }
+@}
+
+Рисуем задник леса:
+@d background_draw draw background of forest @{
+{
+	float shift = background_animation/256.0;
+
+	glBegin(GL_QUADS);
+		glTexCoord2f(0, 0.0 + shift);
+		glVertex2i(-1, -1);
+
+		glTexCoord2f(1, 0.0 + shift);
+		glVertex2i(1, -1);
+
+		glTexCoord2f(1, 1.0 + shift);
+		glVertex2i(1, 1);
+
+		glTexCoord2f(0, 1.0 + shift);
+		glVertex2i(-1, 1);
+	glEnd();
+}
+@}
+shift - смещение текстуры, 256 - её размер.
+
+Рисуем деревья:
+@d background_draw draw trees @{
+{
+	int i;
+
+	const Tree trees[] = {{100, 266, 0},
+		{140, 270, 1}, {200, 268, 2},
+		{130, 276, 1}, {180, 272, 0}};
+
+	for(i=0; i < sizeof(trees)/sizeof(Tree); i++) {
+		glLoadIdentity();
+
+		glTranslatef(0, 0, -1.5);
+		glRotatef(-30, 1.0, 0.0, 0.0);
+		glTranslatef(trees[i].x/128.0 - 1.0,
+			(trees[i].y - background_animation)/128.0, 0);
+		glRotatef(30, 1.0, 0.0, 0.0);
+		glScalef(0.1, 0.1, 0);
+
+		glBegin(GL_QUADS);
+		 	glTexCoord2i(0, 0);
+		 	glVertex2i(-1, -1);
+		 
+		 	glTexCoord2f(1, 0);
+		 	glVertex2i(1, -1);
+		 
+		 	glTexCoord2f(1, 1);
+		 	glVertex2i(1, 1);
+		 
+		 	glTexCoord2f(0, 1);
+		 	glVertex2i(-1, 1);
+		glEnd();
+	}
+}
+@}
+
+Создадим структуру Tree в которой будут храниться деревья для задников:
+@d Background private structs @{
+typedef struct {
+	int x;
+	int y;
+	int type;
+} Tree;
 @}
 
 Файлы задников:
