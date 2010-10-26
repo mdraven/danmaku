@@ -53,9 +53,10 @@
 #include <SDL_image.h>
 
 #include <GL/gl.h>
-#include <GL/glu.h>
+//#include <GL/glu.h>
 
 #include <stdlib.h>
+#include <math.h>
 
 #include "os_specific.h"
 
@@ -114,7 +115,7 @@ void window_create(void) {
 
 	surface = SDL_SetVideoMode(w, h, 16, flags);
 	if(surface == NULL) {
-		fprintf(stderr, "Unable to set 640x480 video: %s\n", SDL_GetError());
+		fprintf(stderr, "Unable to set 800x600 video: %s\n", SDL_GetError());
 		exit(1);
 	}
 
@@ -2896,6 +2897,20 @@ window_set_3d_config, window_set_2d_config - удобные настройки �
 
 Настройки OGL для вывода 3D задника:
 @d Background functions @{
+
+static void gluPerspective(GLdouble fovy, GLdouble aspect, GLdouble zNear, GLdouble zFar)
+{
+   GLdouble xmin, xmax, ymin, ymax;
+
+   ymax = zNear * tan(fovy * M_PI / 360.0);
+   ymin = -ymax;
+
+   xmin = ymin * aspect;
+   xmax = ymax * aspect;
+
+   glFrustum(xmin, xmax, ymin, ymax, zNear, zFar);
+}
+
 static void window_set_3dbackground_config(void) {
 	glClearColor(0, 0, 0, 0);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -2972,36 +2987,58 @@ shift - смещение текстуры, 256 - её размер.
 {
 	int i;
 
-	const Tree trees[] = {{100, 266, 0},
-		{140, 270, 1}, {200, 268, 2},
-		{130, 276, 1}, {180, 272, 0}};
+	const Tree trees[] = {
+		{100, 1346, 0},
+		{160, 1298, 2}, {100, 1280, 0},
+		{180, 1172, 0}, {130, 1050, 1},
+		{140, 276, 1},
+		{180, 272, 3}, {130, 270, 1},
+		{160, 168, 2},
+		{100, 66, 0},
+		{160, 18, 2}, {100, 0, 0},};
+
+	static int tree_id[4] = {-1, -1, -1, -1};
+
+	if(tree_id[0] == -1)
+		tree_id[0] = image_load("tree1.png");
+	if(tree_id[1] == -1)
+		tree_id[1] = image_load("tree2.png");
+	if(tree_id[2] == -1)
+		tree_id[2] = image_load("tree3.png");
+	if(tree_id[3] == -1)
+		tree_id[3] = image_load("tree4.png");
+
 
 	for(i=0; i < sizeof(trees)/sizeof(Tree); i++) {
 		glLoadIdentity();
 
-		glTranslatef(0, 0, -1.5);
+		glTranslatef(0, 0, -1.45);
 		glRotatef(-30, 1.0, 0.0, 0.0);
 		glTranslatef(trees[i].x/128.0 - 1.0,
 			(trees[i].y - background_animation)/128.0, 0);
-		glRotatef(30, 1.0, 0.0, 0.0);
+		glRotatef(210, 1.0, 0.0, 0.0);
 		glScalef(0.1, 0.1, 0);
 
+		glBindTexture(GL_TEXTURE_2D, image_list[tree_id[trees[i].type]].tex_id);
+
 		glBegin(GL_QUADS);
-		 	glTexCoord2i(0, 0);
-		 	glVertex2i(-1, -1);
+			glTexCoord2i(0, 0);
+			glVertex2i(-1, -1);
 		 
-		 	glTexCoord2f(1, 0);
-		 	glVertex2i(1, -1);
+			glTexCoord2f(1, 0);
+			glVertex2i(1, -1);
 		 
-		 	glTexCoord2f(1, 1);
-		 	glVertex2i(1, 1);
+			glTexCoord2f(1, 1);
+			glVertex2i(1, 1);
 		 
-		 	glTexCoord2f(0, 1);
-		 	glVertex2i(-1, 1);
+			glTexCoord2f(0, 1);
+			glVertex2i(-1, 1);
 		glEnd();
 	}
 }
 @}
+С координатами деревьев полный отстой. Длина хозяйства 1280. Если кто-то
+находится в пределах 0-128, то нужно дублировать прибавив это к 1280.
 
 Создадим структуру Tree в которой будут храниться деревья для задников:
 @d Background private structs @{
@@ -3339,5 +3376,6 @@ damage_calculate();
 
 Отдадим процессору немного времени:
 @d Get processor time to OS @{
-get_processor_time();
+//get_processor_time();
 @}
+FIXME: что-то на nvidia он жутко просаживает систему
