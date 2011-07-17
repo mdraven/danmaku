@@ -686,7 +686,7 @@ characters_pos вершина стека
 О структуре:
   hp - количество жизней персонажа
   x, y - координаты, когда он не спит
-  is_sleep - флаг, спит персонаж или действует на поле игр. Если персонаж умер,
+  is_sleep - флаг, спит персонаж или действует на поле игры. Если персонаж умер,
   		   	 то флаг устанавливается(true).
   character_type - тип персонажа, основной параметр для диспетчеризации
   time_point_for_movement_to_x - может или нет персонаж переместиться по координате x,
@@ -722,14 +722,14 @@ int characters_pos;
 Функции создания персонажей.
 
 Типы персонажей:
-@o characters.h @{
+@d Character public structs @{
 enum {
 	character_reimu, character_marisa, @<Character types@>
 };
 @}
 
 Рейму:
-@o characters.c @{
+@d Character functions @{
 void character_reimu_create(int cd) {
 	CharacterList *character = &characters[cd];
 
@@ -749,12 +749,12 @@ void character_reimu_create(int cd) {
 player_coord_x, player_coord_y - глобальные координаты игрока.
 radius - радиус хитбокса.
 
-@o characters.h @{
+@d Character public prototypes @{
 void character_reimu_create(int cd);
 @}
 
 Мариса:
-@o characters.c @{
+@d Character functions @{
 void character_marisa_create(int cd) {
 	CharacterList *character = &characters[cd];
 
@@ -772,7 +772,7 @@ void character_marisa_create(int cd) {
 }
 @}
 
-@o characters.h @{
+@d Character public prototypes @{
 void character_marisa_create(int cd);
 @}
 
@@ -781,7 +781,7 @@ void character_marisa_create(int cd);
 Функции перемещения и восстановления очков перемещения.
 
 Опишем вначале функцию перемещения:
-@o characters.c @{
+@d Character functions @{
 @<Different characters set weak time_point functions@>
 @<character_set_weak_time_point functions@>
 
@@ -1195,7 +1195,7 @@ int time;
 не полностью вылезших персонажей.
 FIXME: Пока рисует всех, а не только не спящих.
 
-@o characters.c @{
+@d Character functions @{
 @<Draw functions for different characters@>
 
 void characters_draw(void) {
@@ -1311,12 +1311,12 @@ void level02(void) {
 Синие феи.
 
 Добавим в список:
-@d Character types @{
+@d Character types @{@-
 character_blue_moon_fairy,
 @}
 
 Функция создания персонажа:
-@o characters.c @{
+@d Character functions @{
 void character_blue_moon_fairy_create(int cd, int x, int y) {
 	CharacterList *character = &characters[cd];
 
@@ -1333,7 +1333,7 @@ void character_blue_moon_fairy_create(int cd, int x, int y) {
 @}
 radius - радиус хитбокса.
 
-@o characters.h @{
+@d Character public prototypes @{
 void character_blue_moon_fairy_create(int cd, int x, int y);
 @}
 
@@ -3238,6 +3238,8 @@ while(1) {
 @}
 
 Мы держим fps~60.
+FIXME: у родителей сделал 24 вместо 60, потому что тормозит.
+FIXME: 60 мало, бекграунд дёргается. Надо хотя бы 80.
 Добавим таймер для контроля перерисовки экрана раз в 1000/60 мс:
 @d Skip frames @{
 static int frames = 0;
@@ -3246,7 +3248,7 @@ static int main_timer_frame = 0;
 main_timer_frame = timer_calc(main_timer_frame);
 if(main_timer_frame == 0) {
 
-	main_timer_frame = 1000/60;
+	main_timer_frame = 1000/24;
 
 	frames++;
 
@@ -3376,6 +3378,6 @@ damage_calculate();
 
 Отдадим процессору немного времени:
 @d Get processor time to OS @{
-//get_processor_time();
+get_processor_time();
 @}
 FIXME: что-то на nvidia он жутко просаживает систему
