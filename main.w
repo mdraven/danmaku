@@ -3249,7 +3249,7 @@ void bonus_small_score_create(int x, int y) {
 }
 @}
 
-@d Bonus public prototypes @{
+@d Bonus public prototypes @{@-
 void bonus_small_score_create(int x, int y);
 @}
 
@@ -3335,8 +3335,8 @@ static void bonus_small_score_action(int bd) {
 
 Добавим с структуру бонусов два вспомогательных параметра:
 @d Bonuses params @{@-
-	int move_percent;
-	int move_step;
+int move_percent;
+int move_step;
 @}
 move_percent - процент пути который осталось пройти. В конце пути равен 0.
 move_step - тип совершаемого действия, нужен для совершения сложного движения.
@@ -3371,13 +3371,13 @@ if(bonus->x < -25 || bonus->x > GAME_FIELD_W + 25 ||
 
 
 @d Bonuses params @{
-	int move_x;
-	int move_y;
+int move_x;
+int move_y;
 
-	int speed;
+int speed;
 
-	int time_point_for_movement_to_x;
-	int time_point_for_movement_to_y;
+int time_point_for_movement_to_x;
+int time_point_for_movement_to_y;
 @}
 move_x, move_y - точки куда перемещается бонус.
 speed - скорость перемещения(0 - нормальная, 100 - максимальная)
