@@ -3457,7 +3457,109 @@ void bonuses_update_all_time_points(void) {
 void bonuses_update_all_time_points(void);
 @}
 
-Напишем функцию для движения с замедлением.
+Напишем функцию для движения в точку.
+@d Bonus functions @{
+static void bonus_move_to(int bd, int x, int y) {
+	BonusList *bonus = &bonuses[bd];
+	
+	float correction_coef;
+	float now_coef;
+	int fx = 0, fy = 0;
+	
+	if(bonus->x == x && bonus->y == y) {
+		bonus->move_percent = 0;
+		return;
+	}
+
+	
+	if(bonus->move_percent == 0) {
+		bonus->move_begin_x = bonus->x;
+		bonus->move_begin_y = bonus->y;
+	}
+
+	
+	{
+		int dx, dy;
+		float all, last;
+	
+		dx = bonus->move_begin_x - x;
+		dy = bonus->move_begin_y - y;
+		
+		if(dy == 0)
+			correction_coef = 100.0;
+		else
+			correction_coef = fabs((float)dx/(float)dy);
+	
+	
+		all = sqrt(dx*dx + dy*dy);
+	
+		dx = bonus->x - x;
+		dy = bonus->y - y;
+		
+		if(dy == 0)
+			now_coef = 100.0;
+		else
+			now_coef = fabs((float)dx/(float)dy);
+	
+	
+		last = sqrt(dx*dx + dy*dy);
+	
+		bonus->move_percent = (int)((last/all) * 100.0);
+	}
+
+	
+	if(now_coef < correction_coef)
+		fy = 1;
+	else if(now_coef > correction_coef)
+		fx = 1;
+	else {
+		fx = 1;
+		fy = 1;
+	}
+	
+	if(fx == 1 && bonus->x != x) {
+		if(bonus->x > x)
+			bonus_move_to_direction(bd, bonus_move_to_left);
+		else
+			bonus_move_to_direction(bd, bonus_move_to_right);
+	}
+	
+	if(fy == 1 && bonus->y != y) {
+		if(bonus->y > y)
+			bonus_move_to_direction(bd, bonus_move_to_up);
+		else
+			bonus_move_to_direction(bd, bonus_move_to_down);
+	}
+
+
+}
+@}
+Алгоритм скопирован из уже реализованного алгоритма для character.
+
+@d Bonus private prototypes @{@-
+static void bonus_move_to(int bd, int x, int y);
+@}
+
+@d Bonuses params @{
+int move_begin_x;
+int move_begin_y;
+@}
+Эти параметры тоже из character, они хранят точку начала движения,
+по ним находят move_percent.
+
+На его основе сделаем алгоритм движения в точку с замедлением.
+@d Bonus functions @{
+static void bonus_move_to_slower(int bd, int x, int y) {
+	bonus_move_to(bd, x, y);
+	bonuses[bd].speed = bonuses[bd].move_percent;
+}
+@}
+
+@d Bonus private prototypes @{@-
+static void bonus_move_to_slower(int bd, int x, int y);
+@}
+
+
 @d Bonus functions @{
 static void bonus_move_to_direction(int bd, int move_to) {
 	BonusList *bonus = &bonuses[bd];
