@@ -2253,7 +2253,7 @@ static void bullet_set_weak_time_point_x(int bd) {
 			break;
 		@<bullet_set_weak_time_point_x other bullets@>
 		default:
-			fprintf(stderr, "\nUnknown bullex\n");
+			fprintf(stderr, "\nUnknown bullet\n");
 			exit(1);
 	}
 }
@@ -2441,7 +2441,7 @@ if(bullet->move_flag == 0)
 
 Начнем перемещать пулю в этом направлении:
 @d bullet_reimu_first_action move bullet @{
-bullet_move_to_point(bd, bullet->move_x, -30);
+bullet_move_to(bd, bullet_move_to_up);
 @}
 
 Уничтожим пулю когда она выйдет за пределы экрана:
@@ -2552,7 +2552,7 @@ void damage_calculate(void) {
 @}
 
 Функция перебирает всех персонажей, перебирает все пули,
-передаёт хитбоксы пурсонажей внутрь функции проверки пересечения пули,
+передаёт хитбоксы персонажей внутрь функции проверки пересечения пули,
 фукнция пересечения возвращает истину или ложь, мы проверяем особые случаи повреждения и
 отнимаем у персонажа сколько нужно жизней:
 @d damage_calculate body @{
@@ -3155,6 +3155,349 @@ int timer_calc(int time) {
 
 =========================================================
 
+Бонусы.
+
+После гигантского временнОго промежутка, продолжаю писать. Поэтому более
+категорично относится к ошибкам.
+
+Что можно сказать о бонусах?
+	1)Они появляются за пределами экрана или на месте убитых монстров;
+	2)Они самостоятельно исчезают попав за край экрана;
+	3)Есть специальная линия на экране достигнув которой главный персонаж собирает
+все бонусы;
+	4)Про уничтожение бонусов я не помню, надо уточнить это;
+	5)Скрипты не оказывают влияния на бонусы, и поэтому им не нужен id.
+	6)После появления бонусы летят вверх, потому начинаю лететь вниз. А после пересечения
+спецлинии по параболе к главному персонажу.
+
+Отсутствие id делает бонусы похожими на пули.
+
+@o bonuses.h @{
+@<Bonus public macros@>
+@<Bonus public structs@>
+@<Bonus public prototypes@>
+@}
+
+@o bonuses.c @{
+#include <stdio.h>
+#include <stdlib.h>
+#include <math.h>
+
+#include "bonuses.h"
+#include "os_specific.h"
+#include "const.h"
+#include "player.h"
+
+@<Bonus private macros@>
+@<Bonus private structs@>
+@<Bonus private prototypes@>
+@<Bonus functions@>
+@}
+
+Структура для хранения бонусов:
+
+@d Bonus public structs @{
+typedef struct {
+	int x;
+	int y;
+	int type;
+	int is_noempty;
+	@<Bonuses params@>
+} BonusList;
+@}
+
+x, y - координаты бонуса;
+type - тип бонуса;
+is_noempty - занятость слота; если не ноль, то занят.
+
+Массив бонусов:
+@d Bonus public structs @{
+extern BonusList bonuses[BONUS_LIST_LEN];
+@}
+
+@d Bonus private structs @{
+BonusList bonuses[BONUS_LIST_LEN];
+@}
+
+BONUS_LIST_LEN - максимальное количество бонусов
+
+@d Bonus public macros @{
+#define BONUS_LIST_LEN 2048
+@}
+
+Типы бонусов:
+@d Bonus public structs @{
+enum {
+	bonus_small_score,
+	bonus_medium_score,
+	bonus_power,
+	@<Bonus types@>
+};
+@}
+Бонусы дающие очки и бонус увеличивающий мощность.
+
+Функция создания бонуса добавляющего немного очков:
+@d Bonus functions @{
+void bonus_small_score_create(int x, int y) {
+	BonusList *bonus = bonus_get_free_cell();
+
+	bonus->x = x;
+	bonus->y = y;
+	bonus->move_percent = 0;
+	bonus->move_step = 0;
+	bonus->type = bonus_small_score;
+}
+@}
+
+@d Bonus public prototypes @{
+void bonus_small_score_create(int x, int y);
+@}
+
+
+bonus_get_free_cell - функция возвращающая свободный дескриптор.
+Она устанавливает флаг is_noempty.
+@d Bonus functions @{
+static BonusList *bonus_get_free_cell(void) {
+	int i;
+
+	for(i = 0; i < BONUS_LIST_LEN; i++)
+		if(bonuses[i].is_noempty == 0) {
+			bonuses[i].is_noempty = 1;
+			return &bonuses[i];
+		}
+
+	fprintf(stderr, "\nBonus list is full\n");
+	exit(1);
+}
+@}
+
+@d Bonus private prototypes @{@-
+static BonusList *bonus_get_free_cell(void);
+@}
+
+Поведение бонусов:
+
+@d Bonus public prototypes @{@-
+void bonuses_action(void);
+@} 
+
+@d Bonus functions @{
+@<Bonus action helpers@>
+@<Bonus actions@>
+
+void bonuses_action(void) {
+	int i;
+
+	for(i = 0; i < BONUS_LIST_LEN; i++) {
+		BonusList *bonus = &bonuses[i];
+
+		@<Skip cycle if bonus slot empty@>
+
+		switch(bonus->type) {
+			case bonus_small_score:
+				bonus_small_score_action(i);
+				break;
+			case bonus_medium_score:
+				//bonus_medium_score_action(i);
+				bonus_small_score_action(i);
+				break;
+			case bonus_power:
+				//bonus_power_action(i);
+				bonus_small_score_action(i);
+				break;
+			@<bonuses_action other bonuses@>
+			default:
+				fprintf(stderr, "\nUnknown bonus\n");
+				exit(1);
+		}
+	}
+}
+@}
+
+Пропустим один цикл for, если ячейка для бонуса пуста:
+@d Skip cycle if bonus slot empty @{@-
+if(bonus->is_noempty == 0)
+	continue;
+@}
+
+Конкретные функции действия пуль.
+@d Bonus actions @{
+static void bonus_small_score_action(int bd) {
+	BonusList *bonus = &bonuses[bd];
+
+	@<bonus_small_score_action move up@>
+	@<bonus_small_score_action move down@>
+	@<bonus_small_score_action remove@>
+}
+@}
+Как и обговаривалось ранее, пуля летит вверх(всё медленнее), потом вниз,
+а потом её удаляют из списка.
+
+Добавим с структуру бонусов два вспомогательных параметра:
+@d Bonuses params @{@-
+	int move_percent;
+	int move_step;
+@}
+move_percent - процент пути который осталось пройти. В конце пути равен 0.
+move_step - тип совершаемого действия, нужен для совершения сложного движения.
+
+При создании бонуса нужно обнулять оба параметра move_percent и move_step.
+
+@d bonus_small_score_action move up @{@-
+if(bonus->move_step == 0) {
+	bonus_move_to_slower(bd, bonus->move_x, bonus->move_y-20);
+
+	if(bonus->move_percent == 0)
+		bonus->move_step = 1;
+}
+@}
+bonus_move_to_slower - двигаться в направлении с замедлением.
+
+@d bonus_small_score_action move down @{
+if(bonus->move_step == 1) {
+	bonus_move_to_direction(bd, bonus_move_to_down);
+
+	if(bonus->move_percent == 0)
+		bonus->move_step = 2;
+}
+@}
+
+@d bonus_small_score_action remove @{
+if(bonus->x < -25 || bonus->x > GAME_FIELD_W + 25 ||
+	bonus->y < -25 || bonus->y > GAME_FIELD_H + 25)
+	bonus->is_noempty = 0;
+@}
+
+
+
+@d Bonuses params @{
+	int move_x;
+	int move_y;
+
+	int speed;
+
+	int time_point_for_movement_to_x;
+	int time_point_for_movement_to_y;
+@}
+move_x, move_y - точки куда перемещается бонус.
+speed - скорость перемещения(0 - нормальная, 100 - максимальная)
+time_point_for_movement_to_x, time_point_for_movement_to_y - очки перемещения,
+				перемещение возможно, если этот параметр равен 0.
+
+Напишем функцию востанавливающую time points:
+@d Bonus functions @{
+@<Set weak time points for concrete bonuses@>
+static void bonus_set_weak_time_point_x(int bd) {
+	switch(bonuses[bd].type) {
+		case bonus_small_score:
+			bonus_small_score_set_weak_time_point_x(bd);
+			break;
+		case bonus_medium_score:
+			//bonus_medium_score_set_weak_time_point_x(bd);
+			bonus_small_score_set_weak_time_point_x(bd);
+			break;
+		case bonus_power:
+			//bonus_power_score_set_weak_time_point_x(bd);
+			bonus_small_score_set_weak_time_point_x(bd);
+			break;
+		@<bonus_set_weak_time_point_x other bonuses@>
+		default:
+			fprintf(stderr, "\nUnknown bonus\n");
+			exit(1);
+	}
+}
+
+static void bonus_set_weak_time_point_y(int bd) {
+	switch(bonuses[bd].type) {
+		case bonus_small_score:
+			bonus_small_score_set_weak_time_point_y(bd);
+			break;
+		case bonus_medium_score:
+			bonus_small_score_set_weak_time_point_y(bd);
+			break;
+		@<bonus_set_weak_time_point_x other bonuses@>
+		default:
+			fprintf(stderr, "\nUnknown bonus\n");
+			exit(1);
+	}
+}
+@}
+
+@d Set weak time points for concrete bonuses @{
+static void bonus_small_score_set_weak_time_point_x(int bd) {
+	BonusList *b = &bonuses[bd];
+	b->time_point_for_movement_to_x = 20 - (b->speed / 10);
+}
+
+static void bonus_small_score_set_weak_time_point_y(int bd) {
+	BonusList *b = &bonuses[bd];
+	b->time_point_for_movement_to_y = 20 - (b->speed / 10);
+}
+@}
+
+@d Bonus functions @{
+void bonuses_update_all_time_points(void) {
+	int i;
+
+	for(i = 0; i < BONUS_LIST_LEN; i++) {
+		BonusList *bonus = &bonuses[i];
+
+		@<Skip cycle if bonus slot empty@>
+
+		if(bonus->time_point_for_movement_to_x > 0)
+			bonus->time_point_for_movement_to_x--;
+
+		if(bonus->time_point_for_movement_to_y > 0)
+			bonus->time_point_for_movement_to_y--; 
+	}
+}
+@}
+
+@d Bonus public prototypes @{@-
+void bonuses_update_all_time_points(void);
+@}
+
+Напишем функцию для движения с замедлением.
+@d Bonus functions @{
+static void bonus_move_to_direction(int bd, int move_to) {
+	BonusList *bonus = &bonuses[bd];
+
+	if(bonus->time_point_for_movement_to_x == 0) {
+		if(move_to == bonus_move_to_left) {
+			bonus_set_weak_time_point_x(bd);
+			bonus->x--;
+		}
+		else if(move_to == bonus_move_to_right) {
+			bonus_set_weak_time_point_x(bd);
+			bonus->x++;
+		}
+	}
+
+	if(bonus->time_point_for_movement_to_y == 0) {
+		if(move_to == bonus_move_to_up) {
+			bonus_set_weak_time_point_y(bd);
+			bonus->y--;
+		}
+		else if(move_to == bonus_move_to_down) {
+			bonus_set_weak_time_point_y(bd);
+			bonus->y++;
+		}
+	}
+}
+@}
+
+@d Bonus private prototypes @{@-
+static void bonus_move_to_direction(int bd, int move_to);
+@}
+
+@d Bonus private structs @{
+enum {
+	bonus_move_to_left, bonus_move_to_right, bonus_move_to_up, bonus_move_to_down
+};
+@}
+
+
+=========================================================
 
 Основной файл игры:
 
