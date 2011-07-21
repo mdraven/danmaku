@@ -1862,6 +1862,7 @@ int player_players;
 #include "player.h"
 
 @<Bullet private macros@>
+@<BulletList struct@>
 @<Bullet private structs@>
 @<Bullet private prototypes@>
 @<Bullet functions@>
@@ -1869,7 +1870,7 @@ int player_players;
 
 Структура для хранения пуль:
 
-@d Bullet public structs @{
+@d BulletList struct @{
 typedef struct {
 	int x;
 	int y;
@@ -2418,7 +2419,7 @@ void bullet_player_reimu_first_create(void);
 @}
 
 Добавим тип пули:
-@d Bullet types @{
+@d Bullet types @{@-
 bullet_reimu_first,
 @}
 
@@ -2451,7 +2452,7 @@ if(bullet->y < -25)
 @}
 
 Добавим функцию поведения пули в диспетчер:
-@d bullets_action other bullets @{
+@d bullets_action other bullets @{@-
 case bullet_reimu_first:
 	bullet_reimu_first_action(i);
 	break;
@@ -2533,6 +2534,7 @@ void damage_calculate(void);
 
 #include "damage.h"
 
+@<BulletList struct@>
 void damage_calculate(void) {
 	@<damage_calculate body@>
 }
@@ -3158,7 +3160,7 @@ int timer_calc(int time) {
 Бонусы.
 
 После гигантского временнОго промежутка, продолжаю писать. Поэтому более
-категорично относится к ошибкам.
+категорично относится к ошибкам.(тут вообще смесь кода из bullet и character)
 
 Что можно сказать о бонусах?
 	1)Они появляются за пределами экрана или на месте убитых монстров;
@@ -3599,6 +3601,76 @@ enum {
 @}
 
 
+@d Bonus public prototypes @{@-
+void bonuses_draw(void);
+@}
+
+@d Bonus functions @{
+@<Concrete functions for bonuses drawing@>
+void bonuses_draw(void) {
+	int i;
+
+	for(i = 0; i < BONUS_LIST_LEN; i++) {
+		BonusList *bonus = &bonuses[i];
+
+		@<Skip cycle if bonus slot empty@>
+
+		switch(bonus->type) {
+			case bonus_small_score:
+				bonus_small_score_draw(i);
+				break;
+			case bonus_medium_score:
+				bonus_medium_score_draw(i);
+				break;
+			case bonus_power:
+				bonus_power_draw(i);
+				break;
+			@<bonuses_draw other bonuses@>
+			default:
+				fprintf(stderr, "\nUnknown bonus\n");
+				exit(1);
+		}
+	}
+}
+@}
+
+@d Concrete functions for bonuses drawing @{
+static void bonus_small_score_draw(int bd) {
+	static int id = -1;
+
+	if(id == -1)
+		id = image_load("bonus_small_score.png");
+
+	image_draw_center(id,
+		GAME_FIELD_X + bonuses[bd].x,
+		GAME_FIELD_Y + bonuses[bd].y,
+		0, 0.3);
+}
+
+static void bonus_medium_score_draw(int bd) {
+	static int id = -1;
+
+	if(id == -1)
+		id = image_load("bonus_medium_score.png");
+
+	image_draw_center(id,
+		GAME_FIELD_X + bonuses[bd].x,
+		GAME_FIELD_Y + bonuses[bd].y,
+		0, 0.3);
+}
+
+static void bonus_power_draw(int bd) {
+	static int id = -1;
+
+	if(id == -1)
+		id = image_load("bonus_power.png");
+
+	image_draw_center(id,
+		GAME_FIELD_X + bonuses[bd].x,
+		GAME_FIELD_Y + bonuses[bd].y,
+		0, 0.3);
+}
+@}
 =========================================================
 
 Основной файл игры:
@@ -3745,22 +3817,22 @@ if(main_timer_time_points == 0) {
 @}
 
 Рисуем задник:
-@d Draw backgrounds @{
+@d Draw backgrounds @{@-
 background_draw();
 @}
 
 Отрисовка всех персонажей:
-@d Draw characters @{
+@d Draw characters @{@-
 characters_draw();
 @}
 
 Отрисовка главного персонажа:
-@d Draw player @{
+@d Draw player @{@-
 player_draw();
 @}
 
 Отрисовка пуль:
-@d Draw bullets @{
+@d Draw bullets @{@-
 bullets_draw();
 @}
 
