@@ -748,7 +748,7 @@ void character_reimu_create(int cd) {
 player_coord_x, player_coord_y - глобальные координаты игрока.
 radius - радиус хитбокса.
 
-@d Character public prototypes @{
+@d Character public prototypes @{@-
 void character_reimu_create(int cd);
 @}
 
@@ -771,7 +771,7 @@ void character_marisa_create(int cd) {
 }
 @}
 
-@d Character public prototypes @{
+@d Character public prototypes @{@-
 void character_marisa_create(int cd);
 @}
 
@@ -917,7 +917,7 @@ characters_update_all_time_points нужно вызывать в конце
 всех персонажей, те после определённого количества вызовов этой функции,
 персонажы смогут сделать один ход.
 
-@d Character public prototypes @{
+@d Character public prototypes @{@-
 void characters_update_all_time_points(void);
 @}
 
@@ -980,7 +980,7 @@ void characters_ai_control(void) {
 }
 @}
 
-@d Character public prototypes @{
+@d Character public prototypes @{@-
 void characters_ai_control(void);
 @}
 
@@ -1216,7 +1216,7 @@ void characters_draw(void) {
 }
 @}
 
-@d Character public prototypes @{
+@d Character public prototypes @{@-
 void characters_draw(void);
 @}
 
