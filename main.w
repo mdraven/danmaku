@@ -662,7 +662,7 @@ int is_rad_collide(int x1, int y1, int r1, int x2, int y2, int r2) {
 
 
 Опишем структуру персонажа:
-@d CharacterList struct @{
+@d Character public structs @{
 #define CHARACTER_LIST_LEN 2040
 
 typedef struct {
@@ -675,9 +675,7 @@ typedef struct {
 	int time_point_for_movement_to_y;
 	@<Character struct param@>
 } CharacterList;
-@}
 
-@d CharacterList extern @{
 extern CharacterList characters[CHARACTER_LIST_LEN];
 extern int characters_pos;
 @}
@@ -708,7 +706,6 @@ characters_pos вершина стека
 #include "bullets.h"
 #include "timers.h"
 
-@<CharacterList struct@>
 CharacterList characters[CHARACTER_LIST_LEN];
 int characters_pos;
 
@@ -724,7 +721,7 @@ int characters_pos;
 Функции создания персонажей.
 
 Типы персонажей:
-@d CharacterList struct @{
+@d Character public structs @{
 enum {
 	character_reimu, character_marisa, @<Character types@>
 };
@@ -1864,15 +1861,13 @@ int player_players;
 #include "player.h"
 
 @<Bullet private macros@>
-@<BulletList struct@>
-@<BulletList len@>
 @<Bullet private structs@>
 @<Bullet private prototypes@>
 @<Bullet functions@>
 @}
 
 Структура для хранения пуль:
-@d BulletList struct @{
+@d Bullet public structs @{
 typedef struct {
 	int x;
 	int y;
@@ -1889,7 +1884,7 @@ bullet_type - тип
 is_noempty - не пустая ячейка для пули. Если флаг установлен, то эта ячейка занята.
 
 Массив пуль:
-@d BulletList extern structs @{
+@d Bullet public structs @{
 extern BulletList bullets[BULLET_LIST_LEN];
 @}
 
@@ -1899,13 +1894,13 @@ BulletList bullets[BULLET_LIST_LEN];
 
 BULLET_LIST_LEN - максимальное количество пуль
 
-@d BulletList len @{
+@d Bullet public macros @{
 #define BULLET_LIST_LEN 2048
 @}
 
 
 Типы пуль:
-@d BulletList struct @{
+@d Bullet public structs @{
 enum {
 	bullet_white,
 	bullet_red,
@@ -2535,12 +2530,6 @@ void damage_calculate(void);
 @<Damage header@>
 
 #include "damage.h"
-
-@<BulletList struct@>
-@<BulletList len@>
-@<BulletList extern structs@>
-@<CharacterList struct@>
-@<CharacterList extern@>
 
 void damage_calculate(void) {
 	@<damage_calculate body@>
