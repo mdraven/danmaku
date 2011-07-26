@@ -3353,6 +3353,8 @@ if(bonus->is_noempty == 0)
 static void bonus_small_score_action(int bd) {
 	BonusList *bonus = &bonuses[bd];
 
+	@<bonus_small_score_action move to player@>
+
 	@<bonus_small_score_action move up@>
 	@<bonus_small_score_action move down@>
 	@<bonus_small_score_action remove@>
@@ -3360,6 +3362,8 @@ static void bonus_small_score_action(int bd) {
 @}
 Как и обговаривалось ранее, пуля летит вверх(всё медленнее), потом вниз,
 а потом её удаляют из списка.
+@<bonus_small_score_action move to player@> - будет описан ниже,
+он описывает движение бонуса к игроку, когда он встал на спецлинию.
 
 Добавим с структуру бонусов два вспомогательных параметра:
 @d Bonuses params @{@-
@@ -3793,7 +3797,9 @@ void move_visible_bonuses(void) {
 @d Bonuses params @{@-
 int move_to_player;
 @}
-Флаг нужно обнулять в конструкторе и обрабатывать в функции движения(i.e.:bonuses_action).
+Флаг нужно обнулять в конструкторе и обрабатывать в функции движения(i.e.:bonuses_action),
+когда move_to_player установлен, то move_step начинает использоваться особым образом, об этом
+ниже. Поэтому следует обнулять move_step при установке move_to_player.
 
 Реализация для бонуса дающего очки:
 @d get_bonuses all other bonuses' gets @{@-
@@ -3817,6 +3823,7 @@ case bonus_medium_score:
 case bonus_small_score:
 case bonus_medium_score:
 	bonus->move_to_player = 1;
+	bonus->move_step = 0;
 	break;
 @}
 
@@ -3841,8 +3848,32 @@ case bonus_power:
 @d move_visible_bonuses all other bonuses' gets @{
 case bonus_power:
 	bonus->move_to_player = 1;
+	bonus->move_step = 0;
 	break;
 @}
+
+Добавим в функцию bonus_small_score_action реакцию на установленный флаг move_to_player:
+@d bonus_small_score_action move to player @{@-
+if(bonus->move_to_player == 1) {
+	if(bonus->move_step == 500)
+		bonus->move_step = 0;
+	if(bonus->move_step == 0) {
+		bonus->speed = 0;
+		bonus->move_percent = 0;
+		bonus->move_x = player_x;
+		bonus->move_y = player_y;
+	}
+
+	bonus_move_to(bd, bonus->move_x, bonus->move_y);
+
+	bonus->move_step++;
+	return;
+}
+@}
+Мы используем move_step как счётчик, когда он достигает 500 мы направляем бонус в новую
+позицию игрока. Такие сложности нужны потому что из-за особенностей реализации алгоритма
+движения по линии, движения персонажа будут грубы из-за постоянной смены конечной точки.
+
 
 =========================================================
 
@@ -3890,7 +3921,7 @@ int main(void) {
 		int i;
 		for(i = main_character_blue_moon_fairy1; i <= main_character_blue_moon_fairy10; i++) {
 			character_blue_moon_fairy_create(i, 30*i, 10);
-			characters[i].is_sleep = 0;
+			//characters[i].is_sleep = 0;
 		}
 		characters_pos = main_character_blue_moon_fairy10 + 1;
 
@@ -3904,7 +3935,7 @@ int main(void) {
 				bullet_red_create(100+i*10, 100+j*10);
 	}*/
 
-	bonus_power_create(180, 180);
+	bonus_power_create(10, 180);
 
 	background_set_type(background_forest);
 
