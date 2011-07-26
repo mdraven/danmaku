@@ -1332,7 +1332,7 @@ void character_blue_moon_fairy_create(int cd, int x, int y) {
 @}
 radius - радиус хитбокса.
 
-@d Character public prototypes @{
+@d Character public prototypes @{@-
 void character_blue_moon_fairy_create(int cd, int x, int y);
 @}
 
@@ -1566,12 +1566,14 @@ void player_select_team(int team) {
 Используем свойство, что первый персонаж в команде имеет номер *2 от номера команды.
 Обновим радиус хитбокса.
 
-Функция проверяет тип персонажа и устанавливает нужный радиус хитбокса:
+Функция проверяет тип персонажа и устанавливает нужный радиус хитбокса и радиус сбора
+бонусов:
 @d Player private prototypes @{
 static void player_update_hitbox_radius(void) {
 	switch(player_type) {
 		case player_reimu:
 			player_radius = 10;
+			player_get_radius = 20;
 			break;
 		default:
 			fprintf(stderr, "\nUnknown player type\n");
@@ -1580,13 +1582,15 @@ static void player_update_hitbox_radius(void) {
 }
 @}
 
-Радиус хитбокса:
+Радиус хитбокса и радиус сбора бонусов:
 @d Player public structs @{
 extern int player_radius;
+extern int player_get_radius;
 @}
 
 @d Player private structs @{
 int player_radius;
+int player_get_radius;
 @}
 
 
@@ -1670,7 +1674,7 @@ static int player_time_point_first_fire;
 чтобы он начал отсчёт до следующего выстрела:
 @d player_fire set weak time point @{
 if(player_time_point_first_fire == 0)
-	player_time_point_first_fire = 180;
+	player_time_point_first_fire = 80;
 @}
 
 
@@ -2458,11 +2462,11 @@ case bullet_reimu_first:
 Функции для установки очков времени для пули:
 @d Set weak time points for concrete bullets @{
 static void bullet_reimu_first_set_weak_time_point_x(int bd) {
-	bullets[bd].time_point_for_movement_to_x = 3;
+	bullets[bd].time_point_for_movement_to_x = 1;
 }
 
 static void bullet_reimu_first_set_weak_time_point_y(int bd) {
-	bullets[bd].time_point_for_movement_to_y = 3;
+	bullets[bd].time_point_for_movement_to_y = 1;
 }
 @}
 
@@ -3185,6 +3189,7 @@ int timer_calc(int time) {
 #include "os_specific.h"
 #include "const.h"
 #include "player.h"
+#include "collision.h"
 
 @<Bonus private macros@>
 @<Bonus private structs@>
@@ -3234,7 +3239,7 @@ enum {
 @}
 Бонусы дающие очки и бонус увеличивающий мощность.
 
-Функция создания бонуса добавляющего немного очков:
+Функции создания бонусов:
 @d Bonus functions @{
 void bonus_small_score_create(int x, int y) {
 	BonusList *bonus = bonus_get_free_cell();
@@ -3243,12 +3248,37 @@ void bonus_small_score_create(int x, int y) {
 	bonus->y = y;
 	bonus->move_percent = 0;
 	bonus->move_step = 0;
+	bonus->move_to_player = 0;
 	bonus->type = bonus_small_score;
+}
+
+void bonus_medium_score_create(int x, int y) {
+	BonusList *bonus = bonus_get_free_cell();
+
+	bonus->x = x;
+	bonus->y = y;
+	bonus->move_percent = 0;
+	bonus->move_step = 0;
+	bonus->move_to_player = 0;
+	bonus->type = bonus_medium_score;
+}
+
+void bonus_power_create(int x, int y) {
+	BonusList *bonus = bonus_get_free_cell();
+
+	bonus->x = x;
+	bonus->y = y;
+	bonus->move_percent = 0;
+	bonus->move_step = 0;
+	bonus->move_to_player = 0;
+	bonus->type = bonus_power;
 }
 @}
 
 @d Bonus public prototypes @{@-
 void bonus_small_score_create(int x, int y);
+void bonus_medium_score_create(int x, int y);
+void bonus_power_create(int x, int y);
 @}
 
 
@@ -3343,20 +3373,23 @@ move_step - тип совершаемого действия, нужен для 
 
 @d bonus_small_score_action move up @{@-
 if(bonus->move_step == 0) {
-	bonus_move_to_slower(bd, bonus->move_x, bonus->move_y-20);
+	bonus->move_x = bonus->x;
+	bonus->move_y = bonus->y - 40;
+	bonus->move_step = 1;
+}
+
+if(bonus->move_step == 1) {
+	bonus_move_to_slower(bd, bonus->move_x, bonus->move_y);
 
 	if(bonus->move_percent == 0)
-		bonus->move_step = 1;
+		bonus->move_step = 2;
 }
 @}
 bonus_move_to_slower - двигаться в направлении с замедлением.
 
 @d bonus_small_score_action move down @{
-if(bonus->move_step == 1) {
+if(bonus->move_step == 2) {
 	bonus_move_to_direction(bd, bonus_move_to_down);
-
-	if(bonus->move_percent == 0)
-		bonus->move_step = 2;
 }
 @}
 
@@ -3411,6 +3444,11 @@ static void bonus_set_weak_time_point_y(int bd) {
 			bonus_small_score_set_weak_time_point_y(bd);
 			break;
 		case bonus_medium_score:
+			//bonus_medium_score_set_weak_time_point_y(bd);
+			bonus_small_score_set_weak_time_point_y(bd);
+			break;
+		case bonus_power:
+			//bonus_power_score_set_weak_time_point_y(bd);
 			bonus_small_score_set_weak_time_point_y(bd);
 			break;
 		@<bonus_set_weak_time_point_x other bonuses@>
@@ -3424,12 +3462,12 @@ static void bonus_set_weak_time_point_y(int bd) {
 @d Set weak time points for concrete bonuses @{
 static void bonus_small_score_set_weak_time_point_x(int bd) {
 	BonusList *b = &bonuses[bd];
-	b->time_point_for_movement_to_x = 20 - (b->speed / 10);
+	b->time_point_for_movement_to_x = 5 - (b->speed / 30);
 }
 
 static void bonus_small_score_set_weak_time_point_y(int bd) {
 	BonusList *b = &bonuses[bd];
-	b->time_point_for_movement_to_y = 20 - (b->speed / 10);
+	b->time_point_for_movement_to_y = 5 - (b->speed / 30);
 }
 @}
 
@@ -3664,9 +3702,148 @@ static void bonus_power_draw(int bd) {
 	image_draw_center(id,
 		GAME_FIELD_X + bonuses[bd].x,
 		GAME_FIELD_Y + bonuses[bd].y,
-		0, 0.3);
+		0, 0.5);
 }
 @}
+
+Эту функцию вызывают в цикле для сброра бонусов:
+@d Bonus public prototypes @{@-
+void get_bonuses(void);
+@}
+
+@d Bonus functions @{
+void get_bonuses(void) {
+	int i;
+
+	for(i = 0; i < BONUS_LIST_LEN; i++) {
+		BonusList *bonus = &bonuses[i];
+
+		if(bonus->is_noempty == 0)
+			continue;
+
+		switch(bonus->type) {
+			@<get_bonuses all other bonuses' gets@>
+			default:
+				fprintf(stderr, "\nUnknown bonus\n");
+				exit(1);
+		}
+	}
+}
+@}
+
+Теперь напишем функцию которая будет вызваться когда необходимо
+собрать все видимые бонусы:
+@d Bonus public prototypes @{@-
+void get_visible_bonuses(void);
+@}
+
+@d Bonus functions @{
+void get_visible_bonuses(void) {
+	int i;
+
+	for(i = 0; i < BONUS_LIST_LEN; i++) {
+		BonusList *bonus = &bonuses[i];
+
+		if(bonus->is_noempty == 0)
+			continue;
+
+		if(bonus->x < 0 || bonus->y < 0 ||
+			bonus->x > GAME_FIELD_W || bonus->y < GAME_FIELD_H)
+			continue;
+
+		switch(bonus->type) {
+			@<get_visible_bonuses all other bonuses' gets@>
+			default:
+				fprintf(stderr, "\nUnknown bonus\n");
+				exit(1);
+		}
+	}
+}
+@}
+
+Функция сбора бонусов при достижении линии:
+@d Bonus public prototypes @{@-
+void move_visible_bonuses(void);
+@}
+Устанавливает видимым бонусам флаг движения:
+@d Bonus functions @{
+void move_visible_bonuses(void) {
+	int i;
+
+	for(i = 0; i < BONUS_LIST_LEN; i++) {
+		BonusList *bonus = &bonuses[i];
+
+		if(bonus->is_noempty == 0)
+			continue;
+
+		if(bonus->x < 0 || bonus->y < 0 ||
+			bonus->x > GAME_FIELD_W || bonus->y < GAME_FIELD_H)
+			continue;
+
+		switch(bonus->type) {
+			@<move_visible_bonuses all other bonuses' gets@>
+			default:
+				fprintf(stderr, "\nUnknown bonus\n");
+				exit(1);
+		}
+	}
+}
+@}
+
+@d Bonuses params @{@-
+int move_to_player;
+@}
+Флаг нужно обнулять в конструкторе и обрабатывать в функции движения(i.e.:bonuses_action).
+
+Реализация для бонуса дающего очки:
+@d get_bonuses all other bonuses' gets @{@-
+case bonus_small_score:
+case bonus_medium_score:
+	if(is_rad_collide(player_x, player_y, player_get_radius,
+			bonus->x, bonus->y, 5) == 0)
+		break;
+	bonus->is_noempty = 0;
+	break;
+@}
+
+@d get_visible_bonuses all other bonuses' gets @{@-
+case bonus_small_score:
+case bonus_medium_score:
+	bonus->is_noempty = 0;
+	break;
+@}
+
+@d move_visible_bonuses all other bonuses' gets @{
+case bonus_small_score:
+case bonus_medium_score:
+	bonus->move_to_player = 1;
+	break;
+@}
+
+Реализация для бонуса дающего power:
+@d get_bonuses all other bonuses' gets @{@-
+case bonus_power:
+	if(is_rad_collide(player_x, player_y, player_get_radius,
+			bonus->x, bonus->y, 5) == 0)
+		break;
+	bonus->is_noempty = 0;
+	player_powers++;
+	break;
+@}
+
+@d get_visible_bonuses all other bonuses' gets @{@-
+case bonus_power:
+	bonus->is_noempty = 0;
+	player_powers++;
+	break;
+@}
+
+@d move_visible_bonuses all other bonuses' gets @{
+case bonus_power:
+	bonus->move_to_player = 1;
+	break;
+@}
+
 =========================================================
 
 Основной файл игры:
@@ -3683,6 +3860,7 @@ static void bonus_power_draw(int bd) {
 #include "timers.h"
 #include "damage.h"
 #include "player.h"
+#include "bonuses.h"
 #include "const.h"
 //#include "backgrounds.h"
 
@@ -3726,6 +3904,8 @@ int main(void) {
 				bullet_red_create(100+i*10, 100+j*10);
 	}*/
 
+	bonus_power_create(180, 180);
+
 	background_set_type(background_forest);
 
 	@<Main cycle@>
@@ -3743,8 +3923,10 @@ while(1) {
 	@<Computer movements@>
 	@<Bullet movements@>
 	@<Player movements@>
+	@<Bonus movements@>
 	@<Player press fire button@>
 	@<Damage calculate@>
+	@<Get bonuses@>
 	@<Game menu@>
 	@<Get processor time to OS@>
 }
@@ -3766,6 +3948,7 @@ if(main_timer_frame == 0) {
 	frames++;
 
 	@<Draw backgrounds@>
+	@<Draw bonuses@>
 	@<Draw bullets@>
 	@<Draw characters@>
 	@<Draw player@>
@@ -3788,10 +3971,11 @@ if(main_timer_time_points == 0) {
 	characters_update_all_time_points();
 	player_update_all_time_points();
 	bullets_update_all_time_points();
+	bonuses_update_all_time_points();
 }
 @}
-Функции characters_update_all_time_points, player_update_all_time_points
-и bullets_update_all_time_points вызываются раз в ~1 мс.
+Функции characters_update_all_time_points, player_update_all_time_points,
+bullets_update_all_time_points и bonuses_update_all_time_points вызываются раз в ~1 мс.
 
 
 Добавим таймер для FPS.
@@ -3830,6 +4014,11 @@ player_draw();
 Отрисовка пуль:
 @d Draw bullets @{@-
 bullets_draw();
+@}
+
+Отрисовка бонусов:
+@d Draw bonuses @{@-
+bonuses_draw();
 @}
 
 Обновление экрана:
@@ -3879,6 +4068,11 @@ characters_ai_control();
 bullets_action();
 @}
 
+Перемещение бонусов:
+@d Bonus movements @{
+bonuses_action();
+@}
+
 Обновим таймеры:
 @d Update timers @{
 timer_get_time();
@@ -3887,6 +4081,11 @@ timer_get_time();
 Подсчитаем повреждения от пуль:
 @d Damage calculate @{
 damage_calculate();
+@}
+
+Собираем бонусы:
+@d Get bonuses @{
+get_bonuses();
 @}
 
 Отдадим процессору немного времени:
