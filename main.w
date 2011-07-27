@@ -3096,7 +3096,6 @@ typedef struct {
 
 #include "const.h"
 //#include "os_specific.h"
-//#include "backgrounds.h"
 
 @<Background private structs@>
 @<Background private prototypes@>
@@ -3926,7 +3925,6 @@ if(bonus->move_to_player == 1) {
 #include "player.h"
 #include "bonuses.h"
 #include "const.h"
-//#include "backgrounds.h"
 
 @<Main functions@>
 @}
