@@ -3752,7 +3752,7 @@ void get_visible_bonuses(void) {
 			continue;
 
 		if(bonus->x < 0 || bonus->y < 0 ||
-			bonus->x > GAME_FIELD_W || bonus->y < GAME_FIELD_H)
+			bonus->x > GAME_FIELD_W || bonus->y > GAME_FIELD_H)
 			continue;
 
 		switch(bonus->type) {
@@ -3781,7 +3781,7 @@ void move_visible_bonuses(void) {
 			continue;
 
 		if(bonus->x < 0 || bonus->y < 0 ||
-			bonus->x > GAME_FIELD_W || bonus->y < GAME_FIELD_H)
+			bonus->x > GAME_FIELD_W || bonus->y > GAME_FIELD_H)
 			continue;
 
 		switch(bonus->type) {
@@ -3935,7 +3935,7 @@ int main(void) {
 				bullet_red_create(100+i*10, 100+j*10);
 	}*/
 
-	bonus_power_create(10, 180);
+	bonus_power_create(50, 100);
 
 	background_set_type(background_forest);
 
