@@ -41,6 +41,12 @@
 @}
 Лучше помещать эти константы в функции вырисовки, а не в алгоритмы.
 
+Константа для линии на которой лежат бонусы:
+@d const.h game field coodinate @{
+#define GAME_BONUS_LINE 180
+@}
+Отсчитывается от 0, а не от GAME_FIELD_Y.
+
 ===========================================================
 
 Набор функция для работы с окном(создание, рисование...).
@@ -1842,8 +1848,31 @@ int player_players;
 @d Player private macros @{
 #include "os_specific.h"
 #include "const.h"
+#include "bonuses.h"
 @}
 
+Сбор бонусов при достижении линии:
+@d Player public prototypes @{
+void player_bonus_line(void);
+@}
+
+@d Player functions @{
+void player_bonus_line(void) {
+	switch(player_type) {
+		@<player_bonus_line players@>
+		default:
+			fprintf(stderr, "\nUnknown player type\n");
+			exit(1);
+	}
+}
+@}
+
+@d player_bonus_line players @{@-
+case player_reimu:
+	if(player_y < GAME_BONUS_LINE)
+		move_visible_bonuses();
+	break;
+@}
 ===========================================================
 
 Пули.
@@ -3822,6 +3851,8 @@ case bonus_medium_score:
 @d move_visible_bonuses all other bonuses' gets @{
 case bonus_small_score:
 case bonus_medium_score:
+	if(bonus->move_to_player == 1)
+		return;
 	bonus->move_to_player = 1;
 	bonus->move_step = 0;
 	break;
@@ -3847,6 +3878,8 @@ case bonus_power:
 
 @d move_visible_bonuses all other bonuses' gets @{
 case bonus_power:
+	if(bonus->move_to_player == 1)
+		return;
 	bonus->move_to_player = 1;
 	bonus->move_step = 0;
 	break;
@@ -4117,7 +4150,10 @@ damage_calculate();
 Собираем бонусы:
 @d Get bonuses @{
 get_bonuses();
+player_bonus_line();
 @}
+get_bonuses - собираем сами бонусы;
+player_bonus_line - проверяем бонусную линию.
 
 Отдадим процессору немного времени:
 @d Get processor time to OS @{
