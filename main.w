@@ -3909,6 +3909,219 @@ if(bonus->move_to_player == 1) {
 
 =========================================================
 
+Вывод текста в заданный бокс
+
+1) У нас должна быть функция для задания текста который будет выводится
+в бокс.
+2) Должна быть функция создающая бокс с нужными координатами, размером,
+типом шрифта(лучше всего задавать по-имени), свойствами вывода(сразу или
+побуквенно или другие). Возвращает дескириптор.
+3) Функция рисования бокса.
+
+Верхнее решение слишком сложное. Сделаем функции которые сразу рисуют текст
+в боксе нужным шрифтом. Бокс задаётся шириной и начальными координатами.
+То есть выводит не весь текст, а только одну строку.
+Есть функция, которая рисует столько символов, сколько влезет.
+Есть функция возвращает число - позицию первой буквы(не пробела)
+  слова, которое не вошло. Возможно стоит ввести комбинацию на неразрывный пробел. Сама функция не рисует.
+Придётся где-то хранить дескриптор шрифта, искать в массиве каждый раз долго :(
+
+Например мы делаем диалог персонажей:
+Как выводит текст посимвольно? Надо в главный цикл вставить функцию, которая побуквенно
+(каждый цикл добавляя букву) будет выводить строку не забывая проверять войдёт слово или нет.
+Пример:
+ string st = "long long text"
+ int pos1 = pos_last_word_of_long_string(st, 120, "font1")
+ print(st[:pos1], 0, 0, 120, "font1"))
+
+ int pos2 = pos_last_word_of_long_string(st[pos:], 120, "font1")
+ print(st[pos1:pos2], 0, 20, 120, "font1"))
+ итд
+Так мы выведем несколько строк текста.
+
+Файл шрифта задаётся так:
+В-первой строке название файла с изображением, такое, чтобы загрузить image_load.
+Во-второй строке высота символа и через пробел число символов(N).
+Далее N строк вида:
+<символ> X Y SX
+
+Добавим функцию с помощью которой можно рисовать часть картинки:
+@d os_specific functions @{
+void image_draw_corner_part(int id, int x, int y, int w, int h) {
+	ImageList *img = &image_list[id];
+
+	glLoadIdentity();
+
+	glBindTexture(GL_TEXTURE_2D, img->tex_id);
+
+	glTranslatef(x, y, 0);
+
+	glBegin(GL_QUADS);
+		glTexCoord2f(0, 0);
+		glVertex2i(0, 0);
+
+		glTexCoord2f((float)w/(float)img->w, 0);
+		glVertex2i(w, 0);
+
+		glTexCoord2f((float)w/(float)img->w, (float)h/(float)img->h);
+		glVertex2i(w, h);
+
+
+		glTexCoord2f(0, (float)h/(float)img->h);
+		glVertex2i(0, h);
+	glEnd();
+}
+@}
+
+@d os_specific public prototypes @{
+void image_draw_corner_part(int id, int x, int y, int w, int h);
+@}
+
+@o font.h @{
+@<Font public prototypes@>
+@}
+
+@o font.c @{
+#include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+#include "font.h"
+#include "os_specific.h"
+
+@<Font structs@>
+@<Font private prototypes@>
+@<Font functions@>
+@}
+
+Структура в которой хранится шрифт:
+@d Font structs @{
+#define FONT_FILE_NAME_SIZE 30
+
+typedef struct {
+	char ch;
+	int x;
+	int y;
+	int w;
+} FontChar;
+
+typedef struct {
+	char filename[FONT_FILE_NAME_SIZE];
+	int img_desc;
+	int h;
+	int num_chars;
+	FontChar *chars;
+} FontList;
+@}
+На имя файла шрифта(без полного пути) отводится FONT_FILE_NAME_SIZE.
+Один символ шрифта хранится в структуре FontChar: ch - код символа,
+(x,y,w) - его позиция и ширина в текстуре.
+img_desc - дескриптор текстуры.
+h - высота символа.
+
+@d Font structs @{
+#define FONT_LIST_LEN 24
+
+static FontList font_list[FONT_LIST_LEN];
+static int font_list_pos;
+@}
+font_list_pos - указывает на позицию, где будет записан следующий загружаемый шрифт.
+
+Скорее всего удалять chars будет операционная система, как и картинки :(
+
+
+Загрузка шрифта:
+@d Font public prototypes @{
+int load_font(char *filename);
+@}
+
+@d Font functions @{
+int load_font(char *filename) {
+	char dirname[] = "fonts/";
+	char buf[FONT_FILE_NAME_SIZE + sizeof(dirname) + 1];
+
+	strcpy(buf, dirname);
+	strcat(buf, filename);
+
+	@<load_font maybe font was loaded@>
+	@<load_font else load font@>
+}
+@}
+
+Шрифт -- не простая картинка, поэтому может быть использован в разных
+модулях. Лучше проверить грузи ли мы его. Если этот код не пригодиться,
+позже удалю:
+@d load_font maybe font was loaded @{@-
+{
+	int i;
+	for(i=0; i < font_list_pos; i++)
+		if(!strcmp(font_list[i].filename, filename))
+			return i;
+}
+@}
+
+@d load_font else load font @{@-
+{
+	FontList *font = &font_list[font_list_pos];
+	FILE *f;
+
+	f = fopen(buf, "r");
+	if(f == NULL) {
+		fprintf(stderr, "\nCann't open font file: %s\n", filename);
+		exit(1);
+	}
+
+	@<load_font load image@>
+	@<load_font load height and number of chars@>
+	@<load_font load chars' struct@>
+
+	fclose(f);
+	return font_list_pos++;
+}
+@}
+
+@d load_font load image @{@-
+{
+	char b[100];
+	if(fgets(b, sizeof(b), f) == NULL) {
+		fprintf(stderr, "\nError with reading image filename in: %s\n", filename);
+		exit(1);
+	}
+
+	font->img_desc = image_load(b);
+}
+@}
+Здесь возможен fail с именем файла > размера буфера, интересно вставит ли он \0?
+
+@d load_font load height and number of chars @{@-
+if(fscanf(f, "%d %d", &font->h, &font->num_chars) == EOF) {
+	fprintf(stderr, "\nError with reading height and number of chars in: %s\n", filename);
+	exit(1);
+}
+@}
+
+@d load_font load chars' struct @{@-
+{
+	int i;
+
+ 	font->chars = malloc(sizeof(FontChar) * font->num_chars);
+	if(font->chars == NULL) {
+		fprintf(stderr, "\nCann't allocate %d FontChar\n", font->num_chars);
+		exit(1);
+	}
+
+	for(i=0; i < font->num_chars; i++) {
+		FontChar *fc = &font->chars[i];
+		if(fscanf(f, "%c %d %d %d", &fc->ch, &fc->x, &fc->y, &fc->w) == EOF) {
+			fprintf(stderr, "\nError with reading FontChar in: %s\n", filename);
+			exit(1);
+		}
+	}
+}
+@}
+
+
+=========================================================
 Основной файл игры:
 
 @o main.c @{
