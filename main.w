@@ -4364,9 +4364,14 @@ bonuses_draw();
 
 @d Draw FPS @{@-
 {
+	static int fd = -1;
 	char buf[10];
+
+	if(fd == -1)
+		fd = load_font("big_font1.txt");
+
 	sprintf(buf, "%dfps", fps);
-	print_text(buf, 725, 570, 100, load_font("big_font1.txt"));
+	print_text(buf, 725, 570, 100, fd);
 }
 @}
 
