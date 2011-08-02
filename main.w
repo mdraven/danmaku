@@ -4185,6 +4185,224 @@ int pos_last_word_of_long_string(const char *str, int w, int fd) {
 @}
 
 =========================================================
+
+Вывод окна диалога между персонажами.
+
+1) Само окно диалога не останавливает действие игры, поэтому надо
+поставить if в функции main или у каждого *_action в отдельности;
+2) Если взять в учёт, что одновременно используется только одно окно
+диалога, то многое упрощается;
+
+Расмотрим две стороны: окно диалога(ОД) и скрипт этажа(СЭ) которое выводит в окно
+диалога информацию.
+
+СЭ: должно обнулить окно диалога; выбрать персонажей участвующих в диалоге;
+вызвать команду вывода текста, передать в неё текст, персонажа, его эмоции;
+вызывать функцию возвращающую информацию(bool) о том закончился диалог или нет;
+если закончился, то вывести следующий текст или сообщить о окончательном завершении
+диалога. Возможно стоит ввести функцию удаления из диалога.
+
+ОД: должна быть функция типа *_action для вывода текста с анимацией; должен
+быть контроль переполнения окна диалога и вывода строки "more...";
+должны быть функции для вызова обработчиком нажатия клавишь;
+ну и функция вырисовки.
+
+@o dialog.h @{
+@<Dialog public structs@>
+@<Dialog public prototypes@>
+@}
+
+@o dialog.c @{
+#include "dialog.h"
+#include "os_specific.h"
+#include "const.h"
+
+@<Dialog private structs@>
+@<Dialog private prototypes@>
+@<Dialog functions@>
+@}
+
+Персонажи:
+@d Dialog public structs @{
+enum {
+	dialog_reimu, @<Dialog other characters@>
+};
+@}
+
+Эмоции:
+@d Dialog public struct @{
+enum {
+	dialog_normal, @<Dialog other characters mood@>
+};
+@}
+Эмоции будут храниться не в матрице или дереве, а в функции вырисовки,
+которая будет индивидуальной у каждого персонажа(как и в случаях с бонусами,
+пулями и тд)
+
+Массивы персонажей с левой и правой стороны:
+@d Dialog private structs @{
+#define MAX_NUM_OF_CHARS 3
+
+typedef struct {
+	int char;
+	int position;
+	int move;
+} Side;
+
+static Side left[MAX_NUM_OF_CHARS];
+static Side right[MAX_NUM_OF_CHARS];
+
+//static int left_side[MAX_NUM_OF_CHARS];
+//static int right_side[MAX_NUM_OF_CHARS];
+
+static int left_side_point;
+static int right_side_point;
+
+//static int left_position[MAX_NUM_OF_CHARS];
+//static int right_position[MAX_NUM_OF_CHARS];
+//static int left_move[MAX_NUM_OF_CHARS];
+//static int right_move[MAX_NUM_OF_CHARS];
+@}
+MAX_NUM_OF_CHARS - максимальное число персонажей участвующих на каждой
+  из сторон;
+*_side_point - число персонажей участвующая в данном диалоге;
+left,right - список персонажей: для левой стороны персонажи идут по-порядку,
+	персонаж под номером left_side_point-1 говорит в данный момент.
+    Во время диалога персонажи переставляются в списке. В списке храняться
+	числа из enum: dialog_reimu, ...
+position - текущая позиция персонажа, для всех отчитывается от 0, а уже при вырисовке
+	обращается для правого.
+move - точка куда перемещаются персонажи при диалоге, тоже от 0. Если равен *_position,
+	то перемещения нет.
+
+Функция обнуления диалога будет приватной, её будет вызывать функция
+конца диалога:
+@d Dialog functions @{
+static void dialog_clear(void) {
+	left_side_point = 0;
+	right_side_point = 0;
+}
+@}
+
+Функция добавления персонажей:
+@d Dialog functions @{
+void dialog_left_add(int char) {
+	if(left_side_point == MAX_NUM_OF_CHARS) {
+		fprintf(stderr, "\nLeft side of dialog is full\n");
+		exit(1);
+	}
+
+	left[left_side_point].char = char;
+	left[left_side_point].position = left_side_point * SHIFT;
+	left[left_side_point].move = left[left_side_point].position;
+	left_side_point++;
+}
+
+void dialog_right_add(int char) {
+	if(right_side_point == MAX_NUM_OF_CHARS) {
+		fprintf(stderr, "\nRight side of dialog is full\n");
+		exit(1);
+	}
+
+	right[right_side_point].char = char;
+	right[right_side_point].position = right_side_point * SHIFT;
+	right[right_side_point].move = right[right_side_point].position;
+	right_side_point++;
+}
+@}
+Эти функции принимают штуки вроде dialog_reimu. Сразу раздаются
+позиции, отступ равен 5:
+@d Dialog private structs @{
+#define SHIFT 5
+@}
+
+@d Dialog public prototypes @{
+void dialog_left_add(int char);
+void dialog_right_add(int char);
+@}
+
+Функция добавления нового текста:
+@d Dialog functions @{
+void dialog_msg(char *text, int char, int mood) {
+	Side *side;
+	int *side_point;
+	Side *other_side;
+	int *other_side_point;
+	int i;
+
+	@<dialog_msg find char, set pointers and get i@>
+	@<dialog_msg set side@>
+	@<dialog_msg set other_side@>
+
+	speaker = char;
+	speaker_mood = mood;
+	message = text;
+	message_point = 0;
+}
+@}
+
+Найдем char и заполним указатели для стороны где он есть
+и где его нет:
+@d dialog_msg find char, set pointers and get i @{@-
+for(i = 0; i < left_side_point; i++)
+	if(left[i].char == char) {
+		side = left;
+		side_point = &left_side_point;
+		other_side = right;
+		other_side_point = &right_side_point;
+		break;
+	}
+
+if(i == left_side_point)
+	for(i = 0; i < right_side_point; i++)
+		if(right[i].char == char) {
+			side = right;
+			side_point = &right_side_point;
+			other_side = left;
+			other_side_point = &left_side_point;
+			break;
+		}
+
+if(i == right_side_point) {
+	fprintf(stderr, "\nUnknown side of dialog\n");
+	exit(1);
+}
+@}
+В i будет хранится его позиция.
+
+Переставим элементы side -- стороны, где находится char.
+Бывший speaker пойдёт к остальным персонажам, новый на
+передний план:
+@d dialog_msg set side @{@-
+{
+	Side s = side[i];
+	for(i++; i < *side_point; i++) {
+		side[i-1] = side[i];
+		side[i-1].move = i * SHIFT;
+	}
+
+	side[*side_point - 1] = s;
+	side[*side_point - 1].move = *side_point * SHIFT + SHIFT;
+}
+@}
+
+Вернем speaker'а противоположной стороны на его место:
+@d dialog_msg set other_side @{@-
+for(i = 0; i < *other_side_point; i++)
+	other_side[i].move = i * SHIFT;
+@}
+
+После того как вызвали dialog_msg проиходит следующее:
+ персонаж который будет говорить движется на место говорящего(последнего),
+ тот кто говорил -- движется на место предпоследнего,
+ те кто были после того кого вызвали смещаются на его место.
+
+@d Dialog public prototypes @{
+void dialog_msg(char *text, int char, int mood);
+@}
+
+
+=========================================================
 Основной файл игры:
 
 @o main.c @{
