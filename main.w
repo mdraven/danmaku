@@ -3941,14 +3941,16 @@ if(bonus->move_to_player == 1) {
 
 Файл шрифта задаётся так:
 В-первой строке название файла с изображением, такое, чтобы загрузить image_load.
-Во-второй строке высота символа и через пробел число символов(N).
-Далее N строк вида:
-<символ> X Y SX
+Далее 95 строк вида:
+X1 Y1 X2 Y2
+В строках закодированы следующие символы: SPC ! \" # $ % & ' ( ) * + , - . / 0 1 2 3 4 5 6 7 8 9 : ; < = > ? @ A B C D E F G H I J K L M N O P Q R S T U V W X Y Z [ \ ] ^ _ ` a b c d e f g h i j k l m n o p q r s t u v w x y z { | } ~
 
 Добавим функцию с помощью которой можно рисовать часть картинки:
 @d os_specific functions @{
-void image_draw_corner_part(int id, int x, int y, int w, int h) {
+void image_draw_corner_part(int id, int x, int y, int tx1, int ty1, int tx2, int ty2) {
 	ImageList *img = &image_list[id];
+	int w = tx2 - tx1;
+	int h = ty2 - ty1;
 
 	glLoadIdentity();
 
@@ -3957,24 +3959,27 @@ void image_draw_corner_part(int id, int x, int y, int w, int h) {
 	glTranslatef(x, y, 0);
 
 	glBegin(GL_QUADS);
-		glTexCoord2f(0, 0);
+		glTexCoord2f((float)tx1/(float)img->w,
+			(float)ty1/(float)img->h);
 		glVertex2i(0, 0);
 
-		glTexCoord2f((float)w/(float)img->w, 0);
+		glTexCoord2f((float)tx2/(float)img->w,
+			(float)ty1/(float)img->h);
 		glVertex2i(w, 0);
 
-		glTexCoord2f((float)w/(float)img->w, (float)h/(float)img->h);
+		glTexCoord2f((float)tx2/(float)img->w,
+			(float)ty2/(float)img->h);
 		glVertex2i(w, h);
 
-
-		glTexCoord2f(0, (float)h/(float)img->h);
+		glTexCoord2f((float)tx1/(float)img->w,
+			(float)ty2/(float)img->h);
 		glVertex2i(0, h);
 	glEnd();
 }
 @}
 
 @d os_specific public prototypes @{
-void image_draw_corner_part(int id, int x, int y, int w, int h);
+void image_draw_corner_part(int id, int x, int y, int tx, int ty, int tw, int th);
 @}
 
 @o font.h @{
@@ -3999,25 +4004,21 @@ void image_draw_corner_part(int id, int x, int y, int w, int h);
 #define FONT_FILE_NAME_SIZE 30
 
 typedef struct {
-	char ch;
-	int x;
-	int y;
-	int w;
+	int x1;
+	int y1;
+	int x2;
+	int y2;
 } FontChar;
 
 typedef struct {
 	char filename[FONT_FILE_NAME_SIZE];
 	int img_desc;
-	int h;
-	int num_chars;
-	FontChar *chars;
+	FontChar chars[95];
 } FontList;
 @}
 На имя файла шрифта(без полного пути) отводится FONT_FILE_NAME_SIZE.
-Один символ шрифта хранится в структуре FontChar: ch - код символа,
-(x,y,w) - его позиция и ширина в текстуре.
+Один символ шрифта хранится в структуре FontChar.
 img_desc - дескриптор текстуры.
-h - высота символа.
 
 @d Font structs @{
 #define FONT_LIST_LEN 24
@@ -4065,14 +4066,16 @@ int load_font(char *filename) {
 	FontList *font = &font_list[font_list_pos];
 	FILE *f;
 
-	f = fopen(buf, "r");
+	@<load_font check font_list_pos@>
+
+	f = fopen(buf, "rt");
 	if(f == NULL) {
 		fprintf(stderr, "\nCann't open font file: %s\n", filename);
 		exit(1);
 	}
 
+	@<load_font copy filename@>
 	@<load_font load image@>
-	@<load_font load height and number of chars@>
 	@<load_font load chars' struct@>
 
 	fclose(f);
@@ -4080,39 +4083,42 @@ int load_font(char *filename) {
 }
 @}
 
+@d load_font check font_list_pos @{@-
+if(font_list_pos == FONT_LIST_LEN) {
+	fprintf(stderr, "\nFont list full\n");
+	exit(1);
+}
+@}
+
+@d load_font copy filename @{@-
+strncpy(font->filename, filename, FONT_FILE_NAME_SIZE);
+font->filename[FONT_FILE_NAME_SIZE-1] = '\0';
+@}
+
 @d load_font load image @{@-
 {
 	char b[100];
-	if(fgets(b, sizeof(b), f) == NULL) {
+
+	b[sizeof(b)-1] = '\0';
+	if(fgets(b, sizeof(b), f) == NULL || b[sizeof(b)-1] != '\0') {
 		fprintf(stderr, "\nError with reading image filename in: %s\n", filename);
 		exit(1);
 	}
 
+	b[strlen(b)-1] = '\0';
+
 	font->img_desc = image_load(b);
 }
 @}
-Здесь возможен fail с именем файла > размера буфера, интересно вставит ли он \0?
-
-@d load_font load height and number of chars @{@-
-if(fscanf(f, "%d %d", &font->h, &font->num_chars) == EOF) {
-	fprintf(stderr, "\nError with reading height and number of chars in: %s\n", filename);
-	exit(1);
-}
-@}
+Чёртова замена '\n' на '\0', и что с ней делать? :(
 
 @d load_font load chars' struct @{@-
 {
 	int i;
 
- 	font->chars = malloc(sizeof(FontChar) * font->num_chars);
-	if(font->chars == NULL) {
-		fprintf(stderr, "\nCann't allocate %d FontChar\n", font->num_chars);
-		exit(1);
-	}
-
-	for(i=0; i < font->num_chars; i++) {
+	for(i=0; i < 95; i++) {
 		FontChar *fc = &font->chars[i];
-		if(fscanf(f, "%c %d %d %d", &fc->ch, &fc->x, &fc->y, &fc->w) == EOF) {
+		if(fscanf(f, "%d %d %d %d", &fc->x1, &fc->y1, &fc->x2, &fc->y2) == EOF) {
 			fprintf(stderr, "\nError with reading FontChar in: %s\n", filename);
 			exit(1);
 		}
@@ -4120,6 +4126,57 @@ if(fscanf(f, "%d %d", &font->h, &font->num_chars) == EOF) {
 }
 @}
 
+Функция вывода текста:
+@d Font public prototypes @{@-
+void print_text(const char *str, int x, int y, int w, int fd);
+@}
+
+@d Font functions @{
+void print_text(const char *str, int x, int y, int w, int fd) {
+	FontList *f = &font_list[fd];
+	const char *p;
+
+	w += x;
+
+	for(p = str; *p != '\0'; p++) {
+		FontChar *fc = &f->chars[*p - 32];
+		int cw = fc->x2 - fc->x1;
+
+		if(x + cw > w)
+			break;
+
+		image_draw_corner_part(f->img_desc, x, y,
+			fc->x1, fc->y1, fc->x2, fc->y2);
+		x += cw;
+	}
+}
+@}
+
+Функция определения какое слово не поместится в бокс:
+@d Font public prototypes @{@-
+int pos_last_word_of_long_string(const char *str, int w, int fd);
+@}
+Возвращает первый символ первого слова, которое не поместится в
+бокс. Пробелы символами слова не считаются, остальные символы считаются.
+Если помещается всё, то возвращаемое число равно strlen(str).
+
+@d Font functions @{
+int pos_last_word_of_long_string(const char *str, int w, int fd) {
+	FontList *f = &font_list[fd];
+	int x = 0;
+	int i;
+
+	for(i = 0; str[i] != '\0'; i++) {
+		FontChar *fc = &f->chars[str[i] - 32];
+		int cw = fc->x2 - fc->x1;
+		if(x + cw > w && str[i] != ' ')
+			break;
+		x += cw;
+	}
+
+	return i;
+}
+@}
 
 =========================================================
 Основной файл игры:
@@ -4127,6 +4184,7 @@ if(fscanf(f, "%d %d", &font->h, &font->num_chars) == EOF) {
 @o main.c @{
 
 #include <stdlib.h>
+#include <stdio.h>
 
 #include "os_specific.h"
 #include "event.h"
@@ -4138,6 +4196,7 @@ if(fscanf(f, "%d %d", &font->h, &font->num_chars) == EOF) {
 #include "player.h"
 #include "bonuses.h"
 #include "const.h"
+#include "font.h"
 
 @<Main functions@>
 @}
@@ -4148,6 +4207,8 @@ if(fscanf(f, "%d %d", &font->h, &font->num_chars) == EOF) {
 @d Main functions @{
 
 int main(void) {
+	@<main variables@>
+
 	window_init();
 	window_create();
 
@@ -4228,6 +4289,7 @@ if(main_timer_frame == 0) {
 	@<Draw characters@>
 	@<Draw player@>
 	@<Draw panel@>
+	@<Draw FPS@>
 	@<Window update@>
 }
 @}
@@ -4258,18 +4320,22 @@ bullets_update_all_time_points и bonuses_update_all_time_points вызываю�
 @d FPS @{
 {
 	static int main_timer_fps = 0;
-	
+
 	main_timer_fps = timer_calc(main_timer_fps);
 	if(main_timer_fps == 0) {
 
 		main_timer_fps = 5000;
 
-		printf("%d frames  %d FPS\n", frames, frames/5);
+		fps = frames / 5;
+		printf("%d frames %d FPS\n", frames, fps);
 
 		frames = 0;
 	}
 }
 @}
+
+@d main variables @{@-
+int fps = 0;@}
 
 Рисуем задник:
 @d Draw backgrounds @{@-
@@ -4294,6 +4360,14 @@ bullets_draw();
 Отрисовка бонусов:
 @d Draw bonuses @{@-
 bonuses_draw();
+@}
+
+@d Draw FPS @{@-
+{
+	char buf[10];
+	sprintf(buf, "%dfps", fps);
+	print_text(buf, 725, 570, 100, load_font("big_font1.txt"));
+}
 @}
 
 Обновление экрана:
