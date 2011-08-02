@@ -21,6 +21,7 @@
 
 @<const.h game field width and height@>
 @<const.h game field coodinate@>
+@<const.h position of fps indicator@>
 
 #endif
 @}
@@ -46,6 +47,11 @@
 #define GAME_BONUS_LINE 180
 @}
 Отсчитывается от 0, а не от GAME_FIELD_Y.
+
+@d const.h position of fps indicator @{
+#define GAME_FPS_X 725
+#define GAME_FPS_Y 570
+@}
 
 ===========================================================
 
@@ -4371,7 +4377,7 @@ bonuses_draw();
 		fd = load_font("big_font1.txt");
 
 	sprintf(buf, "%dfps", fps);
-	print_text(buf, 725, 570, 100, fd);
+	print_text(buf, GAME_FPS_X, GAME_FPS_Y, 90, fd);
 }
 @}
 
