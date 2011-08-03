@@ -367,6 +367,8 @@ static SDL_Surface *load_from_file(char *filename) {
 		fprintf(stderr, "IMG_Load: %s\n", IMG_GetError());
 		exit(1);
 	}
+
+	return img;
 }
 @}
 У функция подсчитывает количество символов в имени директории и создаёт подходящий массив.
