@@ -4213,6 +4213,9 @@ int pos_last_word_of_long_string(const char *str, int w, int fd) {
 @}
 
 @o dialog.c @{
+#include <stdio.h>
+#include <stdlib.h>
+
 #include "dialog.h"
 #include "os_specific.h"
 #include "const.h"
@@ -4230,7 +4233,7 @@ enum {
 @}
 
 Эмоции:
-@d Dialog public struct @{
+@d Dialog public structs @{
 enum {
 	dialog_normal, @<Dialog other characters mood@>
 };
@@ -4244,7 +4247,7 @@ enum {
 #define MAX_NUM_OF_CHARS 3
 
 typedef struct {
-	int char;
+	int character;
 	int position;
 	int move;
 } Side;
@@ -4278,25 +4281,25 @@ static void dialog_clear(void) {
 
 Функция добавления персонажей:
 @d Dialog functions @{
-void dialog_left_add(int char) {
+void dialog_left_add(int character) {
 	if(left_side_point == MAX_NUM_OF_CHARS) {
 		fprintf(stderr, "\nLeft side of dialog is full\n");
 		exit(1);
 	}
 
-	left[left_side_point].char = char;
+	left[left_side_point].character = character;
 	left[left_side_point].position = left_side_point * SHIFT;
 	left[left_side_point].move = left[left_side_point].position;
 	left_side_point++;
 }
 
-void dialog_right_add(int char) {
+void dialog_right_add(int character) {
 	if(right_side_point == MAX_NUM_OF_CHARS) {
 		fprintf(stderr, "\nRight side of dialog is full\n");
 		exit(1);
 	}
 
-	right[right_side_point].char = char;
+	right[right_side_point].character = character;
 	right[right_side_point].position = right_side_point * SHIFT;
 	right[right_side_point].move = right[right_side_point].position;
 	right_side_point++;
@@ -4309,13 +4312,13 @@ void dialog_right_add(int char) {
 @}
 
 @d Dialog public prototypes @{
-void dialog_left_add(int char);
-void dialog_right_add(int char);
+void dialog_left_add(int character);
+void dialog_right_add(int character);
 @}
 
 Функция добавления нового текста:
 @d Dialog functions @{
-void dialog_msg(char *text, int char, int mood) {
+void dialog_msg(char *text, int character, int mood) {
 	Side *side;
 	int *side_point;
 	Side *other_side;
@@ -4326,7 +4329,7 @@ void dialog_msg(char *text, int char, int mood) {
 	@<dialog_msg set side@>
 	@<dialog_msg set other_side@>
 
-	speaker = char;
+	speaker = character;
 	speaker_mood = mood;
 	message = text;
 	message_point = 0;
@@ -4337,7 +4340,7 @@ void dialog_msg(char *text, int char, int mood) {
 и где его нет:
 @d dialog_msg find char, set pointers and get i @{@-
 for(i = 0; i < left_side_point; i++)
-	if(left[i].char == char) {
+	if(left[i].character == character) {
 		side = left;
 		side_point = &left_side_point;
 		other_side = right;
@@ -4347,7 +4350,7 @@ for(i = 0; i < left_side_point; i++)
 
 if(i == left_side_point)
 	for(i = 0; i < right_side_point; i++)
-		if(right[i].char == char) {
+		if(right[i].character == character) {
 			side = right;
 			side_point = &right_side_point;
 			other_side = left;
@@ -4390,7 +4393,7 @@ for(i = 0; i < *other_side_point; i++)
  те кто были после того кого вызвали смещаются на его место.
 
 @d Dialog public prototypes @{
-void dialog_msg(char *text, int char, int mood);
+void dialog_msg(char *text, int character, int mood);
 @}
 
 
