@@ -4252,16 +4252,8 @@ typedef struct {
 static Side left[MAX_NUM_OF_CHARS];
 static Side right[MAX_NUM_OF_CHARS];
 
-//static int left_side[MAX_NUM_OF_CHARS];
-//static int right_side[MAX_NUM_OF_CHARS];
-
 static int left_side_point;
 static int right_side_point;
-
-//static int left_position[MAX_NUM_OF_CHARS];
-//static int right_position[MAX_NUM_OF_CHARS];
-//static int left_move[MAX_NUM_OF_CHARS];
-//static int right_move[MAX_NUM_OF_CHARS];
 @}
 MAX_NUM_OF_CHARS - максимальное число персонажей участвующих на каждой
   из сторон;
