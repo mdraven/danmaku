@@ -80,6 +80,7 @@ static SDL_Surface *surface;
 @}
 
 @o os_specific.h @{
+@<os_specific public structs@>
 @<os_specific public prototypes@>
 @}
 
@@ -384,7 +385,7 @@ static SDL_Surface *load_from_file(char *filename);
 
 Функция вывода изображения с левого-верхнего края:
 @d os_specific functions @{
-void image_draw_corner(int id, int x, int y, float rot, float scale) {
+/*void image_draw_corner(int id, int x, int y, float rot, float scale) {
 	ImageList *img = &image_list[id];
 
 	glLoadIdentity();
@@ -409,11 +410,11 @@ void image_draw_corner(int id, int x, int y, float rot, float scale) {
 		glTexCoord2i(0, 1);
 		glVertex2i(0, img->h);
 	glEnd();
-}
+}*/
 @}
 
-@d os_specific public prototypes @{
-void image_draw_corner(int id, int x, int y, float rot, float scale);
+@d os_specific public prototypes @{@-
+//void image_draw_corner(int id, int x, int y, float rot, float scale);
 @}
 
 
@@ -451,7 +452,76 @@ void image_draw_center(int id, int x, int y, float rot, float scale) {
 void image_draw_center(int id, int x, int y, float rot, float scale);
 @}
 
+Добавим функцию с помощью которой можно рисовать часть картинки:
+@d os_specific functions @{
+void image_draw_corner(int id, int x, int y,
+	int tx1, int ty1, int tx2, int ty2,
+	float scale, int color) {
 
+	ImageList *img = &image_list[id];
+	int w = tx2 - tx1;
+	int h = ty2 - ty1;
+
+	glLoadIdentity();
+
+	glBindTexture(GL_TEXTURE_2D, img->tex_id);
+
+	glTranslatef(x, y, 0);
+	//glRotatef(rot, 0, 0, 1);
+	glScalef(scale, scale, 0);
+
+	switch(color) {
+		@<os_specific switch colors@>
+		default:
+			fprintf(stderr, "\nUnknown color\n");
+			exit(1);
+	}
+
+	glBegin(GL_QUADS);
+		glTexCoord2f((float)tx1/(float)img->w,
+			(float)ty1/(float)img->h);
+		glVertex2i(0, 0);
+
+		glTexCoord2f((float)tx2/(float)img->w,
+			(float)ty1/(float)img->h);
+		glVertex2i(w, 0);
+
+		glTexCoord2f((float)tx2/(float)img->w,
+			(float)ty2/(float)img->h);
+		glVertex2i(w, h);
+
+		glTexCoord2f((float)tx1/(float)img->w,
+			(float)ty2/(float)img->h);
+		glVertex2i(0, h);
+	glEnd();
+
+	glColor3ub(255,255,255);
+}
+@}
+
+@d os_specific public prototypes @{
+void image_draw_corner(int id, int x, int y,
+	int tx1, int ty1, int tx2, int ty2,
+	float scale, int color);
+@}
+
+@d os_specific public structs @{
+enum {
+	color_white, color_red, color_blue, color_green
+};
+@}
+
+@d os_specific switch colors @{@-
+case color_red:
+	glColor3ub(255,155,155);
+	break;
+case color_green:
+	glColor3ub(155,255,155);
+	break;
+case color_blue:
+	glColor3ub(155,155,255);
+	break;
+@}
 Функция возврата процессорного времени OS:
 @d os_specific public prototypes @{
 void get_processor_time(void);
@@ -3953,43 +4023,6 @@ if(bonus->move_to_player == 1) {
 X1 Y1 X2 Y2
 В строках закодированы следующие символы: SPC ! \" # $ % & ' ( ) * + , - . / 0 1 2 3 4 5 6 7 8 9 : ; < = > ? @ A B C D E F G H I J K L M N O P Q R S T U V W X Y Z [ \ ] ^ _ ` a b c d e f g h i j k l m n o p q r s t u v w x y z { | } ~
 
-Добавим функцию с помощью которой можно рисовать часть картинки:
-@d os_specific functions @{
-void image_draw_corner_part(int id, int x, int y, int tx1, int ty1, int tx2, int ty2) {
-	ImageList *img = &image_list[id];
-	int w = tx2 - tx1;
-	int h = ty2 - ty1;
-
-	glLoadIdentity();
-
-	glBindTexture(GL_TEXTURE_2D, img->tex_id);
-
-	glTranslatef(x, y, 0);
-
-	glBegin(GL_QUADS);
-		glTexCoord2f((float)tx1/(float)img->w,
-			(float)ty1/(float)img->h);
-		glVertex2i(0, 0);
-
-		glTexCoord2f((float)tx2/(float)img->w,
-			(float)ty1/(float)img->h);
-		glVertex2i(w, 0);
-
-		glTexCoord2f((float)tx2/(float)img->w,
-			(float)ty2/(float)img->h);
-		glVertex2i(w, h);
-
-		glTexCoord2f((float)tx1/(float)img->w,
-			(float)ty2/(float)img->h);
-		glVertex2i(0, h);
-	glEnd();
-}
-@}
-
-@d os_specific public prototypes @{
-void image_draw_corner_part(int id, int x, int y, int tx, int ty, int tw, int th);
-@}
-
 @o font.h @{
 @<Font public prototypes@>
 @}
@@ -4153,8 +4186,8 @@ void print_text(const char *str, int x, int y, int w, int fd) {
 		if(x + cw > w)
 			break;
 
-		image_draw_corner_part(f->img_desc, x, y,
-			fc->x1, fc->y1, fc->x2, fc->y2);
+		image_draw_corner(f->img_desc, x, y,
+			fc->x1, fc->y1, fc->x2, fc->y2, 1.0f, color_white);
 		x += cw;
 	}
 }
@@ -4166,25 +4199,40 @@ int pos_last_word_of_long_string(const char *str, int w, int fd);
 @}
 Возвращает первый символ первого слова, которое не поместится в
 бокс. Пробелы символами слова не считаются, остальные символы считаются.
-Если помещается всё, то возвращаемое число равно strlen(str).
+Если помещается всё, то возвращаемое число равно strlen.
 
 @d Font functions @{
 int pos_last_word_of_long_string(const char *str, int w, int fd) {
 	FontList *f = &font_list[fd];
+	int spc, fsw;
 	int x = 0;
 	int i;
 
+	spc = 0;
+	fsw = 0;
 	for(i = 0; str[i] != '\0'; i++) {
 		FontChar *fc = &f->chars[str[i] - 32];
 		int cw = fc->x2 - fc->x1;
+
+		if(str[i] == ' ')
+			spc = 1;
+		else if(spc == 1) {
+			spc = 0;
+			fsw = i;
+		}
+
+
 		if(x + cw > w && str[i] != ' ')
 			break;
+
 		x += cw;
 	}
 
-	return i;
+	return str[i] == '\0' ? i : fsw;
 }
 @}
+spc - флаг того, что раньше встречался пробел. Нужен чтобы находить начало слова.
+fsw - first symbol of word - позиция первого символа слова.
 
 =========================================================
 
@@ -4217,10 +4265,12 @@ int pos_last_word_of_long_string(const char *str, int w, int fd) {
 @o dialog.c @{
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "dialog.h"
 #include "os_specific.h"
 #include "const.h"
+#include "font.h"
 
 @<Dialog private structs@>
 @<Dialog private prototypes@>
@@ -4333,10 +4383,32 @@ void dialog_msg(char *text, int character, int mood) {
 
 	speaker = character;
 	speaker_mood = mood;
-	message = text;
+
+	strncpy(message, text, sizeof(message));
+	message[sizeof(message)-1] = '\0';
+	message_len = strlen(message);
+
 	message_point = 0;
+
+	dialog_mode = 1;
 }
 @}
+
+@d Dialog public structs @{
+extern int dialog_mode;
+@}
+dialog_mode - значит, что находимся в режиме диалога.
+
+@d Dialog private structs @{
+static int speaker;
+static int speaker_mood;
+static char message[1024];
+static int message_len;
+static int message_point;
+int dialog_mode;
+@}
+speaker - тот кто говорит в данный момент. Сравниваем speaker с left[left_side_point-1].character
+	и с right[right_side_point-1].character и таким образом узнаём сторону.
 
 Найдем char и заполним указатели для стороны где он есть
 и где его нет:
@@ -4398,7 +4470,144 @@ for(i = 0; i < *other_side_point; i++)
 void dialog_msg(char *text, int character, int mood);
 @}
 
+Функция действия будет увеличивать число символов, которые будет выводить
+функция рисования и будет двигать персонажей:
+@d Dialog functions @{
+void dialog_action(void) {
+	int i;
 
+	@<dialog_action check dialog_mode flag@>
+	@<dialog_action move characters@>
+	@<dialog_action set message_point@>
+}
+@}
+
+Проверка, что находимся в режиме диалога:
+@d dialog_action check dialog_mode flag @{@-
+if(dialog_mode == 0)
+	return;
+@}
+
+Перемещаем фигурки персонажей:
+@d dialog_action move characters @{@-
+if(character_move_point == 0) {
+	for(i = 0; i < left_side_point; i++)
+	 	if(left[i].position < left[i].move)
+	 		left[i].position++;
+	 	else if(left[i].position > left[i].move)
+	 		left[i].position--;
+	 
+	for(i = 0; i < right_side_point; i++)
+	 	if(right[i].position < right[i].move)
+	 		right[i].position++;
+	 	else if(right[i].position > right[i].move)
+	 		right[i].position--;
+
+	character_move_point = 2;
+}
+
+character_move_point--;
+@}
+
+@d Dialog private structs @{@-
+static int character_move_point;
+@}
+Счётчик используемый при перемещении персонажей в диалоге. Когда
+	он равен 0, картинки сдвигаются.
+
+Добавляем единицу к счётчику выводимых букв:
+@d dialog_action set message_point @{@-
+if(message_point_point == 0) {
+	if(message_point < message_len)
+		message_point++;
+
+	message_point_point = 5;
+}
+
+message_point_point--;
+@}
+
+@d Dialog private structs @{@-
+static int message_point_point;
+@}
+Счётчик используемый при увеличении числа букв, которые выводятся в окне
+	диалога. Когда он равен 0, выводится следующая буква.
+
+@d Dialog public prototypes @{@-
+void dialog_action(void);
+@}
+
+Рисуем окно диалога:
+@d Dialog functions @{
+void dialog_draw(void) {
+
+	//if(dialog_mode == 0)
+	//	return;
+
+	@<dialog_draw draw background@>
+	@<dialog_draw draw characters@>
+}
+@}
+
+@d Dialog public prototypes @{@-
+void dialog_draw(void);
+@}
+
+@d dialog_draw draw background @{@-
+{
+	static int id = -1;
+
+	if(id == -1)
+		id = image_load("dialog.png");
+
+	image_draw_corner(id, 10, 450, 0, 0, 256, 88, 1.5f, color_white);
+}
+@}
+
+@d dialog_draw draw characters @{@-
+{
+	int line;
+	int pos;
+	static int fd = -1;
+
+	if(fd == -1)
+		fd = load_font("big_font1.txt");
+
+	//---------------FIXME
+	strcpy(message, "Hello1 Hello2 Hello3 Hello4 Hello5 Hello6 World1 World2 World3 World4 World5 World6 World7 World8 Hello7 Hello8");
+	message_len = strlen(message);
+	//---------------
+
+	line = 0;
+	pos = 0;
+	while(1) {
+		int new_pos;
+		char b;
+
+		new_pos = pos + pos_last_word_of_long_string(&message[pos], 375, fd);
+		b = message[new_pos];
+		message[new_pos] = '\0';
+
+		@<dialog_draw print more... or message@>
+
+		message[new_pos] = b;
+
+		if(new_pos == message_len)
+			break;
+
+		pos = new_pos;
+		line++;
+	}
+}
+@}
+
+@d dialog_draw print more... or message @{
+if(new_pos != message_len && line == 3) {
+	print_text("more...", 15, 455 + 30*line, 375, fd);
+	break;
+} else
+	print_text(&message[pos], 15, 455 + 30*line, 375, fd);
+@}
 =========================================================
 Основной файл игры:
 
@@ -4418,6 +4627,7 @@ void dialog_msg(char *text, int character, int mood);
 #include "bonuses.h"
 #include "const.h"
 #include "font.h"
+#include "dialog.h"
 
 @<Main functions@>
 @}
@@ -4481,6 +4691,7 @@ while(1) {
 	@<Bullet movements@>
 	@<Player movements@>
 	@<Bonus movements@>
+	@<Dialog movements@>
 	@<Player press fire button@>
 	@<Damage calculate@>
 	@<Get bonuses@>
@@ -4510,6 +4721,7 @@ if(main_timer_frame == 0) {
 	@<Draw characters@>
 	@<Draw player@>
 	@<Draw panel@>
+	@<Draw dialog@>
 	@<Draw FPS@>
 	@<Window update@>
 }
@@ -4583,6 +4795,11 @@ bullets_draw();
 bonuses_draw();
 @}
 
+Рисуем окно диалога:
+@d Draw dialog @{
+dialog_draw();
+@}
+
 @d Draw FPS @{@-
 {
 	static int fd = -1;
@@ -4646,6 +4863,11 @@ bullets_action();
 Перемещение бонусов:
 @d Bonus movements @{
 bonuses_action();
+@}
+
+Изменения в окне диалогов:
+@d Dialog movements @{
+dialog_action();
 @}
 
 Обновим таймеры:
