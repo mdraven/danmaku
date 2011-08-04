@@ -512,6 +512,9 @@ enum {
 @}
 
 @d os_specific switch colors @{@-
+case color_white:
+	glColor3ub(255,255,255);
+	break;
 case color_red:
 	glColor3ub(255,155,155);
 	break;
@@ -4169,11 +4172,11 @@ font->filename[FONT_FILE_NAME_SIZE-1] = '\0';
 
 Функция вывода текста:
 @d Font public prototypes @{@-
-void print_text(const char *str, int x, int y, int w, int fd);
+void print_text(const char *str, int x, int y, int w, int color, int fd);
 @}
 
 @d Font functions @{
-void print_text(const char *str, int x, int y, int w, int fd) {
+void print_text(const char *str, int x, int y, int w, int color, int fd) {
 	FontList *f = &font_list[fd];
 	const char *p;
 
@@ -4187,7 +4190,7 @@ void print_text(const char *str, int x, int y, int w, int fd) {
 			break;
 
 		image_draw_corner(f->img_desc, x, y,
-			fc->x1, fc->y1, fc->x2, fc->y2, 1.0f, color_white);
+			fc->x1, fc->y1, fc->x2, fc->y2, 1.0f, color);
 		x += cw;
 	}
 }
@@ -4603,10 +4606,10 @@ void dialog_draw(void);
 
 @d dialog_draw print more... or message @{
 if(new_pos != message_len && line == 3) {
-	print_text("more...", 15, 455 + 30*line, 375, fd);
+	print_text("more...", 15, 455 + 30*line, 375, color_green, fd);
 	break;
 } else
-	print_text(&message[pos], 15, 455 + 30*line, 375, fd);
+	print_text(&message[pos], 15, 455 + 30*line, 375, color_red, fd);
 @}
 =========================================================
 Основной файл игры:
@@ -4809,7 +4812,7 @@ dialog_draw();
 		fd = load_font("big_font1.txt");
 
 	sprintf(buf, "%dfps", fps);
-	print_text(buf, GAME_FPS_X, GAME_FPS_Y, 90, fd);
+	print_text(buf, GAME_FPS_X, GAME_FPS_Y, 90, color_white, fd);
 }
 @}
 
