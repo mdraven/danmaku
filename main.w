@@ -4392,15 +4392,19 @@ void dialog_msg(char *text, int character, int mood) {
 	message_len = strlen(message);
 
 	message_point = 0;
+	begin_pos = 0;
 
 	dialog_mode = 1;
+	dialog_says = 1;
 }
 @}
 
 @d Dialog public structs @{
 extern int dialog_mode;
+extern int dialog_says;
 @}
 dialog_mode - значит, что находимся в режиме диалога.
+dialog_says - сообщение ещё не вывелось до конца.
 
 @d Dialog private structs @{
 static int speaker;
@@ -4408,10 +4412,14 @@ static int speaker_mood;
 static char message[1024];
 static int message_len;
 static int message_point;
+static int begin_pos;
 int dialog_mode;
+int dialog_says;
 @}
 speaker - тот кто говорит в данный момент. Сравниваем speaker с left[left_side_point-1].character
 	и с right[right_side_point-1].character и таким образом узнаём сторону.
+message_point - позиция до которой выводится текст(для посимвольного вывода при анимации)
+begin_pos - позиция с которой выводится текст(для перелистывания страниц при выводе more...)
 
 Найдем char и заполним указатели для стороны где он есть
 и где его нет:
@@ -4425,7 +4433,7 @@ for(i = 0; i < left_side_point; i++)
 		break;
 	}
 
-if(i == left_side_point)
+if(i == left_side_point) {
 	for(i = 0; i < right_side_point; i++)
 		if(right[i].character == character) {
 			side = right;
@@ -4435,9 +4443,10 @@ if(i == left_side_point)
 			break;
 		}
 
-if(i == right_side_point) {
-	fprintf(stderr, "\nUnknown side of dialog\n");
-	exit(1);
+	if(i == right_side_point) {
+		fprintf(stderr, "\nUnknown side of dialog\n");
+		exit(1);
+	}
 }
 @}
 В i будет хранится его позиция.
@@ -4506,7 +4515,7 @@ if(character_move_point == 0) {
 	 	else if(right[i].position > right[i].move)
 	 		right[i].position--;
 
-	character_move_point = 2;
+	character_move_point = 60;
 }
 
 character_move_point--;
@@ -4524,7 +4533,7 @@ if(message_point_point == 0) {
 	if(message_point < message_len)
 		message_point++;
 
-	message_point_point = 5;
+	message_point_point = 100;
 }
 
 message_point_point--;
@@ -4544,8 +4553,8 @@ void dialog_action(void);
 @d Dialog functions @{
 void dialog_draw(void) {
 
-	//if(dialog_mode == 0)
-	//	return;
+	if(dialog_mode == 0)
+		return;
 
 	@<dialog_draw draw background@>
 	@<dialog_draw draw characters@>
@@ -4567,6 +4576,7 @@ void dialog_draw(void);
 }
 @}
 
+Выводим символы по одному, учитываем строки, если надо пишем more...:
 @d dialog_draw draw characters @{@-
 {
 	int line;
@@ -4576,41 +4586,116 @@ void dialog_draw(void);
 	if(fd == -1)
 		fd = load_font("big_font1.txt");
 
-	//---------------FIXME
-	strcpy(message, "Hello1 Hello2 Hello3 Hello4 Hello5 Hello6 World1 World2 World3 World4 World5 World6 World7 World8 Hello7 Hello8");
-	message_len = strlen(message);
-	//---------------
-
 	line = 0;
-	pos = 0;
+	pos = begin_pos;
 	while(1) {
 		int new_pos;
-		char b;
 
 		new_pos = pos + pos_last_word_of_long_string(&message[pos], 375, fd);
-		b = message[new_pos];
-		message[new_pos] = '\0';
 
-		@<dialog_draw print more... or message@>
+		@<dialog_draw draw characters step by step@>
 
-		message[new_pos] = b;
-
-		if(new_pos == message_len)
+		if(more_flag == 1)
 			break;
+
+		if(new_pos == message_len) {
+			dialog_says = 0;
+			break;
+		}
 
 		pos = new_pos;
 		line++;
 	}
 }
 @}
+pos_last_word_of_long_string возвращает первый символ слова, который не вошёл в строку.
+В эту функцию передают message c позиции pos, те с прошлого значения new_pos. Так
+мы будем узнавать откуда выводить новую строку.
+В самом начале pos инициализируется значением begin_pos, чтобы вывести следующую страницу,
+если на прошлой было "more...".
+Если были выведены все буквы и нет "more...", то установим dialog_says в 0.
+message_len - длина message.
 
-@d dialog_draw print more... or message @{
+Кроме строк нужно учитывать, что мы выводим посимвольно:
+@d dialog_draw draw characters step by step @{@-
+{
+	char c;
+
+	if(new_pos > message_point) {
+		c = message[message_point];
+		message[message_point] = '\0';
+	}
+
+	@<dialog_draw draw characters in line@>
+
+	if(new_pos > message_point) {
+		message[message_point] = c;
+		break;
+	}
+}
+@}
+Если следующая строка начинается с той позиции, которую мы не
+выводим на экран, то это значит, что вывод сообщения прерывается
+на текущей строке и мы должны поставить терминатор. А после вывода
+вернуть затёртую букву назад.
+
+Ставим терминатор там, где прерывается строка:
+@d dialog_draw draw characters in line @{@-
+{
+	char b;
+	b = message[new_pos];
+	message[new_pos] = '\0';
+	
+	@<dialog_draw print more... or message@>
+	
+	message[new_pos] = b;
+}
+@}
+Не забываем восстановить затёртый символ.
+
+Выводим more... или строку:
+@d dialog_draw print more... or message @{@-
+more_flag = 0;
 if(new_pos != message_len && line == 3) {
 	print_text("more...", 15, 455 + 30*line, 375, color_green, fd);
-	break;
+	set_begin_pos = pos;
+	more_flag = 1;
 } else
 	print_text(&message[pos], 15, 455 + 30*line, 375, color_red, fd);
 @}
+more... выводится на 4-й строке при условии, что существует и 5-я строка.
+Запишем в set_begin_pos точку с которой начнём вывод на следующей странице(для
+	этого надо сделать begin_pos = set_begin_pos).
+Нумерация строк идёт с 0, чтобы не вычитать 1 при умножении.
+
+@d Dialog private structs @{@-
+static int set_begin_pos;
+static int more_flag;
+@}
+Если more_flag установлен, то можно перелистнуть страницу.
+
+Сделаем функцию с помощью которой можно перелистывать сообщения:
+@d Dialog functions @{
+void dialog_next_page(void) {
+	if(dialog_mode == 0)
+		return;
+
+	if(dialog_says == 0)
+		return;
+
+	if(more_flag == 1) {
+		begin_pos = set_begin_pos;
+		message_point = set_begin_pos;
+	}
+}
+@}
+Установим позицию начала выводимого сообщения(begin_pos) и позицию до
+которой текст будет выводится(message_point) для анимации посимвольного вывода.
+
+@d Dialog public prototypes @{@-
+void dialog_next_page(void);
+@}
+
 =========================================================
 Основной файл игры:
 
@@ -4673,6 +4758,9 @@ int main(void) {
 			for(j=0; j<2; j++)
 				bullet_red_create(100+i*10, 100+j*10);
 	}*/
+
+	dialog_left_add(dialog_reimu);
+	dialog_msg("Hello1 Hello2 Hello3 Hello4 Hello5 Hello6 World1 World2 World3 World4 World5 World6 World7 World8 Hello7 Hello8 ^_^ NyaNya! Naruto is rulezzz! Windows must die! I suck cocks! Emacs Vim FireFox Tetris", dialog_reimu, dialog_normal);
 
 	bonus_power_create(50, 100);
 
@@ -4849,9 +4937,12 @@ else if(is_keydown(key_move_down))
 
 Игрок нажал кнопку "огонь":
 @d Player press fire button @{
-if(is_keydown(key_fire))
+if(is_keydown(key_fire)) {
 	player_fire();
+	dialog_next_page();
+}
 @}
+Стрелять и перелистывать страницы в диалогах.
 
 Перемещение персонажей управляемых компьютером:
 @d Computer movements @{
