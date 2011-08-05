@@ -4394,13 +4394,17 @@ void dialog_msg(char *text, int character, int mood) {
 	message_point = 0;
 	begin_pos = 0;
 
+	if(dialog_mode == 0) {
+		anim_mode = 1;
+		anim_step = 0;
+	}
+
 	dialog_mode = 1;
 	dialog_says = 1;
-
-	anim_mode = 1;
-	anim_step = 0;
 }
 @}
+Стоит обратить внимание, что анимация появления окна включается, только
+если это новый диалог(те dialog_mode = 0).
 
 @d Dialog public structs @{
 extern int dialog_mode;
@@ -4787,6 +4791,20 @@ static void dialog_true_end(void) {
 @}
 После выполнения функции dialog_mode = dialog_says = anim_mode = 0.
 
+Пример использования:
+	static int c = 0;
+	 
+	if(c == 0) {
+	 	dialog_left_add(dialog_reimu);
+	 	dialog_right_add(dialog_marisa);
+	 	dialog_msg("Hi! How are you?", dialog_reimu, dialog_normal);
+	 	c++;
+	} else if (c == 1 && dialog_says == 0) {
+	 	dialog_msg("Great!", dialog_marisa, dialog_normal);
+	 	c++;
+	}
+	dialog_end();
+
 =========================================================
 Основной файл игры:
 
@@ -4850,8 +4868,8 @@ int main(void) {
 				bullet_red_create(100+i*10, 100+j*10);
 	}*/
 
-	dialog_left_add(dialog_reimu);
-	dialog_msg("Hello1 Hello2 Hello3 Hello4 Hello5 Hello6 World1 World2 World3 World4 World5 World6 World7 World8 Hello7 Hello8 ^_^ NyaNya! Naruto is rulezzz! Windows must die! I suck cocks! Emacs Vim FireFox Tetris", dialog_reimu, dialog_normal);
+	//dialog_left_add(dialog_reimu);
+	//dialog_msg("Hello1 Hello2 Hello3 Hello4 Hello5 Hello6 World1 World2 World3 World4 World5 World6 World7 World8 Hello7 Hello8 ^_^ NyaNya! Naruto is rulezzz! Windows must die! I suck cocks! Emacs Vim FireFox Tetris", dialog_reimu, dialog_normal);
 
 	bonus_power_create(50, 100);
 
@@ -4879,7 +4897,6 @@ while(1) {
 	@<Get bonuses@>
 	@<Game menu@>
 	@<Get processor time to OS@>
-	dialog_end();
 }
 @}
 
