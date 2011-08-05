@@ -4696,6 +4696,20 @@ void dialog_next_page(void) {
 void dialog_next_page(void);
 @}
 
+Эту функцию вызывают, чтобы закончить диалог:
+@d Dialog public prototypes @{@-
+void dialog_end(void);
+@}
+
+@d Dialog functions @{
+void dialog_end(void) {
+	if(dialog_says == 1)
+		return;
+
+	dialog_mode = 0;
+	dialog_clear();
+}
+@}
 =========================================================
 Основной файл игры:
 
