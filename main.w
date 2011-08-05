@@ -4599,7 +4599,7 @@ void dialog_draw(void);
 			break;
 
 		if(new_pos == message_len) {
-			dialog_says = 0;
+			set_begin_pos = message_len;
 			break;
 		}
 
@@ -4613,7 +4613,9 @@ pos_last_word_of_long_string возвращает первый символ сл
 мы будем узнавать откуда выводить новую строку.
 В самом начале pos инициализируется значением begin_pos, чтобы вывести следующую страницу,
 если на прошлой было "more...".
-Если были выведены все буквы и нет "more...", то установим dialog_says в 0.
+Если были выведены все буквы и нет "more...", то сделаем set_begin_pos равным message_len.
+	Так как нет смысла указывать на терминатор, то set_begin_pos == message_len будет
+	значить, что все буквы выведены, и в dialog_next_page можно написать обработчик этого.
 message_len - длина message.
 
 Кроме строк нужно учитывать, что мы выводим посимвольно:
@@ -4683,14 +4685,18 @@ void dialog_next_page(void) {
 	if(dialog_says == 0)
 		return;
 
-	if(more_flag == 1) {
+	if(set_begin_pos == message_len)
+		dialog_says = 0;
+	else if(more_flag == 1) {
 		begin_pos = set_begin_pos;
 		message_point = set_begin_pos;
 	}
 }
 @}
-Установим позицию начала выводимого сообщения(begin_pos) и позицию до
-которой текст будет выводится(message_point) для анимации посимвольного вывода.
+Если выведены на экран все буквы сообщения, то установим dialog_says в 0.
+Если появилась надпись "more...", то установим позицию начала выводимого
+	сообщения(begin_pos) и позицию до которой текст будет выводится(message_point)
+	для анимации посимвольного вывода.
 
 @d Dialog public prototypes @{@-
 void dialog_next_page(void);
