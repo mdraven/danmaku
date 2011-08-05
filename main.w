@@ -4396,6 +4396,9 @@ void dialog_msg(char *text, int character, int mood) {
 
 	dialog_mode = 1;
 	dialog_says = 1;
+
+	anim_mode = 1;
+	anim_step = 0;
 }
 @}
 
@@ -4404,7 +4407,7 @@ extern int dialog_mode;
 extern int dialog_says;
 @}
 dialog_mode - значит, что находимся в режиме диалога.
-dialog_says - сообщение ещё не вывелось до конца.
+dialog_says - сообщение персонажа ещё не вывелось до конца.
 
 @d Dialog private structs @{
 static int speaker;
@@ -4413,8 +4416,12 @@ static char message[1024];
 static int message_len;
 static int message_point;
 static int begin_pos;
+
 int dialog_mode;
 int dialog_says;
+
+static int anim_mode;
+static int anim_step;
 @}
 speaker - тот кто говорит в данный момент. Сравниваем speaker с left[left_side_point-1].character
 	и с right[right_side_point-1].character и таким образом узнаём сторону.
@@ -4422,6 +4429,11 @@ message_point - позиция до которой выводится текст
 	когда message_point == message_len, то это значит, что весь текст персонажа выведен на
 	экран и можно переходить к следующему персонажу.
 begin_pos - позиция с которой выводится текст(для перелистывания страниц при выводе more...)
+dialog_mode и dialog_says описаны выше.
+anim_mode - режим анимации диалога(0 - никакая; 1 - окно диалога появляется; 2 - окно диалога
+	исчезает)
+anim_step - шаг анимации появления и исчезновения окна диалога и персонажей. От 0 до 100.
+
 
 Найдем char и заполним указатели для стороны где он есть
 и где его нет:
@@ -4491,6 +4503,7 @@ void dialog_action(void) {
 	int i;
 
 	@<dialog_action check dialog_mode flag@>
+	@<dialog_action dialog open & close animation@>
 	@<dialog_action move characters@>
 	@<dialog_action set message_point@>
 }
@@ -4501,6 +4514,50 @@ void dialog_action(void) {
 if(dialog_mode == 0)
 	return;
 @}
+
+Очки анимации появления и исчезновения окна диалога и персонажей:
+@d dialog_action dialog open & close animation @{@-
+if(anim_point == 0) {
+	switch(anim_mode) {
+		@<dialog_action anim_mode == 1@>
+		@<dialog_action anim_mode == 2@>
+	}
+	anim_point = 20;
+}
+
+anim_point--;
+@}
+
+@d Dialog private structs @{@-
+static int anim_point;
+@}
+
+Появление диалога:
+@d dialog_action anim_mode == 1 @{@-
+case 1:
+	if(anim_step < 100)
+		anim_step++;
+	else
+		anim_mode = 0;
+	break;
+@}
+Изначально anim_step = 0.
+
+Исчезновение диалога:
+@d dialog_action anim_mode == 2 @{@-
+case 2:
+	if(anim_step > 0)
+		anim_step--;
+	else {
+		anim_mode = 0;
+		dialog_true_end();		
+	}
+	break;
+@}
+Изначально anim_step = 100.
+Из-за анимации завершения мы не можем очистить всё в функции
+	dialog_end и откладываем это до завершения анимации исчезновения.
+	Всё очищается в функции dialog_true_end.
 
 Перемещаем фигурки персонажей:
 @d dialog_action move characters @{@-
@@ -4567,6 +4624,7 @@ void dialog_draw(void) {
 void dialog_draw(void);
 @}
 
+Выводим задник с учётом анимации появления и исчезновения:
 @d dialog_draw draw background @{@-
 {
 	static int id = -1;
@@ -4574,7 +4632,7 @@ void dialog_draw(void);
 	if(id == -1)
 		id = image_load("dialog.png");
 
-	image_draw_corner(id, 10, 450, 0, 0, 256, 88, 1.5f, color_white);
+	image_draw_corner(id, 10, 650 - anim_step*2, 0, 0, 256, 88, 1.5f, color_white);
 }
 @}
 
@@ -4654,14 +4712,14 @@ message_len - длина message.
 @}
 Не забываем восстановить затёртый символ.
 
-Выводим more... или строку:
+Выводим more... или строку с учётом анимации:
 @d dialog_draw print more... or message @{@-
 more_flag = 0;
 if(new_pos != message_len && line == 3) {
-	print_text("more...", 15, 455 + 30*line, 375, color_green, fd);
+	print_text("more...", 15, 655 + 30*line - anim_step*2, 375, color_green, fd);
 	more_flag = 1;
 } else
-	print_text(&message[pos], 15, 455 + 30*line, 375, color_red, fd);
+	print_text(&message[pos], 15, 655 + 30*line - anim_step*2, 375, color_red, fd);
 @}
 more... выводится на 4-й строке при условии, что существует и 5-я строка.
 Нумерация строк идёт с 0, чтобы не вычитать 1 при умножении.
@@ -4706,10 +4764,29 @@ void dialog_end(void) {
 	if(dialog_says == 1)
 		return;
 
+	if(anim_mode != 0)
+		return;
+
+	anim_mode = 2;
+	anim_step = 100;
+}
+@}
+
+Так как dialog_end вызвает анимацию завершения, то
+мы должны удалить отложено. Эта функция выполняется после завершения
+анимации исчезновения окна диалога:
+@d Dialog private prototypes @{@-
+static void dialog_true_end(void);
+@}
+
+@d Dialog functions @{
+static void dialog_true_end(void) {
 	dialog_mode = 0;
 	dialog_clear();
 }
 @}
+После выполнения функции dialog_mode = dialog_says = anim_mode = 0.
+
 =========================================================
 Основной файл игры:
 
@@ -4802,6 +4879,7 @@ while(1) {
 	@<Get bonuses@>
 	@<Game menu@>
 	@<Get processor time to OS@>
+	dialog_end();
 }
 @}
 
