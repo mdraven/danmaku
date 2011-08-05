@@ -4419,6 +4419,8 @@ int dialog_says;
 speaker - тот кто говорит в данный момент. Сравниваем speaker с left[left_side_point-1].character
 	и с right[right_side_point-1].character и таким образом узнаём сторону.
 message_point - позиция до которой выводится текст(для посимвольного вывода при анимации)
+	когда message_point == message_len, то это значит, что весь текст персонажа выведен на
+	экран и можно переходить к следующему персонажу.
 begin_pos - позиция с которой выводится текст(для перелистывания страниц при выводе more...)
 
 Найдем char и заполним указатели для стороны где он есть
@@ -4530,7 +4532,7 @@ static int character_move_point;
 Добавляем единицу к счётчику выводимых букв:
 @d dialog_action set message_point @{@-
 if(message_point_point == 0) {
-	if(message_point < message_len)
+	if(message_point < message_len && more_flag == 0)
 		message_point++;
 
 	message_point_point = 100;
@@ -4599,7 +4601,6 @@ void dialog_draw(void);
 			break;
 
 		if(new_pos == message_len) {
-			set_begin_pos = message_len;
 			break;
 		}
 
@@ -4610,12 +4611,10 @@ void dialog_draw(void);
 @}
 pos_last_word_of_long_string возвращает первый символ слова, который не вошёл в строку.
 В эту функцию передают message c позиции pos, те с прошлого значения new_pos. Так
-мы будем узнавать откуда выводить новую строку.
+	мы будем узнавать откуда выводить новую строку.
 В самом начале pos инициализируется значением begin_pos, чтобы вывести следующую страницу,
-если на прошлой было "more...".
-Если были выведены все буквы и нет "more...", то сделаем set_begin_pos равным message_len.
-	Так как нет смысла указывать на терминатор, то set_begin_pos == message_len будет
-	значить, что все буквы выведены, и в dialog_next_page можно написать обработчик этого.
+	если на прошлой было "more...".
+Если были выведены все буквы или "more...", то перестанем выводить текст.
 message_len - длина message.
 
 Кроме строк нужно учитывать, что мы выводим посимвольно:
@@ -4660,18 +4659,14 @@ message_len - длина message.
 more_flag = 0;
 if(new_pos != message_len && line == 3) {
 	print_text("more...", 15, 455 + 30*line, 375, color_green, fd);
-	set_begin_pos = pos;
 	more_flag = 1;
 } else
 	print_text(&message[pos], 15, 455 + 30*line, 375, color_red, fd);
 @}
 more... выводится на 4-й строке при условии, что существует и 5-я строка.
-Запишем в set_begin_pos точку с которой начнём вывод на следующей странице(для
-	этого надо сделать begin_pos = set_begin_pos).
 Нумерация строк идёт с 0, чтобы не вычитать 1 при умножении.
 
 @d Dialog private structs @{@-
-static int set_begin_pos;
 static int more_flag;
 @}
 Если more_flag установлен, то можно перелистнуть страницу.
@@ -4685,11 +4680,10 @@ void dialog_next_page(void) {
 	if(dialog_says == 0)
 		return;
 
-	if(set_begin_pos == message_len)
+	if(message_point == message_len)
 		dialog_says = 0;
 	else if(more_flag == 1) {
-		begin_pos = set_begin_pos;
-		message_point = set_begin_pos;
+		begin_pos = message_point;
 	}
 }
 @}
