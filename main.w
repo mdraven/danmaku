@@ -4619,6 +4619,7 @@ void dialog_draw(void) {
 	if(dialog_mode == 0)
 		return;
 
+	@<dialog_draw draw chars@>
 	@<dialog_draw draw background@>
 	@<dialog_draw draw characters@>
 }
@@ -4790,6 +4791,46 @@ static void dialog_true_end(void) {
 }
 @}
 После выполнения функции dialog_mode = dialog_says = anim_mode = 0.
+
+Выводим персонажей:
+@d dialog_draw draw chars @{@-
+{
+	int i;
+
+	for(i = 0; i < left_side_point; i++) {
+		int pos = left[i].position;
+		switch(left[i].character) {
+			@<dialog_draw left side characters@>
+			default:
+				fprintf(stderr, "\nUnknown character on left side of dialog\n");
+				exit(1);
+		}
+	}
+
+	for(i = 0; i < right_side_point; i++) {
+		int pos = right[i].position;
+		switch(right[i].character) {
+			@<dialog_draw right side characters@>
+			default:
+				fprintf(stderr, "\nUnknown character on right side of dialog\n");
+				exit(1);
+		}
+	}
+}
+@}
+
+Выводим Рейму с левой стороны:
+@d dialog_draw left side characters @{@-
+case dialog_reimu: {
+	static int normal = -1;
+
+	if(normal == -1)
+		normal = image_load("reimu_normal_l.png");
+
+	image_draw_corner(normal, 10, 250, 0, 0, 128, 256, 1.0f, color_white);
+	break;
+}
+@}
 
 Пример использования:
 	static int c = 0;
