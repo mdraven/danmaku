@@ -4865,6 +4865,17 @@ if(s < 0)
 В s -- сдвиг текстуры. А так как уменьшение текстуры слева сдвигает и
 	саму картинку влево, то приходится к x прибавлять s.
 
+@d dialog_draw posx & tx calculation for right @{@-
+int x = 460 - right[i].position - anim_step*2;
+int s = GAME_FIELD_X + GAME_FIELD_W - x;
+
+if(s > 128)
+	s = 128;
+if(s < 0)
+	s = 0;
+@}
+
+
 Выводим Рейму с левой стороны:
 @d dialog_draw left side characters @{@-
 case dialog_reimu: {
@@ -4895,7 +4906,21 @@ case dialog_yukari: {
 @d Dialog other characters @{@-
 dialog_yukari,@}
 
+Выводим Марису с правой стороны:
+@d dialog_draw right side characters @{@-
+case dialog_marisa: {
+	static int normal = -1;
 
+	if(normal == -1)
+		normal = image_load("marisa_normal_r.png");
+
+	image_draw_corner(normal, x, 250, 0, 0, s, 256, 1.0f, color_white);
+	break;
+}
+@}
+
+@d Dialog other characters @{@-
+dialog_marisa,@}
 
 
 Пример использования:
