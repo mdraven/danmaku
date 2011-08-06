@@ -4361,9 +4361,9 @@ void dialog_right_add(int character) {
 }
 @}
 Эти функции принимают штуки вроде dialog_reimu. Сразу раздаются
-позиции, отступ равен 5:
+позиции, отступ равен 20:
 @d Dialog private structs @{
-#define SHIFT 5
+#define SHIFT 20
 @}
 
 @d Dialog public prototypes @{
@@ -4480,7 +4480,7 @@ if(i == left_side_point) {
 	Side s = side[i];
 	for(i++; i < *side_point; i++) {
 		side[i-1] = side[i];
-		side[i-1].move = i * SHIFT;
+		side[i-1].move = (i-1) * SHIFT;
 	}
 
 	side[*side_point - 1] = s;
@@ -4529,10 +4529,8 @@ if(anim_point == 0) {
 		@<dialog_action anim_mode == 1@>
 		@<dialog_action anim_mode == 2@>
 	}
-	anim_point = 20;
+	anim_point = 70;
 }
-
-anim_point--;
 @}
 
 @d Dialog private structs @{@-
@@ -4581,10 +4579,8 @@ if(character_move_point == 0) {
 	 	else if(right[i].position > right[i].move)
 	 		right[i].position--;
 
-	character_move_point = 60;
+	character_move_point = 20;
 }
-
-character_move_point--;
 @}
 
 @d Dialog private structs @{@-
@@ -4599,10 +4595,8 @@ if(message_point_point == 0) {
 	if(message_point < message_len && more_flag == 0)
 		message_point++;
 
-	message_point_point = 100;
+	message_point_point = 40;
 }
-
-message_point_point--;
 @}
 
 @d Dialog private structs @{@-
@@ -4613,6 +4607,24 @@ static int message_point_point;
 
 @d Dialog public prototypes @{@-
 void dialog_action(void);
+@}
+
+Функция обновления очков времени:
+@d Dialog functions @{
+void dialog_update_all_time_points(void) {
+	if(anim_point > 0)
+		anim_point--;
+
+	if(character_move_point > 0)
+		character_move_point--;
+
+	if(message_point_point > 0)
+		message_point_point--;
+}
+@}
+
+@d Dialog public prototypes @{@-
+void dialog_update_all_time_points(void);
 @}
 
 Рисуем окно диалога:
@@ -4816,7 +4828,8 @@ static void dialog_true_end(void) {
 	int i;
 
 	for(i = 0; i < left_side_point; i++) {
-		int pos = left[i].position;
+		@<dialog_draw posx & tx calculation for left@>
+
 		switch(left[i].character) {
 			@<dialog_draw left side characters@>
 			default:
@@ -4826,7 +4839,8 @@ static void dialog_true_end(void) {
 	}
 
 	for(i = 0; i < right_side_point; i++) {
-		int pos = right[i].position;
+		@<dialog_draw posx & tx calculation for right@>
+
 		switch(right[i].character) {
 			@<dialog_draw right side characters@>
 			default:
@@ -4837,6 +4851,20 @@ static void dialog_true_end(void) {
 }
 @}
 
+@d dialog_draw posx & tx calculation for left @{@-
+int x = -190 + left[i].position + anim_step*2;
+int s = GAME_FIELD_X - x;
+
+if(s > 128)
+	s = 128;
+if(s < 0)
+	s = 0;
+@}
+Столько гемороя для того, чтобы текстура обрезалась по границе GAME_FIELD_X.
+В переменной x хранится смещения относительно левой стороны экрана.
+В s -- сдвиг текстуры. А так как уменьшение текстуры слева сдвигает и
+	саму картинку влево, то приходится к x прибавлять s.
+
 Выводим Рейму с левой стороны:
 @d dialog_draw left side characters @{@-
 case dialog_reimu: {
@@ -4845,10 +4873,30 @@ case dialog_reimu: {
 	if(normal == -1)
 		normal = image_load("reimu_normal_l.png");
 
-	image_draw_corner(normal, 10, 250, 0, 0, 128, 256, 1.0f, color_white);
+	image_draw_corner(normal, x + s, 250, s, 0, 128, 256, 1.0f, color_white);
 	break;
 }
 @}
+Размер картинки персонажа поменять сложно, так как он используется выше.
+
+Выводим Юкари с левой стороны:
+@d dialog_draw left side characters @{@-
+case dialog_yukari: {
+	static int normal = -1;
+
+	if(normal == -1)
+		normal = image_load("yukari_normal_l.png");
+
+	image_draw_corner(normal, x + s, 250, s, 0, 128, 256, 1.0f, color_white);
+	break;
+}
+@}
+
+@d Dialog other characters @{@-
+dialog_yukari,@}
+
+
+
 
 Пример использования:
 	static int c = 0;
@@ -4927,8 +4975,10 @@ int main(void) {
 				bullet_red_create(100+i*10, 100+j*10);
 	}*/
 
+	//dialog_left_add(dialog_yukari);
 	//dialog_left_add(dialog_reimu);
 	//dialog_msg("Hello1 Hello2 Hello3 Hello4 Hello5 Hello6 World1 World2 World3 World4 World5 World6 World7 World8 Hello7 Hello8 ^_^ NyaNya! Naruto is rulezzz! Windows must die! I suck cocks! Emacs Vim FireFox Tetris", dialog_reimu, dialog_normal);
+	//dialog_msg("Hello1 Hello2 Hello3 Hello4 Hello5", dialog_reimu, dialog_normal);
 
 	bonus_power_create(50, 100);
 
@@ -4956,6 +5006,22 @@ while(1) {
 	@<Get bonuses@>
 	@<Game menu@>
 	@<Get processor time to OS@>
+	{
+		static int c = 0;
+
+		if(c == 0) {
+			dialog_left_add(dialog_yukari);
+			dialog_left_add(dialog_reimu);
+			c++;
+		} else if (c == 1 && dialog_says == 0) {
+			dialog_msg("Hello1 Hello2 Hello3", dialog_reimu, dialog_normal);
+			c++;
+		} else if (c == 2 && dialog_says == 0) {
+			dialog_msg("1345 1234 1234", dialog_yukari, dialog_normal);
+			c--;
+		}
+	}
+	dialog_end();//FIXME
 }
 @}
 
@@ -5001,6 +5067,7 @@ if(main_timer_time_points == 0) {
 	player_update_all_time_points();
 	bullets_update_all_time_points();
 	bonuses_update_all_time_points();
+	dialog_update_all_time_points();
 }
 @}
 Функции characters_update_all_time_points, player_update_all_time_points,
