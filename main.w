@@ -4686,17 +4686,18 @@ message_len - длина message.
 Кроме строк нужно учитывать, что мы выводим посимвольно:
 @d dialog_draw draw characters step by step @{@-
 {
+	int cpos = message_point;
 	char c;
 
-	if(new_pos > message_point) {
-		c = message[message_point];
-		message[message_point] = '\0';
+	if(new_pos > cpos) {
+		c = message[cpos];
+		message[cpos] = '\0';
 	}
 
 	@<dialog_draw draw characters in line@>
 
-	if(new_pos > message_point) {
-		message[message_point] = c;
+	if(new_pos > cpos) {
+		message[cpos] = c;
 		break;
 	}
 }
@@ -4705,6 +4706,7 @@ message_len - длина message.
 выводим на экран, то это значит, что вывод сообщения прерывается
 на текущей строке и мы должны поставить терминатор. А после вывода
 вернуть затёртую букву назад.
+cpos нужен так как значение message_point изменится.
 
 Ставим терминатор там, где прерывается строка:
 @d dialog_draw draw characters in line @{@-
@@ -4726,11 +4728,24 @@ more_flag = 0;
 if(new_pos != message_len && line == 3) {
 	print_text("more...", 15, 655 + 30*line - anim_step*2, 375, color_green, fd);
 	more_flag = 1;
+	message_point = pos;
 } else
 	print_text(&message[pos], 15, 655 + 30*line - anim_step*2, 375, color_red, fd);
 @}
 more... выводится на 4-й строке при условии, что существует и 5-я строка.
 Нумерация строк идёт с 0, чтобы не вычитать 1 при умножении.
+При выводе строк(внутри while(1)) more_flag изменяет своё значение, но после выхода
+	из цикла по нему можно однозначно сказать выведен "more..." или нет.
+Здесь просходит присваивание message_point значения pos по следующей причине:
+	частота изменения message_point не связана с частатой вырисовки и когда счётчик
+	fps позволит нарисовать строку message_point может измениться несколько раз.
+	Пример: "hello world !!!" пусть первое слово на одной странице, второе на второй странице.
+	После того как было выведено hello message_point обновился два раза и указывает на "o" в
+	"world". Так как pos не менялся на экран выведется "hello\nmore...",
+	а будет указывать на "w" -- первую букву "world", те pos != message_point.
+		Кстати, это подтверждается уменьшением времени инкрементации message_point.
+	В отличии от опережения в отстовании message_point нет ничего страшного, так как строка
+	не выводится(вместо неё надпись "more..."), то установка в pos ничего не изменит.
 
 @d Dialog private structs @{@-
 static int more_flag;
