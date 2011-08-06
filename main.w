@@ -4380,6 +4380,9 @@ void dialog_msg(char *text, int character, int mood) {
 	int *other_side_point;
 	int i;
 
+	if(dialog_says == 1)
+		return;
+
 	@<dialog_msg find char, set pointers and get i@>
 	@<dialog_msg set side@>
 	@<dialog_msg set other_side@>
@@ -4931,9 +4934,9 @@ while(1) {
 	@<Computer movements@>
 	@<Bullet movements@>
 	@<Player movements@>
+	@<Player press fire button@>
 	@<Bonus movements@>
 	@<Dialog movements@>
-	@<Player press fire button@>
 	@<Damage calculate@>
 	@<Get bonuses@>
 	@<Game menu@>
