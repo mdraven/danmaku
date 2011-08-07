@@ -147,7 +147,7 @@ void window_create(void);
 
 Настройки OGL для вывода 2D графики:
 @d os_specific functions @{
-void window_set_2d_config(void) {
+static void window_set_2d_config(void) {
 	glClearColor(0, 0, 0, 0);
 	//glClear(GL_COLOR_BUFFER_BIT);
 
@@ -175,8 +175,8 @@ glEnable(GL_BLEND);
 glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 @}
 
-@d os_specific public prototypes @{
-void window_set_2d_config(void);
+@d os_specific private prototypes @{
+static void window_set_2d_config(void);
 @}
 
 
@@ -4114,7 +4114,7 @@ int load_font(char *filename) {
 
 	f = fopen(buf, "rt");
 	if(f == NULL) {
-		fprintf(stderr, "\nCann't open font file: %s\n", filename);
+		fprintf(stderr, "\nCan't open font file: %s\n", filename);
 		exit(1);
 	}
 
