@@ -2915,13 +2915,20 @@ void background_set_type(int type);
 void background_set_type(int type) {
 	background_type = type;
 	background_animation = 0;
+	background_time_points = 0;
 }
 @}
+Стиль задника это не только сам задник, но и его изменения. Например:
+	утренний лес, вечерний лес, зимний лес и тд.
 
 background_animation - переменная в которой хранится сдвиг задника при
-анимации:
+	анимации;
+background_time_points - переменная единиц времени для анимации.
+	В отличии от многих случаем они не декрементируются, а наоборот инкрементируются
+	так как background_update_animation один и тот же, а задники разные.
 @d Background private structs @{
 static int background_animation;
+static int background_time_points;
 @}
 
 В этой переменной будем хранить стиль задника:
@@ -2937,49 +2944,22 @@ enum {
 };
 @}
 
-Функция которая изменяет значение background_animation и тем самым задаёт анимацию:
+Функция которая изменяет значение background_time_points и тем самым синхронизирует
+анимацию:
 @d Background public prototypes @{
 void background_update_animation(void);
 @}
 
 @d Background functions @{
 void background_update_animation(void) {
-	switch(background_type) {
-		@<background_update_animation backgrounds@>
-		default:
-			fprintf(stderr, "\nUnknown background\n");
-			exit(1);
-	}
+	if(background_time_points < 20000)
+		background_time_points++;
 }
 @}
+Как уже было отмечено, местные time_points инкрементируют.
+Введён искусственный потолок в 20000, защита от переполнения "на всякий случай",
+	думаю никто не будет ждать 20 секунд между анимацией и поэтому проблем не будет.
 
-Опишем значение "background_update_animation backgrounds" для магического леса:
-@d background_update_animation backgrounds @{
-case background_forest: {
-	background_animation++;
-
-	if(background_animation == 1280)
-		background_animation = 0;
-	break;
-}
-@}
-Берем в учёт что размер текстуры леса 256x256, умножаем на 5, получаем 1280.
-
-Функция принимающая процент прохождения этажа и меняющая задник:
-@d Background public prototypes @{
-void background_set_percent(int per);
-@}
-
-@d Background functions @{
-void background_set_percent(int per) {
-	background_percent = per;
-}
-@}
-
-Переменная в которой хранится процент пройденности этажа:
-@d Background private structs @{
-static int background_percent;
-@}
 
 Функция рисования задника:
 @d Background public prototypes @{
@@ -2988,8 +2968,6 @@ void background_draw(void);
 
 @d Background functions @{
 void background_draw(void) {
-
-	background_update_animation();
 
 	window_set_3dbackground_config();
 
@@ -3060,6 +3038,8 @@ case background_forest: {
 	if(id == -1)
 		id = image_load("forest.png");
 
+	@<background_draw sync forest@>
+
 	glTranslatef(0, 0, -1.5);
 	glRotatef(-30, 1.0, 0.0, 0.0);
 //	glScalef(scale, scale, 0);
@@ -3072,11 +3052,24 @@ case background_forest: {
 }
 @}
 
+Анимация каждые 10 мс. для леса:
+@d background_draw sync forest @{@-
+if(background_time_points > 10) {
+	background_animation++;
+
+	if(background_animation == 1280)
+		background_animation = 0;
+
+	background_time_points = 0;
+}
+@}
+Берем в учёт что размер текстуры леса 256x256, умножаем на 5, получаем 1280.
+
 Рисуем задник леса:
 @d background_draw draw background of forest @{
 {
 	float shift = background_animation/256.0;
-
+	//float y = sin(background_animation * (3.14/180.0))/50.0;
 	glBegin(GL_QUADS);
 		glTexCoord2f(0, 0.0 + shift);
 		glVertex2i(-1, -1);
@@ -4290,7 +4283,7 @@ enum {
 Эмоции:
 @d Dialog public structs @{
 enum {
-	dialog_normal, @<Dialog other characters mood@>
+	dialog_normal, dialog_angry, @<Dialog other characters mood@>
 };
 @}
 Эмоции будут храниться не в матрице или дереве, а в функции вырисовки,
@@ -4880,11 +4873,30 @@ if(s < 0)
 @d dialog_draw left side characters @{@-
 case dialog_reimu: {
 	static int normal = -1;
+	static int angry = -1;
 
 	if(normal == -1)
 		normal = image_load("reimu_normal_l.png");
 
-	image_draw_corner(normal, x + s, 250, s, 0, 128, 256, 1.0f, color_white);
+	if(angry == -1)
+		angry = image_load("reimu_angry_l.png");
+
+
+	if(left[i].move == left[i].position && speaker == dialog_reimu)
+		switch(speaker_mood) {
+			case dialog_normal:
+				image_draw_corner(normal, x + s, 250, s, 0, 128, 256, 1.0f, color_white);
+				break;
+			case dialog_angry:
+				image_draw_corner(angry, x + s, 250, s, 0, 128, 256, 1.0f, color_white);
+				break;
+			default:
+				fprintf(stderr, "\nUnknown Reimu's mood\n");
+				exit(1);
+		}
+	else
+		image_draw_corner(normal, x + s, 250, s, 0, 128, 256, 1.0f, color_white);
+
 	break;
 }
 @}
@@ -5031,19 +5043,26 @@ while(1) {
 	@<Get bonuses@>
 	@<Game menu@>
 	@<Get processor time to OS@>
-	{
+	{//FIXME
 		static int c = 0;
 
 		if(c == 0) {
 			dialog_left_add(dialog_yukari);
 			dialog_left_add(dialog_reimu);
+			dialog_right_add(dialog_marisa);
 			c++;
 		} else if (c == 1 && dialog_says == 0) {
 			dialog_msg("Hello1 Hello2 Hello3", dialog_reimu, dialog_normal);
 			c++;
 		} else if (c == 2 && dialog_says == 0) {
+			dialog_msg("Angry angry angry angry", dialog_reimu, dialog_angry);
+			c++;
+		} else if (c == 3 && dialog_says == 0) {
 			dialog_msg("1345 1234 1234", dialog_yukari, dialog_normal);
-			c--;
+			c++;
+		} else if (c == 4 && dialog_says == 0) {
+			dialog_msg("marisa marisa marisa", dialog_marisa, dialog_normal);
+			c = 1;
 		}
 	}
 	dialog_end();//FIXME
@@ -5051,7 +5070,6 @@ while(1) {
 @}
 
 Мы держим fps~60.
-FIXME: у родителей сделал 24 вместо 60, потому что тормозит.
 FIXME: 60 мало, бекграунд дёргается. Надо хотя бы 80.
 Добавим таймер для контроля перерисовки экрана раз в 1000/60 мс:
 @d Skip frames @{
@@ -5061,7 +5079,7 @@ static int main_timer_frame = 0;
 main_timer_frame = timer_calc(main_timer_frame);
 if(main_timer_frame == 0) {
 
-	main_timer_frame = 1000/24;
+	main_timer_frame = 1000/80;
 
 	frames++;
 
@@ -5093,6 +5111,7 @@ if(main_timer_time_points == 0) {
 	bullets_update_all_time_points();
 	bonuses_update_all_time_points();
 	dialog_update_all_time_points();
+	background_update_animation();
 }
 @}
 Функции characters_update_all_time_points, player_update_all_time_points,
