@@ -4645,7 +4645,7 @@ void dialog_draw(void);
 	if(id == -1)
 		id = image_load("dialog.png");
 
-	image_draw_corner(id, 10, 650 - anim_step*2, 0, 0, 256, 88, 1.5f, color_white);
+	image_draw_corner(id, 20, 650 - anim_step*2, 0, 0, 256, 66, 1.9f, color_white);
 }
 @}
 
@@ -4664,7 +4664,7 @@ void dialog_draw(void);
 	while(1) {
 		int new_pos;
 
-		new_pos = pos + pos_last_word_of_long_string(&message[pos], 375, fd);
+		new_pos = pos + pos_last_word_of_long_string(&message[pos], 465, fd);
 
 		@<dialog_draw draw characters step by step@>
 
@@ -4731,11 +4731,11 @@ cpos нужен так как значение message_point изменится.
 @d dialog_draw print more... or message @{@-
 more_flag = 0;
 if(new_pos != message_len && line == 3) {
-	print_text("more...", 15, 655 + 30*line - anim_step*2, 375, color_green, fd);
+	print_text("more...", 30, 655 + 30*line - anim_step*2, 465, color_green, fd);
 	more_flag = 1;
 	message_point = pos;
 } else
-	print_text(&message[pos], 15, 655 + 30*line - anim_step*2, 375, color_red, fd);
+	print_text(&message[pos], 30, 655 + 30*line - anim_step*2, 465, color_red, fd);
 @}
 more... выводится на 4-й строке при условии, что существует и 5-я строка.
 Нумерация строк идёт с 0, чтобы не вычитать 1 при умножении.
@@ -4845,7 +4845,7 @@ static void dialog_true_end(void) {
 @}
 
 @d dialog_draw posx & tx calculation for left @{@-
-int x = -190 + left[i].position + anim_step*2;
+int x = -180 + left[i].position + anim_step*2;
 int s = GAME_FIELD_X - x;
 
 if(s > 128)
@@ -4859,7 +4859,7 @@ if(s < 0)
 	саму картинку влево, то приходится к x прибавлять s.
 
 @d dialog_draw posx & tx calculation for right @{@-
-int x = 460 - right[i].position - anim_step*2;
+int x = 575 - right[i].position - anim_step*2;
 int s = GAME_FIELD_X + GAME_FIELD_W - x;
 
 if(s > 128)
@@ -5014,8 +5014,8 @@ int main(void) {
 
 	//dialog_left_add(dialog_yukari);
 	//dialog_left_add(dialog_reimu);
-	//dialog_msg("Hello1 Hello2 Hello3 Hello4 Hello5 Hello6 World1 World2 World3 World4 World5 World6 World7 World8 Hello7 Hello8 ^_^ NyaNya! Naruto is rulezzz! Windows must die! I suck cocks! Emacs Vim FireFox Tetris", dialog_reimu, dialog_normal);
-	//dialog_msg("Hello1 Hello2 Hello3 Hello4 Hello5", dialog_reimu, dialog_normal);
+	//dialog_msg("Hello1 Hello2 Hello3 Hello4 Hello5 Hello6 World1 World2 World3 World4 World5 World6 World7 World8 Hello7 Hello8 ^_^ NyaNya! Naruto is rulezzz! Windows must die! I suck cocks! Emacs Vim FireFox Tetris Tomato 12345 :( :) -_- ABCDEFG QWERTY UIOP ASDF", dialog_reimu, dialog_normal);
+	//dialog_msg("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! x", dialog_reimu, dialog_normal);
 
 	bonus_power_create(50, 100);
 
