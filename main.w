@@ -29,7 +29,7 @@
 
 Размер игрового поля, где происходит действие игры:
 @d const.h game field width and height @{
-#define GAME_FIELD_W 380
+#define GAME_FIELD_W 510
 #define GAME_FIELD_H 580
 @}
 Использовать в алгоритмах. Начало в точке (0, 0).
@@ -3128,10 +3128,10 @@ shift - смещение текстуры, 256 - её размер.
 
 		glBegin(GL_QUADS);
 			glTexCoord2i(0, 0);
-			glVertex2i(-1, -1);
+			glVertex2i(-1, -3);
 		 
 			glTexCoord2f(1, 0);
-			glVertex2i(1, -1);
+			glVertex2i(1, -3);
 		 
 			glTexCoord2f(1, 1);
 			glVertex2i(1, 1);
