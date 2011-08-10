@@ -4821,7 +4821,7 @@ static void dialog_true_end(void) {
 	int i;
 
 	for(i = 0; i < left_side_point; i++) {
-		@<dialog_draw posx & tx calculation for left@>
+		@<dialog_draw posx for left@>
 
 		switch(left[i].character) {
 			@<dialog_draw left side characters@>
@@ -4832,7 +4832,7 @@ static void dialog_true_end(void) {
 	}
 
 	for(i = 0; i < right_side_point; i++) {
-		@<dialog_draw posx & tx calculation for right@>
+		@<dialog_draw posx for right@>
 
 		switch(right[i].character) {
 			@<dialog_draw right side characters@>
@@ -4844,28 +4844,13 @@ static void dialog_true_end(void) {
 }
 @}
 
-@d dialog_draw posx & tx calculation for left @{@-
+@d dialog_draw posx for left @{@-
 int x = -180 + left[i].position + anim_step*2;
-int s = GAME_FIELD_X - x;
-
-if(s > 128)
-	s = 128;
-if(s < 0)
-	s = 0;
 @}
-Столько гемороя для того, чтобы текстура обрезалась по границе GAME_FIELD_X.
 В переменной x хранится смещения относительно левой стороны экрана.
-В s -- сдвиг текстуры. А так как уменьшение текстуры слева сдвигает и
-	саму картинку влево, то приходится к x прибавлять s.
 
-@d dialog_draw posx & tx calculation for right @{@-
+@d dialog_draw posx for right @{@-
 int x = 575 - right[i].position - anim_step*2;
-int s = GAME_FIELD_X + GAME_FIELD_W - x;
-
-if(s > 128)
-	s = 128;
-if(s < 0)
-	s = 0;
 @}
 
 
@@ -4885,22 +4870,22 @@ case dialog_reimu: {
 	if(left[i].move == left[i].position && speaker == dialog_reimu)
 		switch(speaker_mood) {
 			case dialog_normal:
-				image_draw_corner(normal, x + s, 250, s, 0, 128, 256, 1.0f, color_white);
+				image_draw_corner(normal, x, 250, 0, 0, 128, 256, 1.0f, color_white);
 				break;
 			case dialog_angry:
-				image_draw_corner(angry, x + s, 250, s, 0, 128, 256, 1.0f, color_white);
+				image_draw_corner(angry, x, 250, 0, 0, 128, 256, 1.0f, color_white);
 				break;
 			default:
 				fprintf(stderr, "\nUnknown Reimu's mood\n");
 				exit(1);
 		}
 	else
-		image_draw_corner(normal, x + s, 250, s, 0, 128, 256, 1.0f, color_white);
+		image_draw_corner(normal, x, 250, 0, 0, 128, 256, 1.0f, color_white);
 
 	break;
 }
 @}
-Размер картинки персонажа поменять сложно, так как он используется выше.
+
 
 Выводим Юкари с левой стороны:
 @d dialog_draw left side characters @{@-
@@ -4910,7 +4895,7 @@ case dialog_yukari: {
 	if(normal == -1)
 		normal = image_load("yukari_normal_l.png");
 
-	image_draw_corner(normal, x + s, 250, s, 0, 128, 256, 1.0f, color_white);
+	image_draw_corner(normal, x, 250, 0, 0, 128, 256, 1.0f, color_white);
 	break;
 }
 @}
@@ -4926,7 +4911,7 @@ case dialog_marisa: {
 	if(normal == -1)
 		normal = image_load("marisa_normal_r.png");
 
-	image_draw_corner(normal, x, 250, 0, 0, s, 256, 1.0f, color_white);
+	image_draw_corner(normal, x, 250, 0, 0, 128, 256, 1.0f, color_white);
 	break;
 }
 @}
