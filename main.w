@@ -4966,12 +4966,12 @@ void panel_draw(void) {
 	if(fd == -1)
 		fd = load_font("big_font1.txt");
 
-	//print_text("Hello", GAME_FPS_X, GAME_FPS_Y, 90, color_white, fd);
-
 	@<panel_draw draw noise@>
 	@<panel_draw draw road@>
 	@<panel_draw draw moon@>
 	@<panel_draw draw score@>
+	@<panel_draw draw player & spell@>
+	@<panel_draw draw power,graze,point,time@>
 }
 @}
 
@@ -5014,9 +5014,9 @@ for(j = 0; j < 600; j+=29) {
 
 Заполняем оставшееся место:
 @d panel_draw draw bars @{@-
-//for(i = 58*9; i < 800; i+=58)
-//	for(j = 0; j < 600; j+=29)
-//		image_draw_corner(dialog, i, j, 0, 116, 0+58, 116+29, 1.0f, color_white);
+for(i = 58*9; i < 800; i+=58)
+	for(j = 0; j < 600; j+=29)
+		image_draw_corner(dialog, i, j, 0, 116, 0+58, 116+29, 1.0f, color_white);
 @}
 
 @d panel_draw draw road @{@-
@@ -5024,7 +5024,48 @@ image_draw_corner(dialog, 630, 250, 100, 85, 100+56, 85+161, 2.0f, color_white);
 @}
 
 @d panel_draw draw moon @{@-
-image_draw_corner(dialog, 625, 350, 2, 155, 98, 252, 1.0f, color_white);
+image_draw_corner(dialog, 625, 370, 2, 155, 98, 252, 1.0f, color_white);
+@}
+
+HiScore & Score:
+@d panel_draw draw score @{@-
+image_draw_corner(dialog, 540, 60, 167, 71, 167+77, 71+16, 1.0f, color_white);
+image_draw_corner(dialog, 540, 90, 167, 95, 167+55, 95+15, 1.0f, color_white);
+
+{
+	char b[2];
+	int i;
+
+	b[1] = '\0';
+
+	for(i = 0; i < 10; i++) {
+		b[0] = 0+'0';
+		print_text(b, 630+16*i, 55, 90, color_white, fd);
+		print_text(b, 630+16*i, 55+30, 90, color_white, fd);
+	}
+}
+@}
+
+@d panel_draw draw player & spell @{@-
+image_draw_corner(dialog, 540, 140, 167, 117, 167+65, 117+21, 1.0f, color_white);
+image_draw_corner(dialog, 540, 170, 167, 140, 167+49, 140+21, 1.0f, color_white);
+
+{
+	int i;
+
+	for(i = 0; i < 6; i++)
+		image_draw_corner(dialog, 630+22*i, 137, 1, 69, 1+32, 69+32, 0.7f, color_white);
+
+	for(i = 0; i < 7; i++)
+		image_draw_corner(dialog, 630+22*i, 167, 40, 68, 40+33, 68+33, 0.7f, color_white);
+}
+@}
+
+@d panel_draw draw power,graze,point,time @{@-
+image_draw_corner(dialog, 540, 220, 167, 160, 167+62, 160+19, 1.0f, color_white);
+image_draw_corner(dialog, 540, 250, 168, 187, 168+57, 187+15, 1.0f, color_white);
+image_draw_corner(dialog, 540, 280, 167, 209, 167+53, 209+16, 1.0f, color_white);
+image_draw_corner(dialog, 540, 310, 167, 232, 167+50, 232+16, 1.0f, color_white);
 @}
 
 @d Panel public prototypes @{@-
