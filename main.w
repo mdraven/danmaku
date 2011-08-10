@@ -3003,7 +3003,7 @@ static void gluPerspective(GLdouble fovy, GLdouble aspect, GLdouble zNear, GLdou
 
 static void window_set_3dbackground_config(void) {
 	glClearColor(0, 0, 0, 0);
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glClear(/*GL_COLOR_BUFFER_BIT |*/ GL_DEPTH_BUFFER_BIT);
 
 //	glDisable(GL_TEXTURE_2D);
 	glEnable(GL_DEPTH_TEST);
@@ -4950,6 +4950,103 @@ dialog_marisa,@}
 	dialog_end();
 
 =========================================================
+
+Игровая панель с информацией.
+
+
+@o panel.h @{
+@<Panel public prototypes@>
+@}
+
+@o panel.c @{
+#include "os_specific.h"
+#include "player.h"
+#include "const.h"
+#include "font.h"
+
+@<Panel private structs@>
+@<Panel private prototypes@>
+@<Panel functions@>
+@}
+
+@d Panel functions @{
+void panel_draw(void) {
+	static int dialog = -1;
+	static int fd = -1;
+
+
+	if(dialog == -1)
+		dialog = image_load("dialog.png");
+
+	if(fd == -1)
+		fd = load_font("big_font1.txt");
+
+	//print_text("Hello", GAME_FPS_X, GAME_FPS_Y, 90, color_white, fd);
+
+	@<panel_draw draw noise@>
+	@<panel_draw draw road@>
+	@<panel_draw draw moon@>
+	@<panel_draw draw score@>
+}
+@}
+
+@d panel_draw draw noise @{@-
+{
+	int i, j;
+
+	@<panel_draw draw horizontal borders@>
+	@<panel_draw draw vertical borders@>
+	@<panel_draw draw bars@>
+}
+@}
+Далее идут участки, которые нужно переписать после изменения GAME_FIELD_*, а всё благодаря
+моей лени :(
+
+Горизонтальные полоски сверху и снизу:
+@d panel_draw draw horizontal borders @{@-
+for(i = 0; i < 800; i+=58) {
+	image_draw_corner(dialog, i, 0, 0, 116, 0+58, 116+GAME_FIELD_Y, 1.0f, color_white);
+	image_draw_corner(dialog, i, 29*20+10, 0, 116+10, 0+58, 116+29, 1.0f, color_white);
+}
+@}
+58 и 29 - ширина и высота текстуры. 800 на 600 - разрешение экрана.
+0 и 116 - положение блока текстуры на большой текстуре.
+116+GAME_FIELD_Y - обрезка текстуры игровым полем, а оно начинается с позиции GAME_FIELD_Y.
+29*20 = 580 - самый нижний блок текстуры, та что ниже уже не видна, но
+	GAME_FIELD_Y+GAME_FIELD_H = 590, следовательно нужно отрезать 10 пикселей.
+	Смещаемся на 10 ниже - 29*20+10, отрезаем 10 сверху у текстуры 116+10.
+
+Вертикальные полосы слева и справа:
+@d panel_draw draw vertical borders @{@-
+for(j = 0; j < 600; j+=29) {
+	image_draw_corner(dialog, 0, j, 0, 116, 0+GAME_FIELD_X, 116+29, 1.0f, color_white);
+	image_draw_corner(dialog, 58*8+56, j, 56, 116, 0+58, 116+29, 1.0f, color_white);
+}
+@}
+См. про горизрнтальные полосы выше.
+58*8 = 464, а GAME_FIELD_X+GAME_FIELD_W = 520, те 520-464 = 56 и надо
+	нарисовать оставшиеся 2 пикселя.
+
+Заполняем оставшееся место:
+@d panel_draw draw bars @{@-
+//for(i = 58*9; i < 800; i+=58)
+//	for(j = 0; j < 600; j+=29)
+//		image_draw_corner(dialog, i, j, 0, 116, 0+58, 116+29, 1.0f, color_white);
+@}
+
+@d panel_draw draw road @{@-
+image_draw_corner(dialog, 630, 250, 100, 85, 100+56, 85+161, 2.0f, color_white);
+@}
+
+@d panel_draw draw moon @{@-
+image_draw_corner(dialog, 625, 350, 2, 155, 98, 252, 1.0f, color_white);
+@}
+
+@d Panel public prototypes @{@-
+void panel_draw(void);
+@}
+
+=========================================================
 Основной файл игры:
 
 @o main.c @{
@@ -4969,6 +5066,7 @@ dialog_marisa,@}
 #include "const.h"
 #include "font.h"
 #include "dialog.h"
+#include "panel.h"
 
 @<Main functions@>
 @}
@@ -5088,8 +5186,8 @@ if(main_timer_frame == 0) {
 	@<Draw bullets@>
 	@<Draw characters@>
 	@<Draw player@>
-	@<Draw panel@>
 	@<Draw dialog@>
+	@<Draw panel@>
 	@<Draw FPS@>
 	@<Window update@>
 }
@@ -5163,6 +5261,11 @@ bullets_draw();
 Отрисовка бонусов:
 @d Draw bonuses @{@-
 bonuses_draw();
+@}
+
+Панель со статистикой:
+@d Draw panel @{@-
+panel_draw();
 @}
 
 Рисуем окно диалога:
