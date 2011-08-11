@@ -148,7 +148,7 @@ void window_create(void);
 Настройки OGL для вывода 2D графики:
 @d os_specific functions @{
 static void window_set_2d_config(void) {
-	glClearColor(0, 0, 0, 0);
+	//glClearColor(0, 0, 0, 0);
 	//glClear(GL_COLOR_BUFFER_BIT);
 
 	glEnable(GL_TEXTURE_2D);
@@ -3002,11 +3002,11 @@ static void gluPerspective(GLdouble fovy, GLdouble aspect, GLdouble zNear, GLdou
 }
 
 static void window_set_3dbackground_config(void) {
-	glClearColor(0, 0, 0, 0);
-	glClear(/*GL_COLOR_BUFFER_BIT |*/ GL_DEPTH_BUFFER_BIT);
+//	glClearColor(0, 0, 0, 0);
+//	glClear(/*GL_COLOR_BUFFER_BIT |*/ GL_DEPTH_BUFFER_BIT);
 
 //	glDisable(GL_TEXTURE_2D);
-	glEnable(GL_DEPTH_TEST);
+//	glEnable(GL_DEPTH_TEST);
 
 	@<window_set_2d_config OGL blend@>
 
@@ -3092,15 +3092,11 @@ shift - смещение текстуры, 256 - её размер.
 {
 	int i;
 
-	const Tree trees[] = {
-		{100, 1346, 0},
-		{160, 1298, 2}, {100, 1280, 0},
-		{180, 1172, 0}, {130, 1050, 1},
-		{140, 276, 1},
-		{180, 272, 3}, {130, 270, 1},
-		{160, 168, 2},
-		{100, 66, 0},
-		{160, 18, 2}, {100, 0, 0},};
+
+#include "../qwforest/forest.c"
+	static int t1 = sizeof(trees)/sizeof(Tree) - 1;
+	int t2;
+
 
 	static int tree_id[4] = {-1, -1, -1, -1};
 
@@ -3113,37 +3109,52 @@ shift - смещение текстуры, 256 - её размер.
 	if(tree_id[3] == -1)
 		tree_id[3] = image_load("tree4.png");
 
+	if(background_animation == 0)
+		t1 = sizeof(trees)/sizeof(Tree) - 1;
 
-	for(i=0; i < sizeof(trees)/sizeof(Tree); i++) {
-		glLoadIdentity();
+	for(; t1 > 0; t1--)
+		if(trees[t1].y > background_animation)
+			break;
+	for(t2 = t1; t2 > 0; t2--)
+		if(trees[t2].y > background_animation + 260)
+			break;
 
-		glTranslatef(0, 0, -1.45);
-		glRotatef(-30, 1.0, 0.0, 0.0);
+	//printf("%d\n", t1 - t2);
+
+	glLoadIdentity();
+
+	glTranslatef(0, 0, -1.45);
+	glRotatef(-30, 1.0, 0.0, 0.0);
+
+	for(i = t2; i < t1; i++) {
+		glPushMatrix();
 		glTranslatef(trees[i].x/128.0 - 1.0,
-			(trees[i].y - background_animation)/128.0, 0);
+			(trees[i].y - background_animation)/128.0 - 1.0, 0);
 		glRotatef(210, 1.0, 0.0, 0.0);
-		glScalef(0.1, 0.1, 0);
+		//glScalef(0.1, 0.1, 0);
 
 		glBindTexture(GL_TEXTURE_2D, image_list[tree_id[trees[i].type]].tex_id);
 
 		glBegin(GL_QUADS);
 			glTexCoord2i(0, 0);
-			glVertex2i(-1, -3);
+			glVertex2f(-0.1, -0.3);
 		 
 			glTexCoord2f(1, 0);
-			glVertex2i(1, -3);
+			glVertex2f(0.1, -0.3);
 		 
 			glTexCoord2f(1, 1);
-			glVertex2i(1, 1);
+			glVertex2f(0.1, 0.1);
 		 
 			glTexCoord2f(0, 1);
-			glVertex2i(-1, 1);
+			glVertex2f(-0.1, 0.1);
 		glEnd();
+
+		glPopMatrix();
 	}
 }
 @}
 С координатами деревьев полный отстой. Длина хозяйства 1280. Если кто-то
-находится в пределах 0-128, то нужно дублировать прибавив это к 1280.
+находится в пределах 0-256, то нужно дублировать прибавив это к 1280.
 
 Создадим структуру Tree в которой будут храниться деревья для задников:
 @d Background private structs @{
@@ -5167,7 +5178,7 @@ while(1) {
 	@<Get bonuses@>
 	@<Game menu@>
 	@<Get processor time to OS@>
-	{//FIXME
+	/*{//FIXME
 		static int c = 0;
 
 		if(c == 0) {
@@ -5189,7 +5200,7 @@ while(1) {
 			c = 1;
 		}
 	}
-	dialog_end();//FIXME
+	dialog_end();*///FIXME
 }
 @}
 
