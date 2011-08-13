@@ -446,10 +446,45 @@ void image_draw_center(int id, int x, int y, float rot, float scale) {
 		glVertex2i(-img->w/2, img->h/2);
 	glEnd();
 }
+
+void image_draw_center_t(int id, int x, int y,
+		int tx1, int ty1, int tx2, int ty2,
+		float rot, float scale) {
+	ImageList *img = &image_list[id];
+	int w = tx2 - tx1;
+	int h = ty2 - ty1;
+
+	glLoadIdentity();
+
+	glBindTexture(GL_TEXTURE_2D, img->tex_id);
+
+	glTranslatef(x, y, 0);
+	glRotatef(rot, 0, 0, 1);
+	glScalef(scale, scale, 0);
+
+	glBegin(GL_QUADS);
+		glTexCoord2f((float)tx1/(float)img->w,
+			(float)ty1/(float)img->h);
+		glVertex2i(-w/2, -h/2);
+
+		glTexCoord2f((float)tx2/(float)img->w,
+			(float)ty1/(float)img->h);
+		glVertex2i(w/2, -h/2);
+
+		glTexCoord2f((float)tx2/(float)img->w,
+			(float)ty2/(float)img->h);
+		glVertex2i(w/2, h/2);
+
+		glTexCoord2f((float)tx1/(float)img->w,
+			(float)ty2/(float)img->h);
+		glVertex2i(-w/2, h/2);
+	glEnd();
+}
 @}
 
 @d os_specific public prototypes @{
 void image_draw_center(int id, int x, int y, float rot, float scale);
+void image_draw_center_t(int id, int x, int y, int tx1, int ty1, int tx2, int ty2, float rot, float scale);
 @}
 
 Добавим функцию с помощью которой можно рисовать часть картинки:
@@ -1810,7 +1845,7 @@ void player_set_weak_time_point_x(void) {
 	switch(player_type) {
 		case player_reimu:
 		case player_marisa:
-			player_time_point_for_movement_to_x = 5;
+			player_time_point_for_movement_to_x = 2;
 			break;
 		default:
 			fprintf(stderr, "\nUnknown player type\n");
@@ -1822,7 +1857,7 @@ void player_set_weak_time_point_y(void) {
 	switch(player_type) {
 		case player_reimu:
 		case player_marisa:
-			player_time_point_for_movement_to_y = 5;
+			player_time_point_for_movement_to_y = 2;
 			break;
 		default:
 			fprintf(stderr, "\nUnknown player type\n");
@@ -1905,7 +1940,7 @@ void player_draw(void) {
 			image_draw_center(id,
 				GAME_FIELD_X + player_x,
 				GAME_FIELD_Y + player_y,
-				0, 0.8);
+				0, 0.7);
 			
 			break;
 		}
@@ -3034,27 +3069,26 @@ static void window_set_3dbackground_config(void);
 @d background_draw backgrounds @{
 case background_forest: {
 	static int id = -1;
+	float shiftx;
 
 	if(id == -1)
 		id = image_load("forest.png");
 
 	@<background_draw sync forest@>
+	@<background_draw calculate shiftx@>
 
-	glTranslatef(0, 0, -1.5);
-	glRotatef(-30, 1.0, 0.0, 0.0);
-//	glScalef(scale, scale, 0);
-
-	glBindTexture(GL_TEXTURE_2D, image_list[id].tex_id);
-
+	glColor3ub(100,100,100);
 	@<background_draw draw background of forest@>
 	@<background_draw draw trees@>
+	glColor3ub(255,255,255);
 	break;
 }
 @}
+В shifty будет храниться смещение по оси y.
 
-Анимация каждые 10 мс. для леса:
+Анимация каждые 2 мс. для леса:
 @d background_draw sync forest @{@-
-if(background_time_points > 10) {
+if(background_time_points > 2) {
 	background_animation++;
 
 	if(background_animation == 1280)
@@ -3065,35 +3099,67 @@ if(background_time_points > 10) {
 @}
 Берем в учёт что размер текстуры леса 256x256, умножаем на 5, получаем 1280.
 
+Подсчитаем смещение по оси X:
+@d background_draw calculate shiftx @{
+if(background_animation >= 0 && background_animation < 180)
+	shiftx = (75.0/(128.0*180.0)) * (float)background_animation;
+@}
+shiftx = (растояние от центра до перегиба по X/(128.0*длина от низа до перегиба по Y))
+	128.0 -- длина полигона от центра до края в пикселах.
+
+Дальше я обленился и писал правила "подгонкой":
+@d background_draw calculate shiftx @{@-
+else if(background_animation >= 180 && background_animation < 460)
+	shiftx = 75.0/128.0;
+else if(background_animation >= 460 && background_animation < 650)
+	shiftx = 75.0/128.0 - (46.0/(128.0*190.0)) * (float)(background_animation - 460);
+else if(background_animation >= 650 && background_animation < 820)
+	shiftx = 29.0/128.0;
+else if(background_animation >= 820 && background_animation < 950)
+	shiftx = 29.0/128.0 + (30.0/(128.0*130.0)) * (float)(background_animation - 820);
+else if(background_animation >= 950 && background_animation < 1100)
+	shiftx = 59.0/128.0;
+else if(background_animation >= 1100)
+	shiftx = 59.0/128.0 - (59.0/(128.0*180.0)) * (float)(background_animation - 1100);
+@}
+
 Рисуем задник леса:
 @d background_draw draw background of forest @{
 {
 	float shift = background_animation/256.0;
-	//float y = sin(background_animation * (3.14/180.0))/50.0;
+	float sh = shiftx/2.0;
+
+	glTranslatef(0, 0, -1.5);
+	glRotatef(-30, 1.0, 0.0, 0.0);
+//	glScalef(scale, scale, 0);
+
+	glBindTexture(GL_TEXTURE_2D, image_list[id].tex_id);
+
 	glBegin(GL_QUADS);
-		glTexCoord2f(0, 0.0 + shift);
+		glTexCoord2f(0.0 + sh, 0.0 + shift);
 		glVertex2i(-1, -1);
 
-		glTexCoord2f(1, 0.0 + shift);
+		glTexCoord2f(1.0 + sh, 0.0 + shift);
 		glVertex2i(1, -1);
 
-		glTexCoord2f(1, 1.0 + shift);
+		glTexCoord2f(1.0 + sh, 1.0 + shift);
 		glVertex2i(1, 1);
 
-		glTexCoord2f(0, 1.0 + shift);
+		glTexCoord2f(0.0 + sh, 1.0 + shift);
 		glVertex2i(-1, 1);
 	glEnd();
 }
 @}
 shift - смещение текстуры, 256 - её размер.
+sh - получает делением shiftx на 2, тк отсчёт координат деревьев идёт от центра,
+	то есть (-128;+128), а текстур от края (0;+256).
 
 Рисуем деревья:
 @d background_draw draw trees @{
 {
 	int i;
 
-
-#include "../qwforest/forest.c"
+	#include "forest.c"
 	static int t1 = sizeof(trees)/sizeof(Tree) - 1;
 	int t2;
 
@@ -3119,42 +3185,44 @@ shift - смещение текстуры, 256 - её размер.
 		if(trees[t2].y > background_animation + 260)
 			break;
 
-	//printf("%d\n", t1 - t2);
-
 	glLoadIdentity();
 
 	glTranslatef(0, 0, -1.45);
 	glRotatef(-30, 1.0, 0.0, 0.0);
 
 	for(i = t2; i < t1; i++) {
-		glPushMatrix();
-		glTranslatef(trees[i].x/128.0 - 1.0,
-			(trees[i].y - background_animation)/128.0 - 1.0, 0);
-		glRotatef(210, 1.0, 0.0, 0.0);
-		//glScalef(0.1, 0.1, 0);
-
-		glBindTexture(GL_TEXTURE_2D, image_list[tree_id[trees[i].type]].tex_id);
-
-		glBegin(GL_QUADS);
-			glTexCoord2i(0, 0);
-			glVertex2f(-0.1, -0.3);
-		 
-			glTexCoord2f(1, 0);
-			glVertex2f(0.1, -0.3);
-		 
-			glTexCoord2f(1, 1);
-			glVertex2f(0.1, 0.1);
-		 
-			glTexCoord2f(0, 1);
-			glVertex2f(-0.1, 0.1);
-		glEnd();
-
-		glPopMatrix();
+		@<background_draw OGL trees@>
 	}
 }
 @}
 С координатами деревьев полный отстой. Длина хозяйства 1280. Если кто-то
 находится в пределах 0-256, то нужно дублировать прибавив это к 1280.
+
+@d background_draw OGL trees @{@-
+glPushMatrix();
+glTranslatef(trees[i].x/128.0 - 1.5 - shiftx,
+	(trees[i].y - background_animation)/128.0 - 1.0, 0);
+glRotatef(210, 1.0, 0.0, 0.0);
+//glScalef(0.1, 0.1, 0);
+
+glBindTexture(GL_TEXTURE_2D, image_list[tree_id[trees[i].type]].tex_id);
+
+glBegin(GL_QUADS);
+	glTexCoord2f(0, 0);
+	glVertex2f(-0.2, -0.4);
+ 
+	glTexCoord2f(1, 0);
+	glVertex2f(0.2, -0.4);
+ 
+	glTexCoord2f(1, 1);
+	glVertex2f(0.2, 0.1);
+ 
+	glTexCoord2f(0, 1);
+	glVertex2f(-0.2, 0.1);
+glEnd();
+
+glPopMatrix();
+@}
 
 Создадим структуру Tree в которой будут храниться деревья для задников:
 @d Background private structs @{
@@ -3284,6 +3352,8 @@ int timer_calc(int time) {
 	5)Скрипты не оказывают влияния на бонусы, и поэтому им не нужен id.
 	6)После появления бонусы летят вверх, потому начинаю лететь вниз. А после пересечения
 спецлинии по параболе к главному персонажу.
+
+Hint: иероглиф - TEN - точка - 点
 
 Отсутствие id делает бонусы похожими на пули.
 
@@ -3512,7 +3582,7 @@ if(bonus->move_step == 2) {
 
 @d bonus_small_score_action remove @{
 if(bonus->x < -25 || bonus->x > GAME_FIELD_W + 25 ||
-	bonus->y < -25 || bonus->y > GAME_FIELD_H + 25)
+	/*bonus->y < -25 ||*/ bonus->y > GAME_FIELD_H + 25)
 	bonus->is_noempty = 0;
 @}
 
@@ -3814,12 +3884,20 @@ static void bonus_power_draw(int bd) {
 	static int id = -1;
 
 	if(id == -1)
-		id = image_load("bonus_power.png");
+		id = image_load("bonuses.png");
 
-	image_draw_center(id,
-		GAME_FIELD_X + bonuses[bd].x,
-		GAME_FIELD_Y + bonuses[bd].y,
-		0, 0.5);
+	if(bonuses[bd].y < 0)
+		image_draw_center_t(id,
+			GAME_FIELD_X + bonuses[bd].x,
+			GAME_FIELD_Y + 7,
+			0, 33, 32, 52,
+			0, 0.8);
+	else
+		image_draw_center_t(id,
+			GAME_FIELD_X + bonuses[bd].x,
+			GAME_FIELD_Y + bonuses[bd].y,
+			0, 0, 32, 32,
+			0, 0.5);
 }
 @}
 
@@ -5152,7 +5230,7 @@ int main(void) {
 	//dialog_msg("Hello1 Hello2 Hello3 Hello4 Hello5 Hello6 World1 World2 World3 World4 World5 World6 World7 World8 Hello7 Hello8 ^_^ NyaNya! Naruto is rulezzz! Windows must die! I suck cocks! Emacs Vim FireFox Tetris Tomato 12345 :( :) -_- ABCDEFG QWERTY UIOP ASDF", dialog_reimu, dialog_normal);
 	//dialog_msg("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! x", dialog_reimu, dialog_normal);
 
-	bonus_power_create(50, 100);
+	bonus_power_create(50, -50);
 
 	background_set_type(background_forest);
 
