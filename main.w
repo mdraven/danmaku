@@ -1920,7 +1920,16 @@ void player_update_all_time_points(void) {
 
 	if(player_time_point_first_fire > 0)
 		player_time_point_first_fire--;
+
+	player_time_point_for_movement_animation++;
 }
+@}
+player_time_point_for_movement_animation -- time points для анимации инкрементируются,
+	так как количество кадров определяется самим персонажем. Обнуляется
+	в функции рисования.
+
+@d Player private structs @{@-
+static int player_time_point_for_movement_animation;
 @}
 
 Рисуем персонажей:
@@ -1937,11 +1946,28 @@ void player_draw(void) {
 			if(id == -1)
 				id = image_load("reimu.png");
 
-			image_draw_center(id,
-				GAME_FIELD_X + player_x,
-				GAME_FIELD_Y + player_y,
-				0, 0.7);
-			
+			if(player_time_point_for_movement_animation > 300)
+				player_time_point_for_movement_animation = 0;
+
+			if(player_time_point_for_movement_animation < 100)
+				image_draw_center_t(id,
+					GAME_FIELD_X + player_x,
+					GAME_FIELD_Y + player_y,
+					2, 3, 2+54, 3+93,
+					0, 0.7);
+			else if (player_time_point_for_movement_animation < 200)
+				image_draw_center_t(id,
+					GAME_FIELD_X + player_x,
+					GAME_FIELD_Y + player_y,
+					63, 3, 63+54, 3+93,
+					0, 0.7);
+			else
+				image_draw_center_t(id,
+					GAME_FIELD_X + player_x,
+					GAME_FIELD_Y + player_y,
+					119, 3, 119+54, 3+93,
+					0, 0.7);
+
 			break;
 		}
 		default:
