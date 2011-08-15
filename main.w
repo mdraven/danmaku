@@ -424,6 +424,10 @@ static SDL_Surface *load_from_file(char *filename);
 void image_draw_center(int id, int x, int y, float rot, float scale) {
 	ImageList *img = &image_list[id];
 
+	image_draw_center_t(id, x, y,
+		0, 0, img->w, img->h,
+		rot, scale);
+/*
 	glLoadIdentity();
 
 	glBindTexture(GL_TEXTURE_2D, img->tex_id);
@@ -445,6 +449,7 @@ void image_draw_center(int id, int x, int y, float rot, float scale) {
 		glTexCoord2i(0, 1);
 		glVertex2i(-img->w/2, img->h/2);
 	glEnd();
+*/
 }
 
 void image_draw_center_t(int id, int x, int y,
@@ -480,11 +485,46 @@ void image_draw_center_t(int id, int x, int y,
 		glVertex2i(-w/2, h/2);
 	glEnd();
 }
+
+void image_draw_center_t_mirror(int id, int x, int y,
+		int tx1, int ty1, int tx2, int ty2,
+		float rot, float scale) {
+	ImageList *img = &image_list[id];
+	int w = tx2 - tx1;
+	int h = ty2 - ty1;
+
+	glLoadIdentity();
+
+	glBindTexture(GL_TEXTURE_2D, img->tex_id);
+
+	glTranslatef(x, y, 0);
+	glRotatef(rot, 0, 0, 1);
+	glScalef(scale, scale, 0);
+
+	glBegin(GL_QUADS);
+		glTexCoord2f((float)tx1/(float)img->w,
+			(float)ty1/(float)img->h);
+		glVertex2i(w/2, -h/2);
+
+		glTexCoord2f((float)tx2/(float)img->w,
+			(float)ty1/(float)img->h);
+		glVertex2i(-w/2, -h/2);
+
+		glTexCoord2f((float)tx2/(float)img->w,
+			(float)ty2/(float)img->h);
+		glVertex2i(-w/2, h/2);
+
+		glTexCoord2f((float)tx1/(float)img->w,
+			(float)ty2/(float)img->h);
+		glVertex2i(w/2, h/2);
+	glEnd();
+}
 @}
 
 @d os_specific public prototypes @{
 void image_draw_center(int id, int x, int y, float rot, float scale);
 void image_draw_center_t(int id, int x, int y, int tx1, int ty1, int tx2, int ty2, float rot, float scale);
+void image_draw_center_t_mirror(int id, int x, int y, int tx1, int ty1, int tx2, int ty2, float rot, float scale);
 @}
 
 Добавим функцию с помощью которой можно рисовать часть картинки:
@@ -1873,6 +1913,9 @@ void player_move_to(int move_to);
 
 @d Player functions @{
 void player_move_to(int move_to) {
+
+	@<player_move_to animation block@>
+
 	if(player_time_point_for_movement_to_x == 0) {
 		if(move_to == player_move_to_left) {
 			player_set_weak_time_point_x();
@@ -1897,12 +1940,31 @@ void player_move_to(int move_to) {
 }
 @}
 
-Перечислим направления перемещения:
+Обнулили счётчик анимации и установили направление движения по горизонтали:
+@d player_move_to animation block @{@-
+if(move_to == player_move_to_left)
+	player_move_horizontal = -1;
+else if (move_to == player_move_to_right)
+	player_move_horizontal = 1;
+@}
+Обнуляется player_move_horizontal в функции рисования.
+
+Перечислим направления перемещения и переменную направления перемещения
+по горизонтали:
 @d Player public structs @{
 enum {
 	player_move_to_left, player_move_to_right, player_move_to_up, player_move_to_down
 };
+
+static int player_move_horizontal;
+static int player_movement_animation;
 @}
+player_move_horizontal - флаг используется для анимации движения влево и вправо.
+	0 - нет анимации; -1 - движение влево; 1 - движение вправо.
+player_movement_animation -- счётчик для анимации инкрементируются,
+	так как количество кадров определяется самим персонажем. Обнуляется
+	в функции рисования и перемещениея.
+
 
 Функция которая уменьшает time points, что в итоге приводит к тому, что
 персонаж может сдвинуться на позицию и производить выстрелы:
@@ -1921,16 +1983,10 @@ void player_update_all_time_points(void) {
 	if(player_time_point_first_fire > 0)
 		player_time_point_first_fire--;
 
-	player_time_point_for_movement_animation++;
+	player_movement_animation++;
 }
 @}
-player_time_point_for_movement_animation -- time points для анимации инкрементируются,
-	так как количество кадров определяется самим персонажем. Обнуляется
-	в функции рисования.
-
-@d Player private structs @{@-
-static int player_time_point_for_movement_animation;
-@}
+Так же инкрементирует счётчик анимации.
 
 Рисуем персонажей:
 @d Player public prototypes @{
@@ -1942,31 +1998,18 @@ void player_draw(void) {
 	switch(player_type) {
 		case player_reimu: {
 			static int id = -1;
+			static int last_toward = 0;
 
 			if(id == -1)
 				id = image_load("reimu.png");
 
-			if(player_time_point_for_movement_animation > 300)
-				player_time_point_for_movement_animation = 0;
-
-			if(player_time_point_for_movement_animation < 100)
-				image_draw_center_t(id,
-					GAME_FIELD_X + player_x,
-					GAME_FIELD_Y + player_y,
-					2, 3, 2+54, 3+93,
-					0, 0.7);
-			else if (player_time_point_for_movement_animation < 200)
-				image_draw_center_t(id,
-					GAME_FIELD_X + player_x,
-					GAME_FIELD_Y + player_y,
-					63, 3, 63+54, 3+93,
-					0, 0.7);
-			else
-				image_draw_center_t(id,
-					GAME_FIELD_X + player_x,
-					GAME_FIELD_Y + player_y,
-					119, 3, 119+54, 3+93,
-					0, 0.7);
+			if(player_move_horizontal == 0) {
+				@<player_draw fly to forward@>
+			} else if (player_move_horizontal == -1) {
+				@<player_draw fly to left@>
+			} else if (player_move_horizontal == 1) {
+				@<player_draw fly to right@>
+			}
 
 			break;
 		}
@@ -1976,6 +2019,108 @@ void player_draw(void) {
 	}
 }
 @}
+
+@d player_draw fly to forward @{@-
+if(player_movement_animation > 300)
+	player_movement_animation = 0;
+
+if(player_movement_animation < 100)
+	image_draw_center_t(id,
+		GAME_FIELD_X + player_x,
+		GAME_FIELD_Y + player_y,
+		2, 3, 2+54, 3+93,
+		0, 0.7);
+else if (player_movement_animation < 200)
+	image_draw_center_t(id,
+		GAME_FIELD_X + player_x,
+		GAME_FIELD_Y + player_y,
+		63, 3, 63+54, 3+93,
+		0, 0.7);
+else
+	image_draw_center_t(id,
+		GAME_FIELD_X + player_x,
+		GAME_FIELD_Y + player_y,
+		119, 3, 119+54, 3+93,
+		0, 0.7);
+@}
+
+Движение влево:
+@d player_draw fly to left @{@-
+if(last_toward != -1)
+	player_movement_animation = 0;
+
+last_toward = player_move_horizontal;
+player_move_horizontal = 0;
+
+if(player_movement_animation > 200)
+	player_movement_animation = 100;
+
+if(player_movement_animation < 50)
+	image_draw_center_t(id,
+		GAME_FIELD_X + player_x,
+		GAME_FIELD_Y + player_y,
+		1, 99, 1+55, 99+97,
+		0, 0.7);
+else if(player_movement_animation < 100)
+	image_draw_center_t(id,
+		GAME_FIELD_X + player_x,
+		GAME_FIELD_Y + player_y,
+		62, 99, 62+54, 99+87,
+		0, 0.7);
+else if(player_movement_animation < 150)
+	image_draw_center_t(id,
+		GAME_FIELD_X + player_x,
+		GAME_FIELD_Y + player_y,
+		124, 100, 124+51, 100+86,
+		0, 0.7);
+else
+	image_draw_center_t(id,
+		GAME_FIELD_X + player_x,
+		GAME_FIELD_Y + player_y,
+		177, 100, 177+51, 100+86,
+		0, 0.7);
+@}
+Если в прошлый раз персонаж двигался в другую сторону или летел
+	прямо, то обнуляем счётчик анимации. Запоминаем текущее направление
+	движения и обнуляем его, так как в функции перемещения этого сделать
+	нельзя(вызывается редко). Рисуем анимацию.
+
+@d player_draw fly to right @{@-
+if(last_toward != 1)
+	player_movement_animation = 0;
+
+last_toward = player_move_horizontal;
+player_move_horizontal = 0;
+
+if(player_movement_animation > 200)
+	player_movement_animation = 100;
+
+if(player_movement_animation < 50)
+	image_draw_center_t_mirror(id,
+		GAME_FIELD_X + player_x,
+		GAME_FIELD_Y + player_y,
+		1, 99, 1+55, 99+97,
+		0, 0.7);
+else if(player_movement_animation < 100)
+	image_draw_center_t_mirror(id,
+		GAME_FIELD_X + player_x,
+		GAME_FIELD_Y + player_y,
+		62, 99, 62+54, 99+87,
+		0, 0.7);
+else if(player_movement_animation < 150)
+	image_draw_center_t_mirror(id,
+		GAME_FIELD_X + player_x,
+		GAME_FIELD_Y + player_y,
+		124, 100, 124+51, 100+86,
+		0, 0.7);
+else
+	image_draw_center_t_mirror(id,
+		GAME_FIELD_X + player_x,
+		GAME_FIELD_Y + player_y,
+		177, 100, 177+51, 100+86,
+		0, 0.7);
+@}
+Почти с точностью скопипастчено с движения налево.
 
 Число попыток до того как появится окно продолжений:
 @d Player public structs @{
