@@ -857,6 +857,20 @@ characters_pos вершина стека
 								 и увеличивается функцией перемещения по координате x
   time_point_for_movement_to_y - аналогично time_point_for_movement_to_x
 
+Атрибуты структуры необходимые при анимации:
+@d Character struct param @{@-
+int horizontal;
+int last_horizontal;
+int movement_animation;
+@}
+horizontal - направление движения по горизонтали(-1 влево, 0 нет движения, 1 вправо);
+	обнулять в функции вырисовки; обнулять в конструкторе.
+last_horizontal - значение horizontal при прошлой вырисовке персонажа(для продолжения
+	анимации); обнулять в конструкторе.
+movement_animation - фаза анимации; вначале равна 0, инкрементируется там же где уменьшается
+	time points; обнуляется в функции вырисовки; необходимо обнулять в конструкторе.
+
+
 @o characters.c @{
 #include <stdio.h>
 #include <stdlib.h>
@@ -899,6 +913,11 @@ void character_reimu_create(int cd) {
 	character->character_type = character_reimu;
 	character->time_point_for_movement_to_x = 0;
 	character->time_point_for_movement_to_y = 0;
+
+	character->horizontal = 0;
+	character->last_horizontal = 0;
+	character->movement_animation = 0;
+
 	character->step_of_movement = 0;
 
 	character->x = player_x;
@@ -924,6 +943,11 @@ void character_marisa_create(int cd) {
 	character->character_type = character_marisa;
 	character->time_point_for_movement_to_x = 0;
 	character->time_point_for_movement_to_y = 0;
+
+	character->horizontal = 0;
+	character->last_horizontal = 0;
+	character->movement_animation = 0;
+
 	character->step_of_movement = 0;
 
 	character->x = player_x;
@@ -948,6 +972,11 @@ void character_marisa_create(int cd);
 
 static void character_move_to(int cd, int move_to) {
 	CharacterList *character = &characters[cd];
+
+	if(move_to == character_move_to_left)
+		character->horizontal = -1;
+	else if (move_to == character_move_to_right)
+		character->horizontal = 1;
 
 	if(character->time_point_for_movement_to_x == 0) {
 		if(move_to == character_move_to_left) {
@@ -980,6 +1009,9 @@ character_set_weak_time_point_y. Они определяют тип персон
 после того как было сделано перемещение.
 
 Как видно, ход по x или y возможен только если соответствующий time_point равен нулю.
+
+Также в функции записывается в переменную horizontal направление движения по горизонтали.
+	Она обнуляется в функции вырисовки.
 
 Направления в которые может перемещаться персонаж:
 @d Character private structs @{
@@ -1085,7 +1117,6 @@ void characters_update_all_time_points(void);
 
 Реализация обновления времени до следующего хода у конкретного вида
 персонажей:
-
 @d Update time point for different characters @{
 static void character_reimu_update_time_points(int cd) {
 	CharacterList *character = &characters[cd];
@@ -1095,6 +1126,8 @@ static void character_reimu_update_time_points(int cd) {
 
 	if(character->time_point_for_movement_to_y > 0)
 		character->time_point_for_movement_to_y--; 
+
+	character->movement_animation++;
 }
 
 static void character_marisa_update_time_points(int cd) {
@@ -1105,9 +1138,11 @@ static void character_marisa_update_time_points(int cd) {
 
 	if(character->time_point_for_movement_to_y > 0)
 		character->time_point_for_movement_to_y--;
+
+	character->movement_animation++;
 }
 @}
-
+Фаза анимации movement_animation тоже обновляется здесь.
 
 
 Сделаем ход всеми компьютерными персонажами. Вражеские персонажи которые спят или
@@ -1354,7 +1389,7 @@ int time;
 Функция которая рисует всех персонажей, которые не спят.
 Стоит рисовать её до того как нарисовать рамку, чтобы рамка перекрыла
 не полностью вылезших персонажей.
-FIXME: Пока рисует всех, а не только не спящих.
+
 
 @d Character functions @{
 @<Draw functions for different characters@>
@@ -1383,7 +1418,7 @@ void characters_draw(void);
 @}
 
 Конкретные функции рисования для различных персонажей:
-
+FIXME: нет анимации, смотреть у blue_fairy
 @d Draw functions for different characters @{
 static void character_reimu_draw(int cd) {
 	CharacterList *character = &characters[cd];
@@ -1488,7 +1523,13 @@ void character_blue_moon_fairy_create(int cd, int x, int y) {
 	character->character_type = character_blue_moon_fairy;
 	character->time_point_for_movement_to_x = 0;
 	character->time_point_for_movement_to_y = 0;
+
+	character->horizontal = 0;
+	character->last_horizontal = 0;
+	character->movement_animation = 0;
+
 	character->step_of_movement = 0;
+
 	character->radius = 10;
 }
 @}
@@ -1536,7 +1577,9 @@ static void character_blue_moon_fairy_update_time_points(int cd) {
 		character->time_point_for_movement_to_x--;
 
 	if(character->time_point_for_movement_to_y > 0)
-		character->time_point_for_movement_to_y--; 
+		character->time_point_for_movement_to_y--;
+
+	character->movement_animation++;
 }
 @}
 
@@ -1651,10 +1694,34 @@ static void character_blue_moon_fairy_draw(int cd) {
 	if(character->is_sleep == 1)
 		return;
 
-	image_draw_center(id,
-		GAME_FIELD_X + character->x,
-		GAME_FIELD_Y + character->y,
-		0, 0.4);
+	//if(player_move_horizontal == 0) {
+		if(character->movement_animation > 200)
+			character->movement_animation = 0;
+
+		if(character->movement_animation < 50)
+			image_draw_center_t(id,
+				GAME_FIELD_X + character->x,
+				GAME_FIELD_Y + character->y,
+				2, 13, 2+120, 13+108,
+				0, 0.4);
+		else if(character->movement_animation < 100)
+			image_draw_center_t(id,
+				GAME_FIELD_X + character->x,
+				GAME_FIELD_Y + character->y,
+				120, 13, 120+120, 13+108,
+				0, 0.4);
+		else if(character->movement_animation < 150)
+			image_draw_center_t(id,
+				GAME_FIELD_X + character->x,
+				GAME_FIELD_Y + character->y,
+				240, 12, 240+120, 12+109,
+				0, 0.4);
+		else
+			image_draw_center_t(id,
+				GAME_FIELD_X + character->x,
+				GAME_FIELD_Y + character->y,
+				365, 12, 365+122, 12+109,
+				0, 0.4);
 }
 @}
 
@@ -1955,7 +2022,9 @@ else if (move_to == player_move_to_right)
 enum {
 	player_move_to_left, player_move_to_right, player_move_to_up, player_move_to_down
 };
+@}
 
+@d Player private structs @{@-
 static int player_move_horizontal;
 static int player_movement_animation;
 @}
@@ -5387,7 +5456,7 @@ int main(void) {
 		}
 		characters_pos = main_character_blue_moon_fairy10 + 1;
 
-//		characters[main_character_blue_moon_fairy1].is_sleep = 0;
+		characters[main_character_blue_moon_fairy1].is_sleep = 0;
 	}
 
 /*	{
