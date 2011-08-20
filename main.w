@@ -859,17 +859,18 @@ characters_pos вершина стека
 
 Атрибуты структуры необходимые при анимации:
 @d Character struct param @{@-
-int horizontal;
 int last_horizontal;
 int movement_animation;
 @}
-horizontal - направление движения по горизонтали(-1 влево, 0 нет движения, 1 вправо);
-	обнулять в функции вырисовки; обнулять в конструкторе.
-last_horizontal - значение horizontal при прошлой вырисовке персонажа(для продолжения
-	анимации); обнулять в конструкторе.
+last_horizontal - направление движения по горизонтали(-1 влево, 0 нет движения, 1 вправо);
+	при прошлой вырисовке персонажа(для продолжения	анимации); обнулять в конструкторе.
 movement_animation - фаза анимации; вначале равна 0, инкрементируется там же где уменьшается
 	time points; обнуляется в функции вырисовки; необходимо обнулять в конструкторе.
 
+Я пытался сделать анимацию как в player, те была ещё переменная horizontal, которая была
+	или 0, или -1, или 1. Но из-за того, что функция рисования линии не определяла движение
+	по диагонали, персонаж постоянно дёргался(смотрел то вперёд, то в сторону). Пришлось
+	делать с move_x, но это не плохо(кажется).
 
 @o characters.c @{
 #include <stdio.h>
@@ -914,7 +915,6 @@ void character_reimu_create(int cd) {
 	character->time_point_for_movement_to_x = 0;
 	character->time_point_for_movement_to_y = 0;
 
-	character->horizontal = 0;
 	character->last_horizontal = 0;
 	character->movement_animation = 0;
 
@@ -944,7 +944,6 @@ void character_marisa_create(int cd) {
 	character->time_point_for_movement_to_x = 0;
 	character->time_point_for_movement_to_y = 0;
 
-	character->horizontal = 0;
 	character->last_horizontal = 0;
 	character->movement_animation = 0;
 
@@ -972,11 +971,6 @@ void character_marisa_create(int cd);
 
 static void character_move_to(int cd, int move_to) {
 	CharacterList *character = &characters[cd];
-
-	if(move_to == character_move_to_left)
-		character->horizontal = -1;
-	else if (move_to == character_move_to_right)
-		character->horizontal = 1;
 
 	if(character->time_point_for_movement_to_x == 0) {
 		if(move_to == character_move_to_left) {
@@ -1009,9 +1003,6 @@ character_set_weak_time_point_y. Они определяют тип персон
 после того как было сделано перемещение.
 
 Как видно, ход по x или y возможен только если соответствующий time_point равен нулю.
-
-Также в функции записывается в переменную horizontal направление движения по горизонтали.
-	Она обнуляется в функции вырисовки.
 
 Направления в которые может перемещаться персонаж:
 @d Character private structs @{
@@ -1377,7 +1368,8 @@ int move_x;
 int move_y;
 @}
 Они требуются, когда нужно где-то сохранить точку куда двигается персонаж.
-Используются в ai.
+Используются в ai, а move_x и в функции вырисовки.
+
 
 Иногда нужно ждать некоторое время, таймер можно хранить здесь:
 @d Character struct param @{
@@ -1524,7 +1516,6 @@ void character_blue_moon_fairy_create(int cd, int x, int y) {
 	character->time_point_for_movement_to_x = 0;
 	character->time_point_for_movement_to_y = 0;
 
-	character->horizontal = 0;
 	character->last_horizontal = 0;
 	character->movement_animation = 0;
 
@@ -1694,7 +1685,7 @@ static void character_blue_moon_fairy_draw(int cd) {
 	if(character->is_sleep == 1)
 		return;
 
-	//if(player_move_horizontal == 0) {
+	if(character->x == character->move_x) {
 		if(character->movement_animation > 200)
 			character->movement_animation = 0;
 
@@ -1722,7 +1713,82 @@ static void character_blue_moon_fairy_draw(int cd) {
 				GAME_FIELD_Y + character->y,
 				365, 12, 365+122, 12+109,
 				0, 0.4);
+	} else if(character->x < character->move_x) {
+		@<character_blue_moon_fairy_draw left@>
+	} else if(character->x > character->move_x) {
+		@<character_blue_moon_fairy_draw right@>
+	}
 }
+@}
+
+@d character_blue_moon_fairy_draw left @{
+if(character->last_horizontal != 1)
+	character->movement_animation = 0;
+
+character->last_horizontal = 1;
+
+if(character->movement_animation > 200)
+	character->movement_animation = 0;
+
+if(character->movement_animation < 50)
+	image_draw_center_t(id,
+		GAME_FIELD_X + character->x,
+		GAME_FIELD_Y + character->y,
+		8, 123, 8+105, 123+123,
+		0, 0.4);
+else if(character->movement_animation < 100)
+	image_draw_center_t(id,
+		GAME_FIELD_X + character->x,
+		GAME_FIELD_Y + character->y,
+		127, 123, 127+105, 123+123,
+		0, 0.4);
+else  if(character->movement_animation < 150)
+	image_draw_center_t(id,
+		GAME_FIELD_X + character->x,
+		GAME_FIELD_Y + character->y,
+		242, 123, 242+105, 123+123,
+		0, 0.4);
+else
+	image_draw_center_t(id,
+		GAME_FIELD_X + character->x,
+		GAME_FIELD_Y + character->y,
+		365, 123, 365+105, 123+123,
+		0, 0.4);
+@}
+
+@d character_blue_moon_fairy_draw right @{
+if(character->last_horizontal != -1)
+	character->movement_animation = 0;
+
+character->last_horizontal = -1;
+
+if(character->movement_animation > 200)
+	character->movement_animation = 0;
+
+if(character->movement_animation < 50)
+	image_draw_center_t_mirror(id,
+		GAME_FIELD_X + character->x,
+		GAME_FIELD_Y + character->y,
+		8, 123, 8+105, 123+123,
+		0, 0.4);
+else if(character->movement_animation < 100)
+	image_draw_center_t_mirror(id,
+		GAME_FIELD_X + character->x,
+		GAME_FIELD_Y + character->y,
+		127, 123, 127+105, 123+123,
+		0, 0.4);
+else  if(character->movement_animation < 150)
+	image_draw_center_t_mirror(id,
+		GAME_FIELD_X + character->x,
+		GAME_FIELD_Y + character->y,
+		242, 123, 242+105, 123+123,
+		0, 0.4);
+else
+	image_draw_center_t_mirror(id,
+		GAME_FIELD_X + character->x,
+		GAME_FIELD_Y + character->y,
+		365, 123, 365+105, 123+123,
+		0, 0.4);
 @}
 
 Повреждение от пуль:
@@ -5452,11 +5518,11 @@ int main(void) {
 		int i;
 		for(i = main_character_blue_moon_fairy1; i <= main_character_blue_moon_fairy10; i++) {
 			character_blue_moon_fairy_create(i, 30*i, 10);
-			//characters[i].is_sleep = 0;
+			characters[i].is_sleep = 0;
 		}
 		characters_pos = main_character_blue_moon_fairy10 + 1;
 
-		characters[main_character_blue_moon_fairy1].is_sleep = 0;
+		//characters[main_character_blue_moon_fairy1].is_sleep = 0;
 	}
 
 /*	{
