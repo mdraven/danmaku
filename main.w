@@ -3724,7 +3724,7 @@ BonusList *bonuses;
 
 BONUS_ALLOC - аллоцировать бонусов в самом начале
 BONUS_ADD - добавить при нехватке
-@d Bonus public macros @{
+@d Bonus private macros @{
 #define BONUS_ALLOC 100
 #define BONUS_ADD 20
 @}
