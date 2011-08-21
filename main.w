@@ -3664,6 +3664,10 @@ Hint: иероглиф - TEN - точка - 点
 
 Отсутствие id делает бонусы похожими на пули.
 
+
+Позднофикс: сделал с массивом константной длины(около 2048), но он долго перебирал в
+	action и жрал 100% CPU, поэтому переделал в модель со списком.
+
 @o bonuses.h @{
 @<Bonus public macros@>
 @<Bonus public structs@>
@@ -3680,6 +3684,7 @@ Hint: иероглиф - TEN - точка - 点
 #include "const.h"
 #include "player.h"
 #include "collision.h"
+#include "dlist.h"
 
 @<Bonus private macros@>
 @<Bonus private structs@>
@@ -3690,32 +3695,39 @@ Hint: иероглиф - TEN - точка - 点
 Структура для хранения бонусов:
 
 @d Bonus public structs @{
-typedef struct {
+struct BonusList {
+	struct BonusList *prev;
+	struct BonusList *next;
+	struct BonusList *pool;
 	int x;
 	int y;
 	int type;
-	int is_noempty;
 	@<Bonuses params@>
-} BonusList;
+};
+
+typedef struct BonusList BonusList;
 @}
 
 x, y - координаты бонуса;
 type - тип бонуса;
-is_noempty - занятость слота; если не ноль, то занят.
 
-Массив бонусов:
+Список бонусов:
 @d Bonus public structs @{
-extern BonusList bonuses[BONUS_LIST_LEN];
+extern BonusList *bonuses;
 @}
 
 @d Bonus private structs @{
-BonusList bonuses[BONUS_LIST_LEN];
+BonusList *bonuses;
 @}
 
-BONUS_LIST_LEN - максимальное количество бонусов
-
+BONUS_ALLOC - аллоцировать бонусов в самом начале и добавлять при нехватке
 @d Bonus public macros @{
-#define BONUS_LIST_LEN 2048
+#define BONUS_ALLOC 50
+@}
+
+Пул бонусов:
+@d Bonus private structs @{@-
+static BonusList *pool;
 @}
 
 Типы бонусов:
@@ -3728,6 +3740,19 @@ enum {
 };
 @}
 Бонусы дающие очки и бонус увеличивающий мощность.
+
+Функция удаления бонусов:
+@d Bonus functions @{
+static void bonus_free(BonusList *bonus) {
+	if(bonus == bonuses)
+		bonuses = bonuses->next;
+
+	dlist_free((DList*)bonus, (DList**)(&pool));
+}
+@}
+Если бонус который удаляют является первым в списке, то
+	сделать первым следующий после удаляемого.
+
 
 Функции создания бонусов:
 @d Bonus functions @{
@@ -3772,20 +3797,26 @@ void bonus_power_create(int x, int y);
 @}
 
 
-bonus_get_free_cell - функция возвращающая свободный дескриптор.
-Она устанавливает флаг is_noempty.
+bonus_get_free_cell - функция возвращающая свободный элемент списка.
 @d Bonus functions @{
 static BonusList *bonus_get_free_cell(void) {
-	int i;
 
-	for(i = 0; i < BONUS_LIST_LEN; i++)
-		if(bonuses[i].is_noempty == 0) {
-			bonuses[i].is_noempty = 1;
-			return &bonuses[i];
+	if(pool == NULL) {
+		int i;
+
+		pool = malloc(sizeof(BonusList)*BONUS_ALLOC);
+		if(pool == NULL) {
+			fprintf(stderr, "\nCan't allocate memory for bonuses' pool\n");
+			exit(1);
 		}
 
-	fprintf(stderr, "\nBonus list is full\n");
-	exit(1);
+		for(i = 0; i < BONUS_ALLOC-1; i++)
+			pool[i].next = &(pool[i+1]);
+	}
+
+	bonuses = (BonusList*)dlist_alloc((DList*)bonuses, (DList**)(&pool));
+
+	return bonuses;
 }
 @}
 
@@ -3804,24 +3835,20 @@ void bonuses_action(void);
 @<Bonus actions@>
 
 void bonuses_action(void) {
-	int i;
+	BonusList *bonus;
 
-	for(i = 0; i < BONUS_LIST_LEN; i++) {
-		BonusList *bonus = &bonuses[i];
-
-		@<Skip cycle if bonus slot empty@>
-
+	for(bonus = bonuses; bonus != NULL; bonus = bonus->next) {
 		switch(bonus->type) {
 			case bonus_small_score:
-				bonus_small_score_action(i);
+				bonus_small_score_action(bonus);
 				break;
 			case bonus_medium_score:
-				//bonus_medium_score_action(i);
-				bonus_small_score_action(i);
+				//bonus_medium_score_action(bonus);
+				bonus_small_score_action(bonus);
 				break;
 			case bonus_power:
-				//bonus_power_action(i);
-				bonus_small_score_action(i);
+				//bonus_power_action(bonus);
+				bonus_small_score_action(bonus);
 				break;
 			@<bonuses_action other bonuses@>
 			default:
@@ -3832,17 +3859,9 @@ void bonuses_action(void) {
 }
 @}
 
-Пропустим один цикл for, если ячейка для бонуса пуста:
-@d Skip cycle if bonus slot empty @{@-
-if(bonus->is_noempty == 0)
-	continue;
-@}
-
 Конкретные функции действия пуль.
 @d Bonus actions @{
-static void bonus_small_score_action(int bd) {
-	BonusList *bonus = &bonuses[bd];
-
+static void bonus_small_score_action(BonusList *bonus) {
 	@<bonus_small_score_action move to player@>
 
 	@<bonus_small_score_action move up@>
@@ -3864,7 +3883,6 @@ move_percent - процент пути который осталось прой�
 move_step - тип совершаемого действия, нужен для совершения сложного движения.
 
 При создании бонуса нужно обнулять оба параметра move_percent и move_step.
-
 @d bonus_small_score_action move up @{@-
 if(bonus->move_step == 0) {
 	bonus->move_x = bonus->x;
@@ -3873,7 +3891,7 @@ if(bonus->move_step == 0) {
 }
 
 if(bonus->move_step == 1) {
-	bonus_move_to_slower(bd, bonus->move_x, bonus->move_y);
+	bonus_move_to_slower(bonus, bonus->move_x, bonus->move_y);
 
 	if(bonus->move_percent == 0)
 		bonus->move_step = 2;
@@ -3883,14 +3901,14 @@ bonus_move_to_slower - двигаться в направлении с заме�
 
 @d bonus_small_score_action move down @{
 if(bonus->move_step == 2) {
-	bonus_move_to_direction(bd, bonus_move_to_down);
+	bonus_move_to_direction(bonus, bonus_move_to_down);
 }
 @}
 
 @d bonus_small_score_action remove @{
 if(bonus->x < -25 || bonus->x > GAME_FIELD_W + 25 ||
 	/*bonus->y < -25 ||*/ bonus->y > GAME_FIELD_H + 25)
-	bonus->is_noempty = 0;
+	bonus_free(bonus);
 @}
 
 
@@ -3912,18 +3930,18 @@ time_point_for_movement_to_x, time_point_for_movement_to_y - очки перем
 Напишем функцию востанавливающую time points:
 @d Bonus functions @{
 @<Set weak time points for concrete bonuses@>
-static void bonus_set_weak_time_point_x(int bd) {
-	switch(bonuses[bd].type) {
+static void bonus_set_weak_time_point_x(BonusList *bonus) {
+	switch(bonus->type) {
 		case bonus_small_score:
-			bonus_small_score_set_weak_time_point_x(bd);
+			bonus_small_score_set_weak_time_point_x(bonus);
 			break;
 		case bonus_medium_score:
-			//bonus_medium_score_set_weak_time_point_x(bd);
-			bonus_small_score_set_weak_time_point_x(bd);
+			//bonus_medium_score_set_weak_time_point_x(bonus);
+			bonus_small_score_set_weak_time_point_x(bonus);
 			break;
 		case bonus_power:
-			//bonus_power_score_set_weak_time_point_x(bd);
-			bonus_small_score_set_weak_time_point_x(bd);
+			//bonus_power_score_set_weak_time_point_x(bonus);
+			bonus_small_score_set_weak_time_point_x(bonus);
 			break;
 		@<bonus_set_weak_time_point_x other bonuses@>
 		default:
@@ -3932,18 +3950,18 @@ static void bonus_set_weak_time_point_x(int bd) {
 	}
 }
 
-static void bonus_set_weak_time_point_y(int bd) {
-	switch(bonuses[bd].type) {
+static void bonus_set_weak_time_point_y(BonusList *bonus) {
+	switch(bonus->type) {
 		case bonus_small_score:
-			bonus_small_score_set_weak_time_point_y(bd);
+			bonus_small_score_set_weak_time_point_y(bonus);
 			break;
 		case bonus_medium_score:
-			//bonus_medium_score_set_weak_time_point_y(bd);
-			bonus_small_score_set_weak_time_point_y(bd);
+			//bonus_medium_score_set_weak_time_point_y(bonus);
+			bonus_small_score_set_weak_time_point_y(bonus);
 			break;
 		case bonus_power:
-			//bonus_power_score_set_weak_time_point_y(bd);
-			bonus_small_score_set_weak_time_point_y(bd);
+			//bonus_power_score_set_weak_time_point_y(bonus);
+			bonus_small_score_set_weak_time_point_y(bonus);
 			break;
 		@<bonus_set_weak_time_point_x other bonuses@>
 		default:
@@ -3954,26 +3972,20 @@ static void bonus_set_weak_time_point_y(int bd) {
 @}
 
 @d Set weak time points for concrete bonuses @{
-static void bonus_small_score_set_weak_time_point_x(int bd) {
-	BonusList *b = &bonuses[bd];
+static void bonus_small_score_set_weak_time_point_x(BonusList *b) {
 	b->time_point_for_movement_to_x = 5 - (b->speed / 30);
 }
 
-static void bonus_small_score_set_weak_time_point_y(int bd) {
-	BonusList *b = &bonuses[bd];
+static void bonus_small_score_set_weak_time_point_y(BonusList *b) {
 	b->time_point_for_movement_to_y = 5 - (b->speed / 30);
 }
 @}
 
 @d Bonus functions @{
 void bonuses_update_all_time_points(void) {
-	int i;
+	BonusList *bonus;
 
-	for(i = 0; i < BONUS_LIST_LEN; i++) {
-		BonusList *bonus = &bonuses[i];
-
-		@<Skip cycle if bonus slot empty@>
-
+	for(bonus = bonuses; bonus != NULL; bonus = bonus->next) {
 		if(bonus->time_point_for_movement_to_x > 0)
 			bonus->time_point_for_movement_to_x--;
 
@@ -3989,9 +4001,7 @@ void bonuses_update_all_time_points(void);
 
 Напишем функцию для движения в точку.
 @d Bonus functions @{
-static void bonus_move_to(int bd, int x, int y) {
-	BonusList *bonus = &bonuses[bd];
-	
+static void bonus_move_to(BonusList *bonus, int x, int y) {
 	float correction_coef;
 	float now_coef;
 	int fx = 0, fy = 0;
@@ -4049,25 +4059,23 @@ static void bonus_move_to(int bd, int x, int y) {
 	
 	if(fx == 1 && bonus->x != x) {
 		if(bonus->x > x)
-			bonus_move_to_direction(bd, bonus_move_to_left);
+			bonus_move_to_direction(bonus, bonus_move_to_left);
 		else
-			bonus_move_to_direction(bd, bonus_move_to_right);
+			bonus_move_to_direction(bonus, bonus_move_to_right);
 	}
 	
 	if(fy == 1 && bonus->y != y) {
 		if(bonus->y > y)
-			bonus_move_to_direction(bd, bonus_move_to_up);
+			bonus_move_to_direction(bonus, bonus_move_to_up);
 		else
-			bonus_move_to_direction(bd, bonus_move_to_down);
+			bonus_move_to_direction(bonus, bonus_move_to_down);
 	}
-
-
 }
 @}
 Алгоритм скопирован из уже реализованного алгоритма для character.
 
 @d Bonus private prototypes @{@-
-static void bonus_move_to(int bd, int x, int y);
+static void bonus_move_to(BonusList *bonus, int x, int y);
 @}
 
 @d Bonuses params @{
@@ -4079,39 +4087,37 @@ int move_begin_y;
 
 На его основе сделаем алгоритм движения в точку с замедлением.
 @d Bonus functions @{
-static void bonus_move_to_slower(int bd, int x, int y) {
-	bonus_move_to(bd, x, y);
-	bonuses[bd].speed = bonuses[bd].move_percent;
+static void bonus_move_to_slower(BonusList *bonus, int x, int y) {
+	bonus_move_to(bonus, x, y);
+	bonus->speed = bonus->move_percent;
 }
 @}
 
 @d Bonus private prototypes @{@-
-static void bonus_move_to_slower(int bd, int x, int y);
+static void bonus_move_to_slower(BonusList *bonus, int x, int y);
 @}
 
 
 @d Bonus functions @{
-static void bonus_move_to_direction(int bd, int move_to) {
-	BonusList *bonus = &bonuses[bd];
-
+static void bonus_move_to_direction(BonusList *bonus, int move_to) {
 	if(bonus->time_point_for_movement_to_x == 0) {
 		if(move_to == bonus_move_to_left) {
-			bonus_set_weak_time_point_x(bd);
+			bonus_set_weak_time_point_x(bonus);
 			bonus->x--;
 		}
 		else if(move_to == bonus_move_to_right) {
-			bonus_set_weak_time_point_x(bd);
+			bonus_set_weak_time_point_x(bonus);
 			bonus->x++;
 		}
 	}
 
 	if(bonus->time_point_for_movement_to_y == 0) {
 		if(move_to == bonus_move_to_up) {
-			bonus_set_weak_time_point_y(bd);
+			bonus_set_weak_time_point_y(bonus);
 			bonus->y--;
 		}
 		else if(move_to == bonus_move_to_down) {
-			bonus_set_weak_time_point_y(bd);
+			bonus_set_weak_time_point_y(bonus);
 			bonus->y++;
 		}
 	}
@@ -4119,7 +4125,7 @@ static void bonus_move_to_direction(int bd, int move_to) {
 @}
 
 @d Bonus private prototypes @{@-
-static void bonus_move_to_direction(int bd, int move_to);
+static void bonus_move_to_direction(BonusList *bonus, int move_to);
 @}
 
 @d Bonus private structs @{
@@ -4136,22 +4142,18 @@ void bonuses_draw(void);
 @d Bonus functions @{
 @<Concrete functions for bonuses drawing@>
 void bonuses_draw(void) {
-	int i;
+	BonusList *bonus;
 
-	for(i = 0; i < BONUS_LIST_LEN; i++) {
-		BonusList *bonus = &bonuses[i];
-
-		@<Skip cycle if bonus slot empty@>
-
+	for(bonus = bonuses; bonus != NULL; bonus = bonus->next) {
 		switch(bonus->type) {
 			case bonus_small_score:
-				bonus_small_score_draw(i);
+				bonus_small_score_draw(bonus);
 				break;
 			case bonus_medium_score:
-				bonus_medium_score_draw(i);
+				bonus_medium_score_draw(bonus);
 				break;
 			case bonus_power:
-				bonus_power_draw(i);
+				bonus_power_draw(bonus);
 				break;
 			@<bonuses_draw other bonuses@>
 			default:
@@ -4163,46 +4165,46 @@ void bonuses_draw(void) {
 @}
 
 @d Concrete functions for bonuses drawing @{
-static void bonus_small_score_draw(int bd) {
+static void bonus_small_score_draw(BonusList *bonus) {
 	static int id = -1;
 
 	if(id == -1)
 		id = image_load("bonus_small_score.png");
 
 	image_draw_center(id,
-		GAME_FIELD_X + bonuses[bd].x,
-		GAME_FIELD_Y + bonuses[bd].y,
+		GAME_FIELD_X + bonus->x,
+		GAME_FIELD_Y + bonus->y,
 		0, 0.3);
 }
 
-static void bonus_medium_score_draw(int bd) {
+static void bonus_medium_score_draw(BonusList *bonus) {
 	static int id = -1;
 
 	if(id == -1)
 		id = image_load("bonus_medium_score.png");
 
 	image_draw_center(id,
-		GAME_FIELD_X + bonuses[bd].x,
-		GAME_FIELD_Y + bonuses[bd].y,
+		GAME_FIELD_X + bonus->x,
+		GAME_FIELD_Y + bonus->y,
 		0, 0.3);
 }
 
-static void bonus_power_draw(int bd) {
+static void bonus_power_draw(BonusList *bonus) {
 	static int id = -1;
 
 	if(id == -1)
 		id = image_load("bonuses.png");
 
-	if(bonuses[bd].y < 0)
+	if(bonus->y < 0)
 		image_draw_center_t(id,
-			GAME_FIELD_X + bonuses[bd].x,
+			GAME_FIELD_X + bonus->x,
 			GAME_FIELD_Y + 7,
 			0, 33, 32, 52,
 			0, 0.8);
 	else
 		image_draw_center_t(id,
-			GAME_FIELD_X + bonuses[bd].x,
-			GAME_FIELD_Y + bonuses[bd].y,
+			GAME_FIELD_X + bonus->x,
+			GAME_FIELD_Y + bonus->y,
 			0, 0, 32, 32,
 			0, 0.5);
 }
@@ -4215,14 +4217,9 @@ void get_bonuses(void);
 
 @d Bonus functions @{
 void get_bonuses(void) {
-	int i;
+	BonusList *bonus;
 
-	for(i = 0; i < BONUS_LIST_LEN; i++) {
-		BonusList *bonus = &bonuses[i];
-
-		if(bonus->is_noempty == 0)
-			continue;
-
+	for(bonus = bonuses; bonus != NULL; bonus = bonus->next) {
 		switch(bonus->type) {
 			@<get_bonuses all other bonuses' gets@>
 			default:
@@ -4241,14 +4238,9 @@ void get_visible_bonuses(void);
 
 @d Bonus functions @{
 void get_visible_bonuses(void) {
-	int i;
+	BonusList *bonus;
 
-	for(i = 0; i < BONUS_LIST_LEN; i++) {
-		BonusList *bonus = &bonuses[i];
-
-		if(bonus->is_noempty == 0)
-			continue;
-
+	for(bonus = bonuses; bonus != NULL; bonus = bonus->next) {
 		if(bonus->x < 0 || bonus->y < 0 ||
 			bonus->x > GAME_FIELD_W || bonus->y > GAME_FIELD_H)
 			continue;
@@ -4270,14 +4262,9 @@ void move_visible_bonuses(void);
 Устанавливает видимым бонусам флаг движения:
 @d Bonus functions @{
 void move_visible_bonuses(void) {
-	int i;
+	BonusList *bonus;
 
-	for(i = 0; i < BONUS_LIST_LEN; i++) {
-		BonusList *bonus = &bonuses[i];
-
-		if(bonus->is_noempty == 0)
-			continue;
-
+	for(bonus = bonuses; bonus != NULL; bonus = bonus->next) {
 		if(bonus->x < 0 || bonus->y < 0 ||
 			bonus->x > GAME_FIELD_W || bonus->y > GAME_FIELD_H)
 			continue;
@@ -4306,14 +4293,14 @@ case bonus_medium_score:
 	if(is_rad_collide(player_x, player_y, player_get_radius,
 			bonus->x, bonus->y, 5) == 0)
 		break;
-	bonus->is_noempty = 0;
+	bonus_free(bonus);
 	break;
 @}
 
 @d get_visible_bonuses all other bonuses' gets @{@-
 case bonus_small_score:
 case bonus_medium_score:
-	bonus->is_noempty = 0;
+	bonus_free(bonus);
 	break;
 @}
 
@@ -4333,14 +4320,14 @@ case bonus_power:
 	if(is_rad_collide(player_x, player_y, player_get_radius,
 			bonus->x, bonus->y, 5) == 0)
 		break;
-	bonus->is_noempty = 0;
+	bonus_free(bonus);
 	player_powers++;
 	break;
 @}
 
 @d get_visible_bonuses all other bonuses' gets @{@-
 case bonus_power:
-	bonus->is_noempty = 0;
+	bonus_free(bonus);
 	player_powers++;
 	break;
 @}
@@ -4366,7 +4353,7 @@ if(bonus->move_to_player == 1) {
 		bonus->move_y = player_y;
 	}
 
-	bonus_move_to(bd, bonus->move_x, bonus->move_y);
+	bonus_move_to(bonus, bonus->move_x, bonus->move_y);
 
 	bonus->move_step++;
 	return;
@@ -4376,6 +4363,110 @@ if(bonus->move_to_player == 1) {
 позицию игрока. Такие сложности нужны потому что из-за особенностей реализации алгоритма
 движения по линии, движения персонажа будут грубы из-за постоянной смены конечной точки.
 
+=========================================================
+
+Реализация двусвязного списка.
+
+Жрёт больше памяти, зато быстрее удалить элемент.
+
+@o dlist.h @{
+@<Dlist public structs@>
+@<Dlist public prototypes@>
+@}
+
+@o dlist.c @{
+#include <stdlib.h>
+#include <stdio.h>
+#include "dlist.h"
+
+@<Dlist functions@>
+@}
+
+@d Dlist public structs @{
+struct DList {
+	struct DList *prev;
+	struct DList *next;
+	struct DList *pool;
+};
+
+typedef struct DList DList;
+@}
+pool - односвязный список в пуле свободных элементов.
+	Был введён для того чтобы было возможным удаляеть элементы
+	из списка при его обходе(не затирается указатель next).
+
+@d Dlist functions @{
+DList *dlist_create_pool(int num, size_t size) {
+	DList *dl;
+	int i;
+
+	dl = malloc(size*num);
+	if(dl == NULL) {
+		fprintf(stderr, "\nCan't allocate memory\n");
+		exit(1);
+	}
+
+	for(i = 0; i < num-1; i++)
+		dl[i].pool = &(dl[i+1]);
+
+	return dl;
+}
+@}
+
+@d Dlist public prototypes @{
+DList *dlist_create_pool(int num, size_t size);
+@}
+
+
+Выделяет элемент из пула pool и возвращает его. Если список dlist != NULL, то
+	возвращённый элемент будет перед dlist.
+@d Dlist functions @{
+DList *dlist_alloc(DList *dlist, DList **pool) {
+	DList *p;
+
+	if(pool == NULL) {
+		fprintf(stderr, "\nEmpty pool\n");
+		exit(1);
+	}
+
+	p = *pool;
+	*pool = (*pool)->pool;
+
+	if(dlist != NULL) {
+		p->next = dlist;
+		p->prev = dlist->prev;
+		dlist->prev = p;
+	} else {
+		p->next = NULL;
+		p->prev = NULL;
+	}
+
+	return p;
+}
+@}
+Функция не аллоцирует пул.
+
+@d Dlist public prototypes @{@-
+DList *dlist_alloc(DList *dlist, DList **pool);
+@}
+
+Вернуть элемент в пул. Пул односвязный и поэтому, если pool не первый элемент пула, то
+	все предыдущее будут потеряны. Функция возвращает новый первый элемент пула в pool:
+@d Dlist functions @{
+void dlist_free(DList *el, DList **pool) {
+	if(el->next != NULL)
+		el->next->prev = el->prev;
+	if(el->prev != NULL)
+		el->prev->next = el->next;
+
+	el->pool = *pool;
+	*pool = el;
+}
+@}
+
+@d Dlist public prototypes @{@-
+void dlist_free(DList *el, DList **pool);
+@}
 
 =========================================================
 
