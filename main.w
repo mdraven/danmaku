@@ -2314,6 +2314,7 @@ case player_reimu:
 #include "os_specific.h"
 #include "const.h"
 #include "player.h"
+#include "dlist.h"
 
 @<Bullet private macros@>
 @<Bullet private structs@>
@@ -2323,36 +2324,56 @@ case player_reimu:
 
 Структура для хранения пуль:
 @d Bullet public structs @{
-typedef struct {
+struct BulletList {
+	struct BulletList *prev;
+	struct BulletList *next;
+	struct BulletList *pool;
 	int x;
 	int y;
 	float angle;
 	int bullet_type;
-	int is_noempty;
 	@<Bullet params@>
-} BulletList;
+};
+
+typedef struct BulletList BulletList;
 @}
 
 x, y - коодинаты пули
 angle - угол поворота
 bullet_type - тип
-is_noempty - не пустая ячейка для пули. Если флаг установлен, то эта ячейка занята.
 
-Массив пуль:
+Список пуль:
 @d Bullet public structs @{
-extern BulletList bullets[BULLET_LIST_LEN];
+extern BulletList *bullets;
 @}
 
 @d Bullet private structs @{
-BulletList bullets[BULLET_LIST_LEN];
+BulletList *bullets;
 @}
 
-BULLET_LIST_LEN - максимальное количество пуль
-
-@d Bullet public macros @{
-#define BULLET_LIST_LEN 2048
+Пул свободных элементов для пуль:
+@d Bullet private structs @{@-
+static BulletList *pool;
 @}
 
+BULLET_ALLOC - аллоцируется пуль в самом начале
+BULLET_ADD - добавляется при нехватке
+@d Bullet private macros @{
+#define BULLET_ALLOC 150
+#define BULLET_ADD 50
+@}
+
+Функция для возвращения выделенной пули обратно в пул:
+@d Bullet functions @{
+static void bullet_free(BulletList *bullet) {
+	if(bullet == bullets)
+		bullets = bullets->next;
+
+	dlist_free((DList*)bullet, (DList**)(&pool));
+}
+@}
+Если освобождаем пулю в самом начале списка bullets, то первой становится
+	вторая пуля в списке.
 
 Типы пуль:
 @d Bullet public structs @{
@@ -2370,6 +2391,10 @@ void bullet_white_create(int x, int y, float angle) {
 
 	bullet->x = x;
 	bullet->y = y;
+
+	bullet->time_point_for_movement_to_x = 0;
+	bullet->time_point_for_movement_to_y = 0;
+
 	bullet->angle = angle;
 	bullet->bullet_type = bullet_white;
 	bullet->move_flag = 0;
@@ -2385,16 +2410,24 @@ bullet_get_free_cell - функция возвращающая свободны�
 Она устанавливает флаг is_noempty.
 @d Bullet functions @{
 static BulletList *bullet_get_free_cell(void) {
-	int i;
+	if(pool == NULL) {
+		int k = (bullets == NULL) ? BULLET_ALLOC : BULLET_ADD;
+		int i;
 
-	for(i = 0; i < BULLET_LIST_LEN; i++)
-		if(bullets[i].is_noempty == 0) {
-			bullets[i].is_noempty = 1;
-			return &bullets[i];
+		pool = malloc(sizeof(BulletList)*k);
+		if(pool == NULL) {
+			fprintf(stderr, "\nCan't allocate memory for bullets' pool\n");
+			exit(1);
 		}
 
-	fprintf(stderr, "\nBullet list is full\n");
-	exit(1);
+		for(i = 0; i < k-1; i++)
+			pool[i].pool = &(pool[i+1]);
+		pool[k-1].pool = NULL;
+	}
+
+	bullets = (BulletList*)dlist_alloc((DList*)bullets, (DList**)(&pool));
+
+	return bullets;
 }
 @}
 
@@ -2410,6 +2443,10 @@ void bullet_red_create(int x, int y, float shift_angle) {
 
 	bullet->x = x;
 	bullet->y = y;
+
+	bullet->time_point_for_movement_to_x = 0;
+	bullet->time_point_for_movement_to_y = 0;
+
 	bullet->angle = shift_angle;
 	bullet->bullet_type = bullet_red;
 	bullet->move_flag = 0;
@@ -2441,19 +2478,15 @@ void bullets_action(void);
 @<Bullet actions@>
 
 void bullets_action(void) {
-	int i;
+	BulletList *bullet;
 
-	for(i = 0; i < BULLET_LIST_LEN; i++) {
-		BulletList *bullet = &bullets[i];
-
-		@<Skip cycle if bullet slot empty@>
-
+	for(bullet = bullets; bullet != NULL; bullet = bullet->next) {
 		switch(bullet->bullet_type) {
 			case bullet_white:
-				bullet_white_action(i);
+				bullet_white_action(bullet);
 				break;
 			case bullet_red:
-				bullet_red_action(i);
+				bullet_red_action(bullet);
 				break;
 			@<bullets_action other bullets@>
 			default:
@@ -2464,22 +2497,13 @@ void bullets_action(void) {
 }
 @}
 
-Пропустим один цикл for, если ячейка для пули пуста:
-@d Skip cycle if bullet slot empty @{
-if(bullet->is_noempty == 0)
-	continue;
-@}
-
-
 
 Конкретые функции действия пуль.
 
 Белая пуля делает круги:
 @d Bullet actions @{
-static void bullet_white_action(int bd) {
-	BulletList *bullet = &bullets[bd];
-
-	bullet_move_to_angle_and_radius(bd, bullet->angle, 10.0);
+static void bullet_white_action(BulletList *bullet) {
+	bullet_move_to_angle_and_radius(bullet, bullet->angle, 10.0);
 
 	if(bullet->move_flag == 0)
 		bullet->angle += 5;
@@ -2493,9 +2517,7 @@ static void bullet_white_action(int bd) {
 Вычислим угол до персонажа, если пуля не перемещается и передадим в функцию
 перемещения:
 @d Bullet actions @{
-static void bullet_red_action(int bd) {
-	BulletList *bullet = &bullets[bd];
-
+static void bullet_red_action(BulletList *bullet) {
 	if(bullet->move_flag == 0) {
 		@<bullet_red_action calculate angle@>
 	}
@@ -2518,7 +2540,7 @@ atan2 корректно обрабатывает dx = 0.
 
 Полученный угол angle мы используем чтобы направить пулю в направлении игрока:
 @d bullet_red_action move bullet to player @{
-bullet_move_to_angle_and_radius(bd, bullet->angle,
+bullet_move_to_angle_and_radius(bullet, bullet->angle,
 	GAME_FIELD_W * GAME_FIELD_H);
 @}
 Теперь пуля гарантировано улетит за край экрана.
@@ -2530,17 +2552,14 @@ bullet_move_to_angle_and_radius - переместить пулю по напр�
 @d bullet_red_action destroy bullet @{
 if(bullet->x < -25 || bullet->x > GAME_FIELD_W + 25 ||
 	bullet->y < -25 || bullet->y > GAME_FIELD_H + 25)
-	bullet->is_noempty = 0;
+	bullet_free(bullet);
 @}
 
 
 
 Сложные пули делаются так: мы создаем "главную" пулю, которая создаёт дочерние.
 Дочерние пули имеют номер дескриптора родителя. Родитель меняет у дочерних пуль параметр
-step_of_movement и тем самым меняет их поведение. Родитель должен находится
-раньше всех дочерних пуль, иначе замена местами двух пуль при удалении повредит его
-дескриптор.
-Не стоит забывать, что у пуль "нет" дескрипторов.
+step_of_movement и тем самым меняет их поведение.
 
 
 @d Bullet params @{
@@ -2560,16 +2579,14 @@ bullet->move_flag = 0;
 
 
 @d Bullet action helpers @{
-static void bullet_move_to_angle_and_radius(int bd, float angle, float radius) {
-	BulletList *bullet = &bullets[bd];
-
+static void bullet_move_to_angle_and_radius(BulletList *bullet, float angle, float radius) {
 	if(bullet->move_flag == 0) {
 		const double deg2rad = M_PI/180.0;
 		bullet->move_x = bullet->x + (int)(radius*cos(angle*deg2rad));
 		bullet->move_y = bullet->y + (int)(radius*sin(angle*deg2rad));
 	}
 
-	bullet_move_to_point(bd, bullet->move_x, bullet->move_y);
+	bullet_move_to_point(bullet, bullet->move_x, bullet->move_y);
 }
 @}
 
@@ -2579,13 +2596,11 @@ radius*cos(angle*deg2rad) пришлось приводить к int так ка
 по кругу, а улетала за край экрана.
 
 @d Bullet private prototypes @{
-static void bullet_move_to_point(int bd, int x, int y);
+static void bullet_move_to_point(BulletList *bullet, int x, int y);
 @}
 
 @d Bullet functions @{
-static void bullet_move_to_point(int bd, int x, int y) {
-	BulletList *bullet = &bullets[bd];
-
+static void bullet_move_to_point(BulletList *bullet, int x, int y) {
 	int dx = bullet->x - x;
 	int dy = bullet->y - y;
 
@@ -2619,16 +2634,16 @@ static void bullet_move_to_point(int bd, int x, int y) {
 
 	if(fx == 1 && dx != 0) {
 		if(dx > 0)
-			bullet_move_to(bd, bullet_move_to_left);
+			bullet_move_to(bullet, bullet_move_to_left);
 		else
-			bullet_move_to(bd, bullet_move_to_right);
+			bullet_move_to(bullet, bullet_move_to_right);
 	}
 
 	if(fy == 1 && dy != 0) {
 		if(dy > 0)
-			bullet_move_to(bd, bullet_move_to_up);
+			bullet_move_to(bullet, bullet_move_to_up);
 		else
-			bullet_move_to(bd, bullet_move_to_down);
+			bullet_move_to(bullet, bullet_move_to_down);
 	}
 }
 @}
@@ -2646,31 +2661,29 @@ enum {
 @}
 
 @d Bullet private prototypes @{
-static void bullet_move_to(int bd, int move_to);
+static void bullet_move_to(BulletList *bullet, int move_to);
 @}
 
 @d Bullet functions @{
-static void bullet_move_to(int bd, int move_to) {
-	BulletList *bullet = &bullets[bd];
-
+static void bullet_move_to(BulletList *bullet, int move_to) {
 	if(bullet->time_point_for_movement_to_x == 0) {
 		if(move_to == bullet_move_to_left) {
-			bullet_set_weak_time_point_x(bd);
+			bullet_set_weak_time_point_x(bullet);
 			bullet->x--;
 		}
 		else if(move_to == bullet_move_to_right) {
-			bullet_set_weak_time_point_x(bd);
+			bullet_set_weak_time_point_x(bullet);
 			bullet->x++;
 		}
 	}
 
 	if(bullet->time_point_for_movement_to_y == 0) {
 		if(move_to == bullet_move_to_up) {
-			bullet_set_weak_time_point_y(bd);
+			bullet_set_weak_time_point_y(bullet);
 			bullet->y--;
 		}
 		else if(move_to == bullet_move_to_down) {
-			bullet_set_weak_time_point_y(bd);
+			bullet_set_weak_time_point_y(bullet);
 			bullet->y++;
 		}
 	}
@@ -2690,19 +2703,19 @@ int time_point_for_movement_to_y;
 аналогично character_set_weak_time_point_x и character_set_weak_time_point_y:
 
 @d Bullet private prototypes @{
-static void bullet_set_weak_time_point_x(int bd);
-static void bullet_set_weak_time_point_y(int bd);
+static void bullet_set_weak_time_point_x(BulletList *bullet);
+static void bullet_set_weak_time_point_y(BulletList *bullet);
 @}
 
 @d Bullet functions @{
 @<Set weak time points for concrete bullets@>
-static void bullet_set_weak_time_point_x(int bd) {
-	switch(bullets[bd].bullet_type) {
+static void bullet_set_weak_time_point_x(BulletList *bullet) {
+	switch(bullet->bullet_type) {
 		case bullet_white:
-			bullet_white_set_weak_time_point_x(bd);
+			bullet_white_set_weak_time_point_x(bullet);
 			break;
 		case bullet_red:
-			bullet_red_set_weak_time_point_x(bd);
+			bullet_red_set_weak_time_point_x(bullet);
 			break;
 		@<bullet_set_weak_time_point_x other bullets@>
 		default:
@@ -2711,13 +2724,13 @@ static void bullet_set_weak_time_point_x(int bd) {
 	}
 }
 
-static void bullet_set_weak_time_point_y(int bd) {
-	switch(bullets[bd].bullet_type) {
+static void bullet_set_weak_time_point_y(BulletList *bullet) {
+	switch(bullet->bullet_type) {
 		case bullet_white:
-			bullet_white_set_weak_time_point_y(bd);
+			bullet_white_set_weak_time_point_y(bullet);
 			break;
 		case bullet_red:
-			bullet_red_set_weak_time_point_y(bd);
+			bullet_red_set_weak_time_point_y(bullet);
 			break;
 		@<bullet_set_weak_time_point_y other bullets@>
 		default:
@@ -2729,20 +2742,20 @@ static void bullet_set_weak_time_point_y(int bd) {
 
 Конкретные реализации функции восстановления очков времени для разных видов пуль:
 @d Set weak time points for concrete bullets @{
-static void bullet_white_set_weak_time_point_x(int bd) {
-	bullets[bd].time_point_for_movement_to_x = 1;
+static void bullet_white_set_weak_time_point_x(BulletList *bullet) {
+	bullet->time_point_for_movement_to_x = 1;
 }
 
-static void bullet_white_set_weak_time_point_y(int bd) {
-	bullets[bd].time_point_for_movement_to_y = 1;
+static void bullet_white_set_weak_time_point_y(BulletList *bullet) {
+	bullet->time_point_for_movement_to_y = 1;
 }
 
-static void bullet_red_set_weak_time_point_x(int bd) {
-	bullets[bd].time_point_for_movement_to_x = 5;
+static void bullet_red_set_weak_time_point_x(BulletList *bullet) {
+	bullet->time_point_for_movement_to_x = 5;
 }
 
-static void bullet_red_set_weak_time_point_y(int bd) {
-	bullets[bd].time_point_for_movement_to_y = 5;
+static void bullet_red_set_weak_time_point_y(BulletList *bullet) {
+	bullet->time_point_for_movement_to_y = 5;
 }
 @}
 
@@ -2753,13 +2766,9 @@ void bullets_update_all_time_points(void);
 
 @d Bullet functions @{
 void bullets_update_all_time_points(void) {
-	int i;
+	BulletList *bullet;
 
-	for(i = 0; i < BULLET_LIST_LEN; i++) {
-		BulletList *bullet = &bullets[i];
-
-		@<Skip cycle if bullet slot empty@>
-
+	for(bullet = bullets; bullet != NULL; bullet = bullet->next) {
 		if(bullet->time_point_for_movement_to_x > 0)
 			bullet->time_point_for_movement_to_x--;
 
@@ -2777,19 +2786,15 @@ void bullets_draw(void);
 @d Bullet functions @{
 @<Concrete functions for bullets drawing@>
 void bullets_draw(void) {
-	int i;
+	BulletList *bullet;
 
-	for(i = 0; i < BULLET_LIST_LEN; i++) {
-		BulletList *bullet = &bullets[i];
-
-		@<Skip cycle if bullet slot empty@>
-
+	for(bullet = bullets; bullet != NULL; bullet = bullet->next) {
 		switch(bullet->bullet_type) {
 			case bullet_white:
-				bullet_white_draw(i);
+				bullet_white_draw(bullet);
 				break;
 			case bullet_red:
-				bullet_red_draw(i);
+				bullet_red_draw(bullet);
 				break;
 			@<bullets_draw other bullets@>
 			default:
@@ -2802,28 +2807,28 @@ void bullets_draw(void) {
 
 Рисуем конкретные:
 @d Concrete functions for bullets drawing @{
-static void bullet_white_draw(int bd) {
+static void bullet_white_draw(BulletList *bullet) {
 	static int id = -1;
 
 	if(id == -1)
 		id = image_load("bullet_green.png");
 
 	image_draw_center(id,
-		GAME_FIELD_X + bullets[bd].x,
-		GAME_FIELD_Y + bullets[bd].y,
-		bullets[bd].angle+90, 0.3);
+		GAME_FIELD_X + bullet->x,
+		GAME_FIELD_Y + bullet->y,
+		bullet->angle+90, 0.3);
 }
 
-static void bullet_red_draw(int bd) {
+static void bullet_red_draw(BulletList *bullet) {
 	static int id = -1;
 
 	if(id == -1)
 		id = image_load("bullet_green.png");
 
 	image_draw_center(id,
-		GAME_FIELD_X + bullets[bd].x,
-		GAME_FIELD_Y + bullets[bd].y,
-		bullets[bd].angle+90, 0.3);
+		GAME_FIELD_X + bullet->x,
+		GAME_FIELD_Y + bullet->y,
+		bullet->angle+90, 0.3);
 }
 @}
 
@@ -2858,6 +2863,10 @@ void bullet_player_reimu_first_create(void) {
 
 	bullet->x = player_x;
 	bullet->y = player_y;
+
+	bullet->time_point_for_movement_to_x = 0;
+	bullet->time_point_for_movement_to_y = 0;
+
 	//bullet->angle = shift_angle;
 	bullet->bullet_type = bullet_reimu_first;
 	bullet->move_flag = 0;
@@ -2877,9 +2886,7 @@ bullet_reimu_first,
 
 Карты летят снизу вверх за пределы экрана:
 @d Bullet actions @{
-static void bullet_reimu_first_action(int bd) {
-	BulletList *bullet = &bullets[bd];
-
+static void bullet_reimu_first_action(BulletList *bullet) {
 	@<bullet_reimu_first_action set move_x@>
 	@<bullet_reimu_first_action move bullet@>
 	@<bullet_reimu_first_action destroy bullet@>
@@ -2894,57 +2901,57 @@ if(bullet->move_flag == 0)
 
 Начнем перемещать пулю в этом направлении:
 @d bullet_reimu_first_action move bullet @{
-bullet_move_to(bd, bullet_move_to_up);
+bullet_move_to(bullet, bullet_move_to_up);
 @}
 
 Уничтожим пулю когда она выйдет за пределы экрана:
 @d bullet_reimu_first_action destroy bullet @{
 if(bullet->y < -25)
-	bullet->is_noempty = 0;
+	bullet_free(bullet);
 @}
 
 Добавим функцию поведения пули в диспетчер:
 @d bullets_action other bullets @{@-
 case bullet_reimu_first:
-	bullet_reimu_first_action(i);
+	bullet_reimu_first_action(bullet);
 	break;
 @}
 
 Функции для установки очков времени для пули:
 @d Set weak time points for concrete bullets @{
-static void bullet_reimu_first_set_weak_time_point_x(int bd) {
-	bullets[bd].time_point_for_movement_to_x = 1;
+static void bullet_reimu_first_set_weak_time_point_x(BulletList *bullet) {
+	bullet->time_point_for_movement_to_x = 1;
 }
 
-static void bullet_reimu_first_set_weak_time_point_y(int bd) {
-	bullets[bd].time_point_for_movement_to_y = 1;
+static void bullet_reimu_first_set_weak_time_point_y(BulletList *bullet) {
+	bullet->time_point_for_movement_to_y = 1;
 }
 @}
 
 Добавим эти функции в диспетчеры:
 @d bullet_set_weak_time_point_x other bullets @{
 case bullet_reimu_first:
-	bullet_reimu_first_set_weak_time_point_x(bd);
+	bullet_reimu_first_set_weak_time_point_x(bullet);
 	break;
 @}
 
 @d bullet_set_weak_time_point_y other bullets @{
 case bullet_reimu_first:
-	bullet_reimu_first_set_weak_time_point_y(bd);
+	bullet_reimu_first_set_weak_time_point_y(bullet);
 	break;
 @}
 
 Рисуем летящие карты Рейму:
 @d Concrete functions for bullets drawing @{
-static void bullet_reimu_first_draw(int bd) {
+static void bullet_reimu_first_draw(BulletList *bullet) {
 	static int id = -1;
 
 	if(id == -1)
 		id = image_load("bullet_white_card.png");
 
 	image_draw_center(id,
-		GAME_FIELD_X + bullets[bd].x,
-		GAME_FIELD_Y + bullets[bd].y,
+		GAME_FIELD_X + bullet->x,
+		GAME_FIELD_Y + bullet->y,
 		0, 0.6);
 }
 @}
@@ -2952,7 +2959,7 @@ static void bullet_reimu_first_draw(int bd) {
 Добавим функцию рисования в диспетчер:
 @d bullets_draw other bullets @{
 case bullet_reimu_first:
-	bullet_reimu_first_draw(i);
+	bullet_reimu_first_draw(bullet);
 	break;
 @}
 
@@ -2961,7 +2968,7 @@ case bullet_reimu_first:
 case bullet_reimu_first:
 	if(is_rad_collide(x, y, radius, bullet->x, bullet->y, 10) == 0)
 	  	break;
-	bullet->is_noempty = 0;
+	bullet_free(bullet);
 	return 1;
 @}
 ==========================================================
@@ -3009,13 +3016,10 @@ void damage_calculate(void) {
 фукнция пересечения возвращает истину или ложь, мы проверяем особые случаи повреждения и
 отнимаем у персонажа сколько нужно жизней:
 @d damage_calculate body @{
-int i, j;
+BulletList *bullet;
+int j;
 
-for(i = 0; i < BULLET_LIST_LEN; i++) {
-	BulletList *bullet = &bullets[i];
-
-	@<Skip cycle if bullet slot empty@>
-
+for(bullet = bullets; bullet != NULL; bullet = bullet->next) {
 	@<damage_calculate is enemy's bullet?@>
 
 	for(j = 0; j < characters_pos; j++) {
@@ -3041,7 +3045,7 @@ if(character->hp <= 0 || character->is_sleep == 1)
 иначе перейдем к проверке вражеских персонажей:
 @d damage_calculate is enemy's bullet? @{
 if(bullet->is_enemys == 1) {
-	if(bullet_collide(i, player_x, player_y, player_radius) == 1) {
+	if(bullet_collide(bullet, player_x, player_y, player_radius) == 1) {
 		@<damage_calculate check collision with player@>
 	}
 	continue;
@@ -3061,7 +3065,7 @@ player_players--;
 
 Проверка пересечения:
 @d damage_calculate collision check @{
-if(bullet_collide(i, character->x, character->y, character->radius) == 0)
+if(bullet_collide(bullet, character->x, character->y, character->radius) == 0)
 	continue;
 @}
 
@@ -3092,14 +3096,12 @@ if(character->hp <= 0) {
 
 Напишем функцию bullet_collide:
 @d Bullet public prototypes @{
-int bullet_collide(int bd, int x, int y, int radius);
+int bullet_collide(BulletList *bullet, int x, int y, int radius);
 @}
 Принимает дискриптор пули, координаты хитбокса персонажа и радиус хитбокса.
 
 @d Bullet functions @{
-int bullet_collide(int bd, int x, int y, int radius) {
-	BulletList *bullet = &bullets[bd];
-
+int bullet_collide(BulletList *bullet, int x, int y, int radius) {
 	switch(bullet->bullet_type) {
 		case bullet_white:
 		case bullet_red:
@@ -3119,7 +3121,7 @@ int bullet_collide(int bd, int x, int y, int radius) {
 @d bullet_collide if bullet_red collide @{
 if(is_rad_collide(x, y, radius, bullet->x, bullet->y, 3) == 0)
 	break;
-bullet->is_noempty = 0;
+bullet_free(bullet);
 return 1;
 @}
 
