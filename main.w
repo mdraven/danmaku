@@ -3720,9 +3720,11 @@ extern BonusList *bonuses;
 BonusList *bonuses;
 @}
 
-BONUS_ALLOC - аллоцировать бонусов в самом начале и добавлять при нехватке
+BONUS_ALLOC - аллоцировать бонусов в самом начале
+BONUS_ADD - добавить при нехватке
 @d Bonus public macros @{
-#define BONUS_ALLOC 50
+#define BONUS_ALLOC 100
+#define BONUS_ADD 20
 @}
 
 Пул бонусов:
@@ -3761,6 +3763,10 @@ void bonus_small_score_create(int x, int y) {
 
 	bonus->x = x;
 	bonus->y = y;
+
+	bonus->time_point_for_movement_to_x = 0;
+	bonus->time_point_for_movement_to_y = 0;
+
 	bonus->move_percent = 0;
 	bonus->move_step = 0;
 	bonus->move_to_player = 0;
@@ -3772,6 +3778,10 @@ void bonus_medium_score_create(int x, int y) {
 
 	bonus->x = x;
 	bonus->y = y;
+
+	bonus->time_point_for_movement_to_x = 0;
+	bonus->time_point_for_movement_to_y = 0;
+
 	bonus->move_percent = 0;
 	bonus->move_step = 0;
 	bonus->move_to_player = 0;
@@ -3783,6 +3793,10 @@ void bonus_power_create(int x, int y) {
 
 	bonus->x = x;
 	bonus->y = y;
+
+	bonus->time_point_for_movement_to_x = 0;
+	bonus->time_point_for_movement_to_y = 0;
+
 	bonus->move_percent = 0;
 	bonus->move_step = 0;
 	bonus->move_to_player = 0;
@@ -3802,16 +3816,18 @@ bonus_get_free_cell - функция возвращающая свободный
 static BonusList *bonus_get_free_cell(void) {
 
 	if(pool == NULL) {
+		int k = (bonuses == NULL) ? BONUS_ALLOC : BONUS_ADD;
 		int i;
 
-		pool = malloc(sizeof(BonusList)*BONUS_ALLOC);
+		pool = malloc(sizeof(BonusList)*k);
 		if(pool == NULL) {
 			fprintf(stderr, "\nCan't allocate memory for bonuses' pool\n");
 			exit(1);
 		}
 
-		for(i = 0; i < BONUS_ALLOC-1; i++)
-			pool[i].next = &(pool[i+1]);
+		for(i = 0; i < k-1; i++)
+			pool[i].pool = &(pool[i+1]);
+		pool[k-1].pool = NULL;
 	}
 
 	bonuses = (BonusList*)dlist_alloc((DList*)bonuses, (DList**)(&pool));
@@ -3819,6 +3835,8 @@ static BonusList *bonus_get_free_cell(void) {
 	return bonuses;
 }
 @}
+Так как dlist_alloc вставляет новый элемент до bonuses, то сделаем его новой головой
+	bonuses(для итерации for).
 
 @d Bonus private prototypes @{@-
 static BonusList *bonus_get_free_cell(void);
@@ -3840,15 +3858,15 @@ void bonuses_action(void) {
 	for(bonus = bonuses; bonus != NULL; bonus = bonus->next) {
 		switch(bonus->type) {
 			case bonus_small_score:
-				bonus_small_score_action(bonus);
+				//bonus_small_score_action(bonus);
+				bonus_power_action(bonus);
 				break;
 			case bonus_medium_score:
 				//bonus_medium_score_action(bonus);
-				bonus_small_score_action(bonus);
+				bonus_power_action(bonus);
 				break;
 			case bonus_power:
-				//bonus_power_action(bonus);
-				bonus_small_score_action(bonus);
+				bonus_power_action(bonus);
 				break;
 			@<bonuses_action other bonuses@>
 			default:
@@ -3861,18 +3879,30 @@ void bonuses_action(void) {
 
 Конкретные функции действия пуль.
 @d Bonus actions @{
-static void bonus_small_score_action(BonusList *bonus) {
-	@<bonus_small_score_action move to player@>
+static void bonus_power_action(BonusList *bonus) {
+	@<bonus_power_action get@>
 
-	@<bonus_small_score_action move up@>
-	@<bonus_small_score_action move down@>
-	@<bonus_small_score_action remove@>
+	@<bonus_power_action move to player@>
+
+	@<bonus_power_action move up@>
+	@<bonus_power_action move down@>
+	@<bonus_power_action remove@>
 }
 @}
 Как и обговаривалось ранее, пуля летит вверх(всё медленнее), потом вниз,
 а потом её удаляют из списка.
-@<bonus_small_score_action move to player@> - будет описан ниже,
+@<bonus_power_action move to player@> - будет описан ниже,
 он описывает движение бонуса к игроку, когда он встал на спецлинию.
+
+Персонаж подбирает бонус:
+@d bonus_power_action get @{
+if(is_rad_collide(player_x, player_y, player_get_radius,
+		bonus->x, bonus->y, 5) == 1) {
+	bonus_free(bonus);
+	player_powers++;
+	return;
+}
+@}
 
 Добавим с структуру бонусов два вспомогательных параметра:
 @d Bonuses params @{@-
@@ -3883,7 +3913,7 @@ move_percent - процент пути который осталось прой�
 move_step - тип совершаемого действия, нужен для совершения сложного движения.
 
 При создании бонуса нужно обнулять оба параметра move_percent и move_step.
-@d bonus_small_score_action move up @{@-
+@d bonus_power_action move up @{@-
 if(bonus->move_step == 0) {
 	bonus->move_x = bonus->x;
 	bonus->move_y = bonus->y - 40;
@@ -3899,13 +3929,13 @@ if(bonus->move_step == 1) {
 @}
 bonus_move_to_slower - двигаться в направлении с замедлением.
 
-@d bonus_small_score_action move down @{
+@d bonus_power_action move down @{
 if(bonus->move_step == 2) {
 	bonus_move_to_direction(bonus, bonus_move_to_down);
 }
 @}
 
-@d bonus_small_score_action remove @{
+@d bonus_power_action remove @{
 if(bonus->x < -25 || bonus->x > GAME_FIELD_W + 25 ||
 	/*bonus->y < -25 ||*/ bonus->y > GAME_FIELD_H + 25)
 	bonus_free(bonus);
@@ -3963,7 +3993,7 @@ static void bonus_set_weak_time_point_y(BonusList *bonus) {
 			//bonus_power_score_set_weak_time_point_y(bonus);
 			bonus_small_score_set_weak_time_point_y(bonus);
 			break;
-		@<bonus_set_weak_time_point_x other bonuses@>
+		@<bonus_set_weak_time_point_y other bonuses@>
 		default:
 			fprintf(stderr, "\nUnknown bonus\n");
 			exit(1);
@@ -4056,7 +4086,7 @@ static void bonus_move_to(BonusList *bonus, int x, int y) {
 		fx = 1;
 		fy = 1;
 	}
-	
+
 	if(fx == 1 && bonus->x != x) {
 		if(bonus->x > x)
 			bonus_move_to_direction(bonus, bonus_move_to_left);
@@ -4210,26 +4240,6 @@ static void bonus_power_draw(BonusList *bonus) {
 }
 @}
 
-Эту функцию вызывают в цикле для сброра бонусов:
-@d Bonus public prototypes @{@-
-void get_bonuses(void);
-@}
-
-@d Bonus functions @{
-void get_bonuses(void) {
-	BonusList *bonus;
-
-	for(bonus = bonuses; bonus != NULL; bonus = bonus->next) {
-		switch(bonus->type) {
-			@<get_bonuses all other bonuses' gets@>
-			default:
-				fprintf(stderr, "\nUnknown bonus\n");
-				exit(1);
-		}
-	}
-}
-@}
-
 Теперь напишем функцию которая будет вызваться когда необходимо
 собрать все видимые бонусы:
 @d Bonus public prototypes @{@-
@@ -4287,16 +4297,6 @@ int move_to_player;
 ниже. Поэтому следует обнулять move_step при установке move_to_player.
 
 Реализация для бонуса дающего очки:
-@d get_bonuses all other bonuses' gets @{@-
-case bonus_small_score:
-case bonus_medium_score:
-	if(is_rad_collide(player_x, player_y, player_get_radius,
-			bonus->x, bonus->y, 5) == 0)
-		break;
-	bonus_free(bonus);
-	break;
-@}
-
 @d get_visible_bonuses all other bonuses' gets @{@-
 case bonus_small_score:
 case bonus_medium_score:
@@ -4315,16 +4315,6 @@ case bonus_medium_score:
 @}
 
 Реализация для бонуса дающего power:
-@d get_bonuses all other bonuses' gets @{@-
-case bonus_power:
-	if(is_rad_collide(player_x, player_y, player_get_radius,
-			bonus->x, bonus->y, 5) == 0)
-		break;
-	bonus_free(bonus);
-	player_powers++;
-	break;
-@}
-
 @d get_visible_bonuses all other bonuses' gets @{@-
 case bonus_power:
 	bonus_free(bonus);
@@ -4342,7 +4332,7 @@ case bonus_power:
 @}
 
 Добавим в функцию bonus_small_score_action реакцию на установленный флаг move_to_player:
-@d bonus_small_score_action move to player @{@-
+@d bonus_power_action move to player @{@-
 if(bonus->move_to_player == 1) {
 	if(bonus->move_step == 500)
 		bonus->move_step = 0;
@@ -4408,13 +4398,14 @@ DList *dlist_create_pool(int num, size_t size) {
 
 	for(i = 0; i < num-1; i++)
 		dl[i].pool = &(dl[i+1]);
+	dl[num-1].pool = NULL;
 
 	return dl;
 }
 @}
 
 @d Dlist public prototypes @{
-DList *dlist_create_pool(int num, size_t size);
+//DList *dlist_create_pool(int num, size_t size);
 @}
 
 
@@ -5871,10 +5862,8 @@ damage_calculate();
 
 Собираем бонусы:
 @d Get bonuses @{
-get_bonuses();
 player_bonus_line();
 @}
-get_bonuses - собираем сами бонусы;
 player_bonus_line - проверяем бонусную линию.
 
 Отдадим процессору немного времени:
