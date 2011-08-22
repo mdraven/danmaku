@@ -2351,10 +2351,14 @@ extern BulletList *bullets;
 BulletList *bullets;
 @}
 
-Пул свободных элементов для пуль:
+Пул свободных элементов для пуль и удалённых элементов:
 @d Bullet private structs @{@-
 static BulletList *pool;
+
+static BulletList *pool_free;
+static BulletList *end_pool_free;
 @}
+end_pool_free - ссылка на последний элемент pool_free
 
 BULLET_ALLOC - аллоцируется пуль в самом начале
 BULLET_ADD - добавляется при нехватке
@@ -2369,11 +2373,37 @@ static void bullet_free(BulletList *bullet) {
 	if(bullet == bullets)
 		bullets = bullets->next;
 
-	dlist_free((DList*)bullet, (DList**)(&pool));
+	if(pool_free == NULL)
+		end_pool_free = bullet;
+
+	dlist_free((DList*)bullet, (DList**)(&pool_free));
 }
 @}
 Если освобождаем пулю в самом начале списка bullets, то первой становится
 	вторая пуля в списке.
+Удаляем в специальный пул(pool_free) так как в том же цикле ячейка пули
+	может быть использована снова и тогда ->next и ->prev будут изменены.
+Устанавливаем указатель на последний элемент пула end_pool_free, чтобы потом
+	легче было соединить с pool(используется то, что dlist_free добавляет элементы
+	в начало pool_free).
+
+Соединить pool_free с pool:
+@d Bullet functions @{
+static void bullet_pool_free_to_pool(void) {
+	if(end_pool_free == NULL)
+		return;
+
+	end_pool_free->pool = pool;
+	pool = pool_free;
+
+	pool_free = NULL;
+	end_pool_free = NULL;
+}
+@}
+Соединяет односвязный список pool_free с pool.
+Надо вызывать после for обходящих список bullets, но думаю что достаточно
+	вызывать только в action.
+
 
 Типы пуль:
 @d Bullet public structs @{
@@ -2494,6 +2524,8 @@ void bullets_action(void) {
 				exit(1);
 		}
 	}
+
+	bullet_pool_free_to_pool();
 }
 @}
 
@@ -3732,7 +3764,13 @@ BONUS_ADD - добавить при нехватке
 Пул бонусов:
 @d Bonus private structs @{@-
 static BonusList *pool;
+
+static BonusList *pool_free;
+static BonusList *end_pool_free;
 @}
+pool_free - сюда попадают удалённые элементы;
+end_pool_free - указывает на последний удаленный элемент
+Они нужны для того, чтобы удалять элементы при обходе списка for'ом.
 
 Типы бонусов:
 @d Bonus public structs @{
@@ -3751,12 +3789,29 @@ static void bonus_free(BonusList *bonus) {
 	if(bonus == bonuses)
 		bonuses = bonuses->next;
 
-	dlist_free((DList*)bonus, (DList**)(&pool));
+	if(pool_free == NULL)
+		end_pool_free = bonus;
+
+	dlist_free((DList*)bonus, (DList**)(&pool_free));
 }
 @}
 Если бонус который удаляют является первым в списке, то
 	сделать первым следующий после удаляемого.
 
+Возвратить удалённые элементы в пул:
+@d Bonus functions @{
+static void bonus_pool_free_to_pool(void) {
+	if(end_pool_free == NULL)
+		return;
+
+	end_pool_free->pool = pool;
+	pool = pool_free;
+
+	pool_free = NULL;
+	end_pool_free = NULL;
+}
+@}
+Вызывать после for в action.
 
 Функции создания бонусов:
 @d Bonus functions @{
@@ -3876,8 +3931,11 @@ void bonuses_action(void) {
 				exit(1);
 		}
 	}
+
+	bonus_pool_free_to_pool();
 }
 @}
+После цикла вернём удаленные в нём пули обратно в пул.
 
 Конкретные функции действия пуль.
 @d Bonus actions @{
