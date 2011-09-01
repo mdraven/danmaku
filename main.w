@@ -1,4 +1,4 @@
--*-nuweb-mode-*-
+-*- Mode:nuweb -*-
 
 2010 28 июля
 начинаю писать концепт даммаку
@@ -9,6 +9,7 @@
 2)делаю тяпляп, лишь бы работало
 3)я делаю Touhou, а не универсальный двиг
 
+На будущее: рисую я хреново и долго => лучше не рисовать
 
 ==========================================================
 
@@ -5699,6 +5700,7 @@ while(1) {
 	@<Bullet movements@>
 	@<Player movements@>
 	@<Player press fire button@>
+	@<Player press shadow button@>
 	@<Bonus movements@>
 	@<Dialog movements@>
 	@<Damage calculate@>
@@ -5865,8 +5867,6 @@ if(is_keydown(key_escape)) {
 FIXME:Пока вместо меню заглушка
 
 
-
-
 Перемещение персонажа игроком:
 @d Player movements @{
 if(is_keydown(key_move_left))
@@ -5889,6 +5889,15 @@ if(is_keydown(key_fire)) {
 }
 @}
 Стрелять и перелистывать страницы в диалогах.
+
+Играк переключился на теневую форму:
+@d Player press shadow button @{
+if(is_keydown(key_shadow_character))
+	player_shadow_character();
+else
+	player_human_character();
+@}
+
 
 Перемещение персонажей управляемых компьютером:
 @d Computer movements @{

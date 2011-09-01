@@ -1,6 +1,6 @@
 
 CC=gcc
-NUWEB=~/MyWork/myweb/myweb.py
+NUWEB=~/MyWork/Programming/myweb/myweb.py
 CFLAGS+=`sdl-config --cflags` -Wall -O0 -I/usr/include/libpng12/
 LDFLAGS+=-pg
 LIBS+=`sdl-config --libs` -lSDL_image -lGL -lm
