@@ -17,6 +17,8 @@
 
 
 @o const.h @{
+@<License@>
+
 #ifndef _CONST_H_
 #define _CONST_H_
 
@@ -62,6 +64,8 @@
 
 Структура файла функций зависимых от ОС:
 @o os_specific.c @{
+@<License@>
+
 #include <SDL.h>
 #include <SDL_image.h>
 
@@ -81,6 +85,8 @@ static SDL_Surface *surface;
 @}
 
 @o os_specific.h @{
+@<License@>
+
 @<os_specific public structs@>
 @<os_specific public prototypes@>
 @}
@@ -630,6 +636,7 @@ get_scan_keyup() -- какая была отпущена последней.
 "двигаться вверх". Функция в ответ возвращает 0 или 1, не была нажата или была.
 
 @o event.h @{
+@<License@>
 
 @<keys' events for is_keydown@>
 @<is_keydown function prototype@>
@@ -657,6 +664,8 @@ int is_keydown(int key_type);
 Реализация is_keydown:
 
 @o event.c @{
+@<License@>
+
 #include <SDL.h>
 
 #include <stdlib.h>
@@ -748,6 +757,8 @@ switch(key_type) {
 Простой набор функций контроля пересечения прямоугольников:
 
 @o collision.h @{
+@<License@>
+
 typedef struct {
 	int l, r, t, b;
 } Rect;
@@ -758,6 +769,8 @@ int is_collide(const Rect *a, const Rect *b);
 Реализация:
 
 @o collision.c @{
+@<License@>
+
 #include <math.h>
 
 #include "collision.h"
@@ -818,6 +831,8 @@ int is_rad_collide(int x1, int y1, int r1, int x2, int y2, int r2) {
 
 
 @o characters.h @{
+@<License@>
+
 @<Character public structs@>
 @<Character public prototypes@>
 @}
@@ -874,6 +889,8 @@ movement_animation - фаза анимации; вначале равна 0, и�
 	делать с move_x, но это не плохо(кажется).
 
 @o characters.c @{
+@<License@>
+
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -1804,11 +1821,15 @@ case character_blue_moon_fairy:
 Игровой персонаж.
 
 @o player.h @{
+@<License@>
+
 @<Player public structs@>
 @<Player public prototypes@>
 @}
 
 @o player.c @{
+@<License@>
+
 #include <stdlib.h>
 #include <stdio.h>
 
@@ -2301,12 +2322,16 @@ case player_reimu:
 Пули.
 
 @o bullets.h @{
+@<License@>
+
 @<Bullet public macros@>
 @<Bullet public structs@>
 @<Bullet public prototypes@>
 @}
 
 @o bullets.c @{
+@<License@>
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
@@ -3018,10 +3043,14 @@ case bullet_reimu_first:
 Так как она распухнет, то поместим её в отдельный модуль.
 
 @o damage.h @{
+@<License@>
+
 void damage_calculate(void);
 @}
 
 @o damage.c @{
+@<License@>
+
 @<Damage header@>
 
 #include "damage.h"
@@ -3180,10 +3209,14 @@ int radius;
 Игровые этажи.
 
 @o levels.h @{
+@<License@>
+
 @<Levels prototypes@>
 @}
 
 @o levels.c @{
+@<License@>
+
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -3581,7 +3614,6 @@ typedef struct {
 @}
 
 @o os_specific.c @{
-
 //#include <GL/gl.h>
 //#include <GL/glu.h>
 
@@ -3602,6 +3634,8 @@ typedef struct {
 
 
 @o timers.c @{
+@<License@>
+
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -3617,6 +3651,8 @@ typedef struct {
 Для начала напишим функцию которая запоминает текущее значение таймера.
 Её нужно будет вызывать раз в цикл.
 @o timers.h @{
+@<License@>
+
 void timer_get_time(void);
 @}
 
@@ -3704,12 +3740,16 @@ Hint: иероглиф - TEN - точка - 点
 	action и жрал 100% CPU, поэтому переделал в модель со списком.
 
 @o bonuses.h @{
+@<License@>
+
 @<Bonus public macros@>
 @<Bonus public structs@>
 @<Bonus public prototypes@>
 @}
 
 @o bonuses.c @{
+@<License@>
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
@@ -4421,11 +4461,15 @@ if(bonus->move_to_player == 1) {
 Жрёт больше памяти, зато быстрее удалить элемент.
 
 @o dlist.h @{
+@<License@>
+
 @<Dlist public structs@>
 @<Dlist public prototypes@>
 @}
 
 @o dlist.c @{
+@<License@>
+
 #include <stdlib.h>
 #include <stdio.h>
 #include "dlist.h"
@@ -4559,10 +4603,14 @@ X1 Y1 X2 Y2
 В строках закодированы следующие символы: SPC ! \" # $ % & ' ( ) * + , - . / 0 1 2 3 4 5 6 7 8 9 : ; < = > ? @ A B C D E F G H I J K L M N O P Q R S T U V W X Y Z [ \ ] ^ _ ` a b c d e f g h i j k l m n o p q r s t u v w x y z { | } ~
 
 @o font.h @{
+@<License@>
+
 @<Font public prototypes@>
 @}
 
 @o font.c @{
+@<License@>
+
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -4793,11 +4841,15 @@ fsw - first symbol of word - позиция первого символа сло
 ну и функция вырисовки.
 
 @o dialog.h @{
+@<License@>
+
 @<Dialog public structs@>
 @<Dialog public prototypes@>
 @}
 
 @o dialog.c @{
+@<License@>
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -5479,10 +5531,14 @@ dialog_marisa,@}
 
 
 @o panel.h @{
+@<License@>
+
 @<Panel public prototypes@>
 @}
 
 @o panel.c @{
+@<License@>
+
 #include "os_specific.h"
 #include "player.h"
 #include "const.h"
@@ -5615,6 +5671,7 @@ void panel_draw(void);
 Основной файл игры:
 
 @o main.c @{
+@<License@>
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -5940,3 +5997,24 @@ player_bonus_line - проверяем бонусную линию.
 get_processor_time();
 @}
 FIXME: что-то на nvidia он жутко просаживает систему
+
+
+@d License @{
+/*
+ * danmaku
+ * Copyright (C) 2011 Iljasov Ramil
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+@}
