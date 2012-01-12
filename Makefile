@@ -1,6 +1,6 @@
 
 CC=gcc
-NUWEB=~/MyWork/Programming/myweb/myweb.py
+NUWEB=~/MyWork/myweb/myweb.py
 CFLAGS+=`sdl-config --cflags` -Wall -O0 -I/usr/include/libpng12/
 LDFLAGS+=-pg
 LIBS+=`sdl-config --libs` -lSDL_image -lGL -lm
@@ -11,13 +11,13 @@ EXECUTABLE=danmaku
 all: $(SOURCES) $(EXECUTABLE)
 
 $(EXECUTABLE): $(OBJECTS) 
-	$(CC) $(LIBS) $(LDFLAGS) $^ -o $@
+	$(CC) $(LDFLAGS) $^ -o $@ $(LIBS)
 
 main.c: main.w
 	$(NUWEB) $<
 
 .c.o:
-	$(CC) -c $(CFLAGS) $<
+	$(CC) -c $(LDFLAGS) $(CFLAGS) $<
 
 .PHONY: clean
 

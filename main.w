@@ -5806,7 +5806,7 @@ static int main_timer_frame = 0;
 main_timer_frame = timer_calc(main_timer_frame);
 if(main_timer_frame == 0) {
 
-	main_timer_frame = 1000/80;
+	main_timer_frame = 1000/100;
 
 	frames++;
 
