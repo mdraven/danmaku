@@ -651,7 +651,8 @@ get_scan_keyup() -- какая была отпущена последней.
 enum {
 	key_fire, key_shadow_character, key_card,
 	key_move_left, key_move_right, key_move_up, key_move_down,
-	key_menu_up, key_menu_down, key_menu_select, key_escape
+	key_menu_up, key_menu_down, key_menu_select, key_escape,
+	key_next_dialog
 };
 
 @}
@@ -687,7 +688,7 @@ int is_keydown(int key_type) {
 
 Эти флаги устанавливаются в 1, если кнопка нажата и в 0, если нет:
 @d Key flags @{
-static int fire, shadow_character, card, move_left, move_right, move_up, move_down, escape;
+static int fire, shadow_character, card, move_left, move_right, move_up, move_down, escape, next_dialog;
 @}
 
 Здесь мы устанавливаем и сбрасываем флаги:
@@ -698,6 +699,7 @@ while(SDL_PollEvent(&event)) {
 	switch(event.key.keysym.sym) {
 		case SDLK_z:
 			fire = key;
+			next_dialog = key;
 			break;
 		case SDLK_x:
 			card = key;
@@ -746,6 +748,8 @@ switch(key_type) {
 		return move_down;
 	case key_escape:
 		return escape;
+	case key_next_dialog:
+		return next_dialog;
 	default:
 		fprintf(stderr, "\nUnknown key\n");
 		exit(1);
@@ -5759,6 +5763,7 @@ while(1) {
 	@<Player movements@>
 	@<Player press fire button@>
 	@<Player press shadow button@>
+	@<Player press next dialog button@>
 	@<Bonus movements@>
 	@<Dialog movements@>
 	@<Damage calculate@>
@@ -5943,10 +5948,8 @@ else if(is_keydown(key_move_down))
 @d Player press fire button @{
 if(is_keydown(key_fire)) {
 	player_fire();
-	dialog_next_page();
 }
 @}
-Стрелять и перелистывать страницы в диалогах.
 
 Игрок переключился на теневую форму:
 @d Player press shadow button @{
@@ -5956,6 +5959,12 @@ else
 	player_human_character();
 @}
 
+Перелистывать страницы в диалогах нажатием кнопки:
+@d Player press next dialog button @{
+if(is_keydown(key_next_dialog)) {
+	dialog_next_page();
+}
+@}
 
 Перемещение персонажей управляемых компьютером:
 @d Computer movements @{
