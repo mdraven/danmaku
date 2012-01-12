@@ -607,6 +607,7 @@ case color_blue:
 	glColor3ub(155,155,255);
 	break;
 @}
+
 Функция возврата процессорного времени OS:
 @d os_specific public prototypes @{
 void get_processor_time(void);
@@ -5947,7 +5948,7 @@ if(is_keydown(key_fire)) {
 @}
 Стрелять и перелистывать страницы в диалогах.
 
-Играк переключился на теневую форму:
+Игрок переключился на теневую форму:
 @d Player press shadow button @{
 if(is_keydown(key_shadow_character))
 	player_shadow_character();
