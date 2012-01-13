@@ -5898,7 +5898,7 @@ panel_draw();
 @}
 
 Рисуем окно диалога:
-@d Draw dialog @{
+@d Draw dialog @{@-
 dialog_draw();
 @}
 
@@ -5917,8 +5917,7 @@ dialog_draw();
 
 Обновление экрана:
 @d Window update @{
-window_update();
-@}
+window_update();@}
 
 Игровое меню(оно вызывается из игры при нажатии ESC):
 @d Game menu @{
