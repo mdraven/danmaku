@@ -846,9 +846,10 @@ int is_rad_collide(int x1, int y1, int r1, int x2, int y2, int r2) {
 
 Опишем структуру персонажа:
 @d Character public structs @{
-#define CHARACTER_LIST_LEN 2040
-
-typedef struct {
+struct CharacterList {
+	struct CharacterList *prev;
+	struct CharacterList *next;
+	struct CharacterList *pool;
 	int hp;
 	int x;
 	int y;
@@ -857,15 +858,10 @@ typedef struct {
 	int time_point_for_movement_to_x;
 	int time_point_for_movement_to_y;
 	@<Character struct param@>
-} CharacterList;
+};
 
-extern CharacterList characters[CHARACTER_LIST_LEN];
-extern int characters_pos;
+typedef struct CharacterList CharacterList;
 @}
-
-CHARACTER_LIST_LEN максимальный размер стека с игровыми персонажами.
-characters_pos вершина стека
-
 О структуре:
   hp - количество жизней персонажа
   x, y - координаты, когда он не спит
@@ -898,6 +894,7 @@ movement_animation - фаза анимации; вначале равна 0, и�
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <math.h>
 
 #include "characters.h"
 #include "os_specific.h"
@@ -905,20 +902,101 @@ movement_animation - фаза анимации; вначале равна 0, и�
 #include "player.h"
 #include "bullets.h"
 #include "timers.h"
+#include "dlist.h"
 
-CharacterList characters[CHARACTER_LIST_LEN];
-int characters_pos;
-
+@<Character private macros@>
 @<Character private structs@>
 @<Character private prototypes@>
 @<Character functions@>
 @}
 
+Список персонажей:
+@d Character public structs @{
+extern CharacterList *characters;
+@}
 
-Перейдем к реализации функций.
+@d Character private structs @{
+CharacterList *characters;
+@}
 
+Пул свободных элементов для персонажей и удалённых персонажей:
+@d Character private structs @{@-
+static CharacterList *pool;
 
-Функции создания персонажей.
+static CharacterList *pool_free;
+static CharacterList *end_pool_free;
+@}
+end_pool_free - ссылка на последний элемент pool_free
+
+CHARACTER_ALLOC - аллоцируется слотов для персонажей в самом начале
+CHARACTER_ADD - добавляется при нехватке
+@d Character private macros @{
+#define CHARACTER_ALLOC 150
+#define CHARACTER_ADD 50
+@}
+
+Функция для возвращения выделенных слотов обратно в пул:
+@d Character functions @{
+static void character_free(CharacterList *character) {
+	if(character == characters)
+		characters = characters->next;
+
+	if(pool_free == NULL)
+		end_pool_free = character;
+
+	dlist_free((DList*)character, (DList**)(&pool_free));
+}
+@}
+Если освобождаем слот в самом начале списка characters, то первым становится
+	второй слот для персонажа в списке.
+Удаляем в специальный пул(pool_free) так как в том же цикле ячейка
+	может быть использована снова и тогда ->next и ->prev будут изменены.
+Устанавливаем указатель на последний элемент пула end_pool_free, чтобы потом
+	легче было соединить с pool(используется то, что dlist_free добавляет элементы
+	в начало pool_free).
+
+Соединить pool_free с pool:
+@d Character functions @{
+static void character_pool_free_to_pool(void) {
+	if(end_pool_free == NULL)
+		return;
+
+	end_pool_free->pool = pool;
+	pool = pool_free;
+
+	pool_free = NULL;
+	end_pool_free = NULL;
+}
+@}
+Соединяет односвязный список pool_free с pool.
+Надо вызывать после for обходящих список characters, но думаю что достаточно
+	вызывать только в ai_control.
+
+character_get_free_cell - функция возвращающая свободный дескриптор.
+Она устанавливает флаг is_noempty.
+@d Character functions @{
+static CharacterList *character_get_free_cell(void) {
+	if(pool == NULL) {
+		int k = (characters == NULL) ? CHARACTER_ALLOC : CHARACTER_ADD;
+		int i;
+
+		pool = malloc(sizeof(CharacterList)*k);
+		if(pool == NULL) {
+			fprintf(stderr, "\nCan't allocate memory for characters' pool\n");
+			exit(1);
+		}
+
+		for(i = 0; i < k-1; i++)
+			pool[i].pool = &(pool[i+1]);
+		pool[k-1].pool = NULL;
+	}
+
+	characters = (CharacterList*)dlist_alloc((DList*)characters, (DList**)(&pool));
+
+	return characters;
+}
+@}
+
 
 Типы персонажей:
 @d Character public structs @{
@@ -929,8 +1007,8 @@ enum {
 
 Рейму:
 @d Character functions @{
-void character_reimu_create(int cd) {
-	CharacterList *character = &characters[cd];
+CharacterList *character_reimu_create() {
+	CharacterList *character = character_get_free_cell();
 
 	character->hp = 100;
 	character->is_sleep = 1;
@@ -947,19 +1025,21 @@ void character_reimu_create(int cd) {
 	character->y = player_y;
 
 	character->radius = 10;
+
+	return character;
 }
 @}
 player_coord_x, player_coord_y - глобальные координаты игрока.
 radius - радиус хитбокса.
 
 @d Character public prototypes @{@-
-void character_reimu_create(int cd);
+CharacterList *character_reimu_create();
 @}
 
 Мариса:
 @d Character functions @{
-void character_marisa_create(int cd) {
-	CharacterList *character = &characters[cd];
+CharacterList *character_marisa_create() {
+	CharacterList *character = character_get_free_cell();
 
 	character->hp = 100;
 	character->is_sleep = 1;
@@ -976,11 +1056,13 @@ void character_marisa_create(int cd) {
 	character->y = player_y;
 
 	character->radius = 10;
+
+	return character;
 }
 @}
 
 @d Character public prototypes @{@-
-void character_marisa_create(int cd);
+CharacterList *character_marisa_create();
 @}
 
 
@@ -992,27 +1074,25 @@ void character_marisa_create(int cd);
 @<Different characters set weak time_point functions@>
 @<character_set_weak_time_point functions@>
 
-static void character_move_to(int cd, int move_to) {
-	CharacterList *character = &characters[cd];
-
+static void character_move_to(CharacterList *character, int move_to) {
 	if(character->time_point_for_movement_to_x == 0) {
 		if(move_to == character_move_to_left) {
-			character_set_weak_time_point_x(cd);
+			character_set_weak_time_point_x(character);
 			character->x--;
 		}
 		else if(move_to == character_move_to_right) {
-			character_set_weak_time_point_x(cd);
+			character_set_weak_time_point_x(character);
 			character->x++;
 		}
 	}
 
 	if(character->time_point_for_movement_to_y == 0) {
 		if(move_to == character_move_to_up) {
-			character_set_weak_time_point_y(cd);
+			character_set_weak_time_point_y(character);
 			character->y--;
 		}
 		else if(move_to == character_move_to_down) {
-			character_set_weak_time_point_y(cd);
+			character_set_weak_time_point_y(character);
 			character->y++;
 		}
 	}
@@ -1020,7 +1100,7 @@ static void character_move_to(int cd, int move_to) {
 @}
 
 В этой функции используются функции character_set_weak_time_point_x и
-character_set_weak_time_point_y. Они определяют тип персонажа cd и
+character_set_weak_time_point_y. Они определяют тип персонажа character и
 вызывают специализированию функцию для каждого типа персонажа. Она устанавливает
 значение для time_point_for_movement_to_x и time_point_for_movement_to_y
 после того как было сделано перемещение.
@@ -1035,20 +1115,20 @@ enum {
 @}
 
 @d Character private prototypes @{
-static void character_move_to(int cd, int move_to);
+static void character_move_to(CharacterList *character, int move_to);
 @}
 
 
 
 Опишем character_set_weak_time_point_x и character_set_weak_time_point_y:
 @d character_set_weak_time_point functions @{
-static void character_set_weak_time_point_x(int cd) {
-	switch(characters[cd].character_type) {
+static void character_set_weak_time_point_x(CharacterList *character) {
+	switch(character->character_type) {
 		case character_reimu:
-			character_reimu_set_weak_time_point_x(cd);
+			character_reimu_set_weak_time_point_x(character);
 			break;
 		case character_marisa:
-			character_marisa_set_weak_time_point_x(cd);
+			character_marisa_set_weak_time_point_x(character);
 			break;
 		@<character_set_weak_time_point_x other characters@>
 		default:
@@ -1057,13 +1137,13 @@ static void character_set_weak_time_point_x(int cd) {
 	}
 }
 
-static void character_set_weak_time_point_y(int cd) {
-	switch(characters[cd].character_type) {
+static void character_set_weak_time_point_y(CharacterList *character) {
+	switch(characters->character_type) {
 		case character_reimu:
-			character_reimu_set_weak_time_point_y(cd);
+			character_reimu_set_weak_time_point_y(character);
 			break;
 		case character_marisa:
-			character_marisa_set_weak_time_point_y(cd);
+			character_marisa_set_weak_time_point_y(character);
 			break;
 		@<character_set_weak_time_point_y other characters@>
 		default:
@@ -1071,26 +1151,25 @@ static void character_set_weak_time_point_y(int cd) {
 			exit(1);
 	}
 }
-
 @}
 
 Конкретные реализации функций обновления time_point:
 
 @d Different characters set weak time_point functions @{
-static void character_reimu_set_weak_time_point_x(int cd) {
-	characters[cd].time_point_for_movement_to_x = 5;
+static void character_reimu_set_weak_time_point_x(CharacterList *character) {
+	character->time_point_for_movement_to_x = 5;
 }
 
-static void character_reimu_set_weak_time_point_y(int cd) {
-	characters[cd].time_point_for_movement_to_y = 5;
+static void character_reimu_set_weak_time_point_y(CharacterList *character) {
+	character->time_point_for_movement_to_y = 5;
 }
 
-static void character_marisa_set_weak_time_point_x(int cd) {
-	characters[cd].time_point_for_movement_to_x = 10;
+static void character_marisa_set_weak_time_point_x(CharacterList *character) {
+	character->time_point_for_movement_to_x = 10;
 }
 
-static void character_marisa_set_weak_time_point_y(int cd) {
-	characters[cd].time_point_for_movement_to_y = 10;
+static void character_marisa_set_weak_time_point_y(CharacterList *character) {
+	character->time_point_for_movement_to_y = 10;
 }
 @}
 
@@ -1103,15 +1182,15 @@ static void character_marisa_set_weak_time_point_y(int cd) {
 @<Update time point for different characters@>
 
 void characters_update_all_time_points(void) {
-	int i;
+	CharacterList *character;
 
-	for(i = 0; i < characters_pos; i++)
-		switch(characters[i].character_type) {
+	for(character = characters; character != NULL; character = character->next)
+		switch(character->character_type) {
 			case character_reimu:
-				character_reimu_update_time_points(i);
+				character_reimu_update_time_points(character);
 				break;
 			case character_marisa:
-				character_marisa_update_time_points(i);
+				character_marisa_update_time_points(character);
 				break;
 			@<characters_update_all_time_points other characters@>
 			default:
@@ -1132,9 +1211,7 @@ void characters_update_all_time_points(void);
 Реализация обновления времени до следующего хода у конкретного вида
 персонажей:
 @d Update time point for different characters @{
-static void character_reimu_update_time_points(int cd) {
-	CharacterList *character = &characters[cd];
-
+static void character_reimu_update_time_points(CharacterList *character) {
 	if(character->time_point_for_movement_to_x > 0)
 		character->time_point_for_movement_to_x--;
 
@@ -1144,9 +1221,7 @@ static void character_reimu_update_time_points(int cd) {
 	character->movement_animation++;
 }
 
-static void character_marisa_update_time_points(int cd) {
-	CharacterList *character = &characters[cd];
-
+static void character_marisa_update_time_points(CharacterList *character) {
 	if(character->time_point_for_movement_to_x > 0)
 		character->time_point_for_movement_to_x--;
 
@@ -1160,27 +1235,30 @@ static void character_marisa_update_time_points(int cd) {
 
 
 Сделаем ход всеми компьютерными персонажами. Вражеские персонажи которые спят или
-мертвы пропускают ход.
-
+мертвы пропускают ход:
 @d Character functions @{
 @<Helper functions@>
 @<AI functions for different characters@>
 
 void characters_ai_control(void) {
-	int i;
+	CharacterList *character;
 
-	for(i = 0; i < characters_pos; i++) {
-		CharacterList *character = &characters[i];
+	for(character = characters; character != NULL; character = character->next) {
 
-		if(character->hp <= 0 || character->is_sleep == 1)
+		if(character->hp <= 0) {
+			character_free(character);
+			continue;
+		}
+
+		if(character->is_sleep == 1)
 			continue;
 
 		switch(character->character_type) {
 			case character_reimu:
-				character_reimu_ai_control(i);
+				character_reimu_ai_control(character);
 				break;
 			case character_marisa:
-				character_marisa_ai_control(i);
+				character_marisa_ai_control(character);
 				break;
 			@<characters_ai_control other characters@>
 			default:
@@ -1188,6 +1266,8 @@ void characters_ai_control(void) {
 				exit(1);
 		}
 	}
+
+	character_pool_free_to_pool();
 }
 @}
 
@@ -1197,13 +1277,11 @@ void characters_ai_control(void);
 
 Мозги для конкретных персонажей:
 @d AI functions for different characters @{
-static void character_reimu_ai_control(int cd) {
-	CharacterList *character = &characters[cd];
-
+static void character_reimu_ai_control(CharacterList *character) {
 	@<Reimu ai control@>
 }
 
-static void character_marisa_ai_control(int cd) {
+static void character_marisa_ai_control(CharacterList *character) {
 	exit(1); // FIXME
 }
 @}
@@ -1214,12 +1292,10 @@ static void character_marisa_ai_control(int cd) {
 Вспомогательные функции.
 
 character_move_to_point - движение к точке.
-Каждый её вызов передвигает персонаж cd ближе к точке (x,y)
+Каждый её вызов передвигает персонаж character ближе к точке (x,y)
 
 @d Helper functions @{
-static void character_move_to_point(int cd, int x, int y) {
-	CharacterList *character = &characters[cd];
-
+static void character_move_to_point(CharacterList *character, int x, int y) {
 	@<character_move_to_point params@>
 	@<character_move_to_point is end of movement?@>
 	@<character_move_to_point save start coordinate@>
@@ -1325,16 +1401,16 @@ else {
 
 if(fx == 1 && character->x != x) {
 	if(character->x > x)
-		character_move_to(cd, character_move_to_left);
+		character_move_to(character, character_move_to_left);
 	else
-		character_move_to(cd, character_move_to_right);
+		character_move_to(character, character_move_to_right);
 }
 
 if(fy == 1 && character->y != y) {
 	if(character->y > y)
-		character_move_to(cd, character_move_to_up);
+		character_move_to(character, character_move_to_up);
 	else
-		character_move_to(cd, character_move_to_down);
+		character_move_to(character, character_move_to_down);
 }
 @}
 
@@ -1375,7 +1451,7 @@ Point p[] = {{100, 100}, {200, 10}, {10, 200}, {200, 200}, {10, 10}};
 if(character->step_of_movement == 5)
 	character->step_of_movement = 0;
 
-character_move_to_point(cd, p[character->step_of_movement].x, p[character->step_of_movement].y);
+character_move_to_point(character, p[character->step_of_movement].x, p[character->step_of_movement].y);
 
 if(character->move_percent == 0) {
 	character->step_of_movement++;
@@ -1410,15 +1486,15 @@ int time;
 @<Draw functions for different characters@>
 
 void characters_draw(void) {
-	int i;
+	CharacterList *character;
 
-	for(i = 0; i < characters_pos; i++)
-		switch(characters[i].character_type) {
+	for(character = characters; character != NULL; character = character->next)
+		switch(character->character_type) {
 			case character_reimu:
-				character_reimu_draw(i);
+				character_reimu_draw(character);
 				break;
 			case character_marisa:
-				character_marisa_draw(i);
+				character_marisa_draw(character);
 				break;
 			@<characters_draw other characters@>
 			default:
@@ -1435,8 +1511,7 @@ void characters_draw(void);
 Конкретные функции рисования для различных персонажей:
 FIXME: нет анимации, смотреть у blue_fairy
 @d Draw functions for different characters @{
-static void character_reimu_draw(int cd) {
-	CharacterList *character = &characters[cd];
+static void character_reimu_draw(CharacterList *character) {
 	static int id = -1;
 
 	if(id == -1)
@@ -1451,8 +1526,7 @@ static void character_reimu_draw(int cd) {
 		0, 0.1);
 }
 
-static void character_marisa_draw(int cd) {
-	CharacterList *character = &characters[cd];
+static void character_marisa_draw(CharacterList *character) {
 	static int id = -1;
 
 	if(id == -1)
@@ -1468,6 +1542,10 @@ static void character_marisa_draw(int cd) {
 }
 @}
 
+
+FIXME: написаное ниже актуально лишь частично, так как этот механизм не позволяет реализовывать
+   просто телохранителей персонажей(точнее это возможно, но нам придётся аллоцировать ячейки и
+   для них, а их много). Поэтому повышение сложность и замена стека аллокатором оправдано.
 
 TODO: Есть одна мысль.
 Уберем механизм стека и функцию character_create вместе с character_reimu, character_marisa.
@@ -1541,10 +1619,10 @@ character_blue_moon_fairy,
 
 Функция создания персонажа:
 @d Character functions @{
-void character_blue_moon_fairy_create(int cd, int begin_x, int begin_y,
+CharacterList *character_blue_moon_fairy_create(int begin_x, int begin_y,
 	int to_x, int to_y,
 	int end_x, int end_y) {
-	CharacterList *character = &characters[cd];
+	CharacterList *character = character_get_free_cell();
 
 	character->x = begin_x;
 	character->y = begin_y;
@@ -1566,6 +1644,8 @@ void character_blue_moon_fairy_create(int cd, int begin_x, int begin_y,
 	character->step_of_movement = 0;
 
 	character->radius = 10;
+
+	return character;
 }
 @}
 radius - радиус хитбокса.
@@ -1582,44 +1662,42 @@ int end_y;
   размещения данных. Возможно стоит использовать что-то более ООП'ное, например, подструктуры.
   Но я думаю, что нынешний подход лучше чем arg[0], arg[1] итд.
 
-@d Character public prototypes- @{@-
-void character_blue_moon_fairy_create(int cd, int x, int y, int to_x, int to_y, int end_x, int end_y);
+@d Character public prototypes @{@-
+CharacterList *character_blue_moon_fairy_create(int x, int y, int to_x, int to_y, int end_x, int end_y);
 @}
 
 Функции установки time points после совершения перемещения:
 @d character_set_weak_time_point_x other characters @{
 case character_blue_moon_fairy:
-	character_blue_moon_fairy_set_weak_time_point_x(cd);
+	character_blue_moon_fairy_set_weak_time_point_x(character);
 	break;
 @}
 
 @d character_set_weak_time_point_y other characters @{
 case character_blue_moon_fairy:
-	character_blue_moon_fairy_set_weak_time_point_y(cd);
+	character_blue_moon_fairy_set_weak_time_point_y(character);
 	break;
 @}
 
 @d Different characters set weak time_point functions @{
-static void character_blue_moon_fairy_set_weak_time_point_x(int cd) {
-	characters[cd].time_point_for_movement_to_x = 5;
+static void character_blue_moon_fairy_set_weak_time_point_x(CharacterList *character) {
+	character->time_point_for_movement_to_x = 5;
 }
 
-static void character_blue_moon_fairy_set_weak_time_point_y(int cd) {
-	characters[cd].time_point_for_movement_to_y = 5;
+static void character_blue_moon_fairy_set_weak_time_point_y(CharacterList *character) {
+	character->time_point_for_movement_to_y = 5;
 }
 @}
 
 Функции обновления time points:
 @d characters_update_all_time_points other characters @{
 case character_blue_moon_fairy:
-	character_blue_moon_fairy_update_time_points(i);
+	character_blue_moon_fairy_update_time_points(character);
 	break;
 @}
 
 @d Update time point for different characters @{
-static void character_blue_moon_fairy_update_time_points(int cd) {
-	CharacterList *character = &characters[cd];
-
+static void character_blue_moon_fairy_update_time_points(CharacterList *character) {
 	if(character->time_point_for_movement_to_x > 0)
 		character->time_point_for_movement_to_x--;
 
@@ -1633,13 +1711,12 @@ static void character_blue_moon_fairy_update_time_points(int cd) {
 AI феи:
 @d characters_ai_control other characters @{
 case character_blue_moon_fairy:
-	character_blue_moon_fairy_ai_control(i);
+	character_blue_moon_fairy_ai_control(character);
 	break;
 @}
 
 @d AI functions for different characters @{
-static void character_blue_moon_fairy_ai_control(int cd) {
-	CharacterList *character = &characters[cd];
+static void character_blue_moon_fairy_ai_control(CharacterList *character) {
 	@<character_blue_moon_fairy_ai_control move to down@>
 	@<character_blue_moon_fairy_ai_control wait@>
 	@<character_blue_moon_fairy_ai_control go away@>
@@ -1651,7 +1728,7 @@ static void character_blue_moon_fairy_ai_control(int cd) {
 Перемещаемся вперёд:
 @d character_blue_moon_fairy_ai_control move to down @{
 if(character->step_of_movement == 0) {
-	character_move_to_point(cd, character->move_x, character->move_y);
+	character_move_to_point(character, character->move_x, character->move_y);
 
 	if(character->move_percent == 0) {
 		character->time = 500;
@@ -1680,7 +1757,7 @@ if(character->step_of_movement == 2) {
 
 @d character_blue_moon_fairy_ai_control move to up @{
 if(character->step_of_movement == 3) {
-	character_move_to_point(cd, character->move_x, character->move_y);
+	character_move_to_point(character, character->move_x, character->move_y);
 	if(character->move_percent == 0)
 		character->step_of_movement = 4;
 }
@@ -1691,23 +1768,22 @@ if(character->step_of_movement == 4) {
 	if(character->x < -25 || character->x > GAME_FIELD_W + 25 ||
 		character->y < -25 || character->y > GAME_FIELD_H + 25) {
 		character->is_sleep = 1;
-		character->step_of_movement = 0;
-		character->move_percent = 0;
+		character_free(character);
 	}
 }
 @}
 Фея после достижения конечной точки исчезает только если она за пределами экрана.
+is_sleep устанавливается в 1, так как до окончания for персонаж ещё не удалён.
 
 Рисуем персонажа:
 @d characters_draw other characters @{
 case character_blue_moon_fairy:
-	character_blue_moon_fairy_draw(i);
+	character_blue_moon_fairy_draw(character);
 	break;
 @}
 
 @d Draw functions for different characters @{
-static void character_blue_moon_fairy_draw(int cd) {
-	CharacterList *character = &characters[cd];
+static void character_blue_moon_fairy_draw(CharacterList *character) {
 	static int id = -1;
 
 	if(id == -1)
@@ -3100,13 +3176,12 @@ void damage_calculate(void) {
 отнимаем у персонажа сколько нужно жизней:
 @d damage_calculate body @{
 BulletList *bullet;
-int j;
+CharacterList *character;
 
 for(bullet = bullets; bullet != NULL; bullet = bullet->next) {
 	@<damage_calculate is enemy's bullet?@>
 
-	for(j = 0; j < characters_pos; j++) {
-		CharacterList *character = &characters[j];
+	for(character = characters; character != NULL; character = character->next) {
 
 		@<damage_calculate character hp=0 or is_sleep=1@>
 
@@ -5725,11 +5800,6 @@ int main(void) {
 	window_init();
 	window_create();
 
-	enum {
-		main_character_blue_moon_fairy1,
-		main_character_blue_moon_fairy10 = main_character_blue_moon_fairy1 + 9,
-	};
-
 	player_x = GAME_FIELD_W/2;
 	player_y = GAME_FIELD_H - GAME_FIELD_H/8;
 
@@ -5737,13 +5807,11 @@ int main(void) {
 
 	{
 		int i;
-		for(i = main_character_blue_moon_fairy1; i <= main_character_blue_moon_fairy10; i++) {
-			character_blue_moon_fairy_create(i, 30*i, 10, 30*i+100, 200, 30*i+150, -30);
-			characters[i].is_sleep = 0;
+		for(i = 0; i <= 9; i++) {
+			CharacterList *character = character_blue_moon_fairy_create(30*i, 10, 30*i+100, 200, 30*i+150, -30);
+			character->is_sleep = 0;
 		}
-		characters_pos = main_character_blue_moon_fairy10 + 1;
 
-		//characters[main_character_blue_moon_fairy1].is_sleep = 0;
 	}
 
 /*	{
