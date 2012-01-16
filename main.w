@@ -1521,6 +1521,19 @@ void level02(void) {
 
 Синие феи.
 
+Нарытые факты:
+ - феи вылетают кучей (на easy в куче 3 феи).
+ - у этой кучи есть вертикальная линия на экране.
+   После того как феи доллетают до конца, они начинают лететь назад зеркально относительно этой
+   линии(рис. blue_fairy_track). Угол отклонения зависит от расстояния до этой линии(чем ближе тем угол больше).
+ - к концу пути они замедляют движение, при полёте назад опять ускоряются.
+ - в конце выстраиваются в одну горизонтальную линию.
+
+"Умный" алгоритм не понятен(странный разброс углов), поэтому нужно будет задавать 3 точки:
+ - откуда летит(точка появления)
+ - куда летит прямо
+ - куда летит обратно
+
 Добавим в список:
 @d Character types @{@-
 character_blue_moon_fairy,
@@ -1528,16 +1541,24 @@ character_blue_moon_fairy,
 
 Функция создания персонажа:
 @d Character functions @{
-void character_blue_moon_fairy_create(int cd, int x, int y) {
+void character_blue_moon_fairy_create(int cd, int begin_x, int begin_y,
+	int to_x, int to_y,
+	int end_x, int end_y) {
 	CharacterList *character = &characters[cd];
 
-	character->x = x;
-	character->y = y;
+	character->x = begin_x;
+	character->y = begin_y;
 	character->hp = 100;
 	character->is_sleep = 1;
 	character->character_type = character_blue_moon_fairy;
 	character->time_point_for_movement_to_x = 0;
 	character->time_point_for_movement_to_y = 0;
+
+	character->move_x = to_x;
+	character->move_y = to_y;
+
+	character->end_x = end_x;
+	character->end_y = end_y;
 
 	character->last_horizontal = 0;
 	character->movement_animation = 0;
@@ -1548,9 +1569,21 @@ void character_blue_moon_fairy_create(int cd, int x, int y) {
 }
 @}
 radius - радиус хитбокса.
+Используются три точки как и описано выше.
 
-@d Character public prototypes @{@-
-void character_blue_moon_fairy_create(int cd, int x, int y);
+Добавим в CharacterList дополнительные поля:
+@d Character struct param @{
+int end_x;
+int end_y;
+@}
+Определены для синей феи, в эту точку она будет лететь назад.
+  Если потребуются параметры для других персонажей, то соит прибегнуть к union.
+Эти поля нужны далеко не каждому вражескому персонажу, и это говорит о неоптимальности
+  размещения данных. Возможно стоит использовать что-то более ООП'ное, например, подструктуры.
+  Но я думаю, что нынешний подход лучше чем arg[0], arg[1] итд.
+
+@d Character public prototypes- @{@-
+void character_blue_moon_fairy_create(int cd, int x, int y, int to_x, int to_y, int end_x, int end_y);
 @}
 
 Функции установки time points после совершения перемещения:
@@ -1607,88 +1640,63 @@ case character_blue_moon_fairy:
 @d AI functions for different characters @{
 static void character_blue_moon_fairy_ai_control(int cd) {
 	CharacterList *character = &characters[cd];
-	@<character_blue_moon_fairy_ai_control move to down and center@>
+	@<character_blue_moon_fairy_ai_control move to down@>
 	@<character_blue_moon_fairy_ai_control wait@>
 	@<character_blue_moon_fairy_ai_control go away@>
-	@<character_blue_moon_fairy_ai_control move and remove@>
+	@<character_blue_moon_fairy_ai_control move to up@>
+	@<character_blue_moon_fairy_ai_control remove@>
 }
 @}
 
-Перемещаемся поближе к центру(чуть выше) игрового поля. Чем персонаж ближе к центру в
-начальный момент, тем ближе он подлетит в конце.
-Для начала пройдём полмаршрута и выстрелим:
-@d character_blue_moon_fairy_ai_control move to down and center @{
+Перемещаемся вперёд:
+@d character_blue_moon_fairy_ai_control move to down @{
 if(character->step_of_movement == 0) {
-	character->move_x = GAME_FIELD_W/2 + (character->x - GAME_FIELD_W/2)/2;
-	character->move_y = GAME_FIELD_H/2 - GAME_FIELD_H/4 + character->y;
-	character->step_of_movement = 1;
-}
-
-if(character->step_of_movement == 1) {
 	character_move_to_point(cd, character->move_x, character->move_y);
-	if(character->move_percent < 50) {
-		bullet_white_spray3_create(character->x, character->y);
-		character->step_of_movement = 2;
-	}
-}
-@}
 
-Потом пройдем остаток маршрута и выстрелим:
-@d character_blue_moon_fairy_ai_control move to down and center @{
-if(character->step_of_movement == 2) {
-	character_move_to_point(cd, character->move_x, character->move_y);
 	if(character->move_percent == 0) {
-		bullet_white_spray3_create(character->x, character->y);
-
 		character->time = 500;
-		character->step_of_movement = 3;
+		character->step_of_movement = 1;
 	}
 }
 @}
 
 Ждем полсекунды(character->time выше):
 @d character_blue_moon_fairy_ai_control wait @{
-if(character->step_of_movement == 3) {
+if(character->step_of_movement == 1) {
 	character->time = timer_calc(character->time);
 	if(character->time == 0)
+		character->step_of_movement = 2;
+}
+@}
+
+Летим к конечной точке:
+@d character_blue_moon_fairy_ai_control go away @{
+if(character->step_of_movement == 2) {
+	character->move_x = character->end_x;
+	character->move_y = character->end_y;
+	character->step_of_movement = 3;
+}
+@}
+
+@d character_blue_moon_fairy_ai_control move to up @{
+if(character->step_of_movement == 3) {
+	character_move_to_point(cd, character->move_x, character->move_y);
+	if(character->move_percent == 0)
 		character->step_of_movement = 4;
 }
 @}
 
-Улетаем за край экрана. Те что слева от центра улетают направо, те что
-справа от центра налево:
-@d character_blue_moon_fairy_ai_control go away @{
+@d character_blue_moon_fairy_ai_control remove @{
 if(character->step_of_movement == 4) {
-	character->move_x = character->x < GAME_FIELD_W/2 ? GAME_FIELD_W + 30 : -30;
-	character->move_y = character->y - GAME_FIELD_H/5;
-	character->step_of_movement = 5;
-}
-@}
-
-Перемещаемся в (move_x, move_y). Стреляем на половине пути:
-@d character_blue_moon_fairy_ai_control move and remove @{
-if(character->step_of_movement == 5) {
-	character_move_to_point(cd, character->move_x, character->move_y);
-	if(character->move_percent < 50) {
-		bullet_white_spray3_create(character->x, character->y);
-		character->step_of_movement = 6;
-	}
-}
-@}
-
-Перемещаемся остаток пути. Убираем тех, кто достиг края экрана:
-@d character_blue_moon_fairy_ai_control move and remove @{
-if(character->step_of_movement == 6) {
-	character_move_to_point(cd, character->move_x, character->move_y);
-	if(character->x > GAME_FIELD_W+20 || character->x < -20) {
+	if(character->x < -25 || character->x > GAME_FIELD_W + 25 ||
+		character->y < -25 || character->y > GAME_FIELD_H + 25) {
 		character->is_sleep = 1;
 		character->step_of_movement = 0;
 		character->move_percent = 0;
 	}
 }
 @}
-Очищаем step_of_movement и move_percent.
-
+Фея после достижения конечной точки исчезает только если она за пределами экрана.
 
 Рисуем персонажа:
 @d characters_draw other characters @{
@@ -1821,6 +1829,14 @@ case character_blue_moon_fairy:
 		character->hp -= 1000;
 	break;
 @}
+
+
+
+Феи с кроличьими ушами.
+
+Вылетают вниз прямо, далее летят в направлении другой половины экрана.
+Чем феи ниже остановится при движении вниз тем под более крутым углом она полетит вниз.
+
 ===========================================================
 
 Игровой персонаж.
@@ -5722,7 +5738,7 @@ int main(void) {
 	{
 		int i;
 		for(i = main_character_blue_moon_fairy1; i <= main_character_blue_moon_fairy10; i++) {
-			character_blue_moon_fairy_create(i, 30*i, 10);
+			character_blue_moon_fairy_create(i, 30*i, 10, 30*i+100, 200, 30*i+150, -30);
 			characters[i].is_sleep = 0;
 		}
 		characters_pos = main_character_blue_moon_fairy10 + 1;
