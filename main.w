@@ -5841,18 +5841,9 @@ while(1) {
 	@<Update timers@>
 	@<Skip frames@>
 	@<FPS@>
-	@<Time points@>
-	@<Computer movements@>
-	@<Bullet movements@>
-	@<Player movements@>
-	@<Player press fire button@>
-	@<Player press shadow button@>
-	@<Player press next dialog button@>
-	@<Bonus movements@>
-	@<Dialog movements@>
-	@<Damage calculate@>
-	@<Get bonuses@>
-	@<Game menu@>
+
+	@<Main cycle actions@>
+
 	@<Get processor time to OS@>
 	/*{//FIXME
 		static int c = 0;
@@ -5907,16 +5898,39 @@ if(main_timer_frame == 0) {
 @}
 frames - необходим для подсчета FPS описаного ниже.
 
+Так как одного изменения в 1 мс. оказалось мало, то будем делать 2-ва:
+@d Main cycle actions @{
+@<Timer for time points@>
+int i;
+for(i=0; i<2; i++) {
+	@<Time points@>
+	@<Computer movements@>
+	@<Bullet movements@>
+	@<Player movements@>
+	@<Player press fire button@>
+	@<Player press shadow button@>
+	@<Player press next dialog button@>
+	@<Bonus movements@>
+	@<Dialog movements@>
+	@<Damage calculate@>
+	@<Get bonuses@>
+	@<Game menu@>
+}
+@<Update time points@>
+@}
+Из-за того, что всё вызывается по два раза, то всё что раньше считалось 1 мс, теперь
+  надо считать 1/2 мс, те надо текст перечитать и умножить счётчики на 2(FIXME).
 
 Пересчет очков перемещения(time point). Добавим таймер для обновления time points:
-@d Time points @{
+@d Timer for time points @{
 static int main_timer_time_points = 0;
 
 main_timer_time_points = timer_calc(main_timer_time_points);
+@}
+
+Пересчитаем time points для различных вещей:
+@d Time points @{
 if(main_timer_time_points == 0) {
-
-	main_timer_time_points = 1;
-
 	characters_update_all_time_points();
 	player_update_all_time_points();
 	bullets_update_all_time_points();
@@ -5927,6 +5941,12 @@ if(main_timer_time_points == 0) {
 @}
 Функции characters_update_all_time_points, player_update_all_time_points,
 bullets_update_all_time_points и bonuses_update_all_time_points вызываются раз в ~1 мс.
+
+Если таймер обнулился, то установим его ещё на 1 мс:
+@d Update time points @{
+if(main_timer_time_points == 0)
+	main_timer_time_points = 1;
+@}
 
 
 Добавим таймер для FPS.
