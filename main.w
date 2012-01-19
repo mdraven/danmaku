@@ -1757,7 +1757,8 @@ if(character->step_of_movement == 0) {
 Ждем 3 секунды(character->time выше):
 @d character_blue_moon_fairy_ai_control wait @{
 if(character->step_of_movement == 1) {
-	character->time = timer_calc(character->time);
+	character->time--;
+
 	if(character->time == 0)
 		character->step_of_movement = 2;
 }
