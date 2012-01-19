@@ -1607,6 +1607,8 @@ void level02(void) {
  - к концу пути они замедляют движение, при полёте назад опять ускоряются.
  - в конце выстраиваются в одну горизонтальную линию.
 
+Надо изменить рисовку этой феи, так как в IN она крыльями почти не машет, а планирует на них.
+
 "Умный" алгоритм не понятен(странный разброс углов), поэтому нужно будет задавать 3 точки:
  - откуда летит(точка появления)
  - куда летит прямо
@@ -4693,7 +4695,7 @@ void dlist_free(DList *el, DList **pool);
 Так мы выведем несколько строк текста.
 
 Файл шрифта задаётся так:
-В-первой строке название файла с изображением, такое, чтобы загрузить image_load.
+В первой строке название файла с изображением, такое, чтобы загрузить image_load.
 Далее 95 строк вида:
 X1 Y1 X2 Y2
 В строках закодированы следующие символы: SPC ! \" # $ % & ' ( ) * + , - . / 0 1 2 3 4 5 6 7 8 9 : ; < = > ? @ A B C D E F G H I J K L M N O P Q R S T U V W X Y Z [ \ ] ^ _ ` a b c d e f g h i j k l m n o p q r s t u v w x y z { | } ~
@@ -5969,7 +5971,8 @@ if(main_timer_time_points == 0)
 @}
 
 @d main variables @{@-
-int fps = 0;@}
+int fps = 0;
+@}
 
 Рисуем задник:
 @d Draw backgrounds @{@-
@@ -6112,10 +6115,10 @@ get_processor_time();
 FIXME: что-то на nvidia он жутко просаживает систему
 
 
-@d License @{
+@d License @{@-
 /*
  * danmaku
- * Copyright (C) 2011 Iljasov Ramil
+ * Copyright (C) 2011-2012 Iljasov Ramil
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
