@@ -1933,8 +1933,289 @@ case character_blue_moon_fairy:
 
 Феи с кроличьими ушами.
 
-Вылетают вниз прямо, далее летят в направлении другой половины экрана.
-Чем феи ниже остановится при движении вниз тем под более крутым углом она полетит вниз.
+
+@d Character types @{@-
+character_blue_moon_bunny_fairy,
+@}
+
+@d Character functions @{
+CharacterList *character_blue_moon_bunny_fairy_create(int begin_x, int begin_y,
+	int to_x, int to_y,
+	int end_x, int end_y) {
+	CharacterList *character = character_get_free_cell();
+
+	character->x = begin_x;
+	character->y = begin_y;
+	character->hp = 100;
+	character->is_sleep = 1;
+	character->character_type = character_blue_moon_bunny_fairy;
+	character->time_point_for_movement_to_x = 0;
+	character->time_point_for_movement_to_y = 0;
+
+	character->move_x = to_x;
+	character->move_y = to_y;
+
+	character->end_x = end_x;
+	character->end_y = end_y;
+
+	character->last_horizontal = 0;
+	character->movement_animation = 0;
+
+	character->step_of_movement = 0;
+
+	character->radius = 10;
+
+	character->speed = 0;
+
+	return character;
+}
+@}
+
+@d Character public prototypes @{@-
+CharacterList *character_blue_moon_bunny_fairy_create(int x, int y, int to_x, int to_y, int end_x, int end_y);
+@}
+
+@d character_set_weak_time_point_x other characters @{
+case character_blue_moon_bunny_fairy:
+	character_blue_moon_bunny_fairy_set_weak_time_point_x(character);
+	break;
+@}
+
+@d character_set_weak_time_point_y other characters @{
+case character_blue_moon_bunny_fairy:
+	character_blue_moon_bunny_fairy_set_weak_time_point_y(character);
+	break;
+@}
+
+@d Different characters set weak time_point functions @{
+static void character_blue_moon_bunny_fairy_set_weak_time_point_x(CharacterList *character) {
+	character->time_point_for_movement_to_x = 10 - (character->speed / 10.1);
+}
+
+static void character_blue_moon_bunny_fairy_set_weak_time_point_y(CharacterList *character) {
+	character->time_point_for_movement_to_y = 10 - (character->speed / 10.1);
+}
+@}
+
+@d characters_update_all_time_points other characters @{
+case character_blue_moon_bunny_fairy:
+	character_blue_moon_bunny_fairy_update_time_points(character);
+	break;
+@}
+
+@d Update time point for different characters @{
+static void character_blue_moon_bunny_fairy_update_time_points(CharacterList *character) {
+	if(character->time_point_for_movement_to_x > 0)
+		character->time_point_for_movement_to_x--;
+
+	if(character->time_point_for_movement_to_y > 0)
+		character->time_point_for_movement_to_y--;
+
+	character->movement_animation++;
+}
+@}
+
+@d characters_ai_control other characters @{
+case character_blue_moon_bunny_fairy:
+	character_blue_moon_bunny_fairy_ai_control(character);
+	break;
+@}
+
+@d AI functions for different characters @{
+static void character_blue_moon_bunny_fairy_ai_control(CharacterList *character) {
+	@<character_blue_moon_bunny_fairy_ai_control move to down@>
+	@<character_blue_moon_bunny_fairy_ai_control wait@>
+	@<character_blue_moon_bunny_fairy_ai_control go away@>
+	@<character_blue_moon_bunny_fairy_ai_control move to up@>
+	@<character_blue_moon_bunny_fairy_ai_control remove@>
+}
+@}
+
+Перемещаемся вперёд:
+@d character_blue_moon_bunny_fairy_ai_control move to down @{
+if(character->step_of_movement == 0) {
+	character->speed = 50;
+	character_move_to_point(character, character->move_x, character->move_y);
+
+	if(character->move_percent == 0) {
+		character->time = 12000;
+		character->step_of_movement = 1;
+	}
+}
+@}
+
+Ждем 3 секунды(character->time выше):
+@d character_blue_moon_bunny_fairy_ai_control wait @{
+if(character->step_of_movement == 1) {
+	character->time--;
+
+	if(character->time == 0)
+		character->step_of_movement = 2;
+}
+@}
+
+Летим к конечной точке:
+@d character_blue_moon_bunny_fairy_ai_control go away @{
+if(character->step_of_movement == 2) {
+	character->move_x = character->end_x;
+	character->move_y = character->end_y;
+	character->step_of_movement = 3;
+}
+@}
+
+@d character_blue_moon_bunny_fairy_ai_control move to up @{
+if(character->step_of_movement == 3) {
+	character->speed = 10;
+	character_move_to_point(character, character->move_x, character->move_y);
+
+	if(character->move_percent == 0)
+		character->step_of_movement = 4;
+}
+@}
+
+@d character_blue_moon_bunny_fairy_ai_control remove @{
+if(character->step_of_movement == 4) {
+	if(character->x < -25 || character->x > GAME_FIELD_W + 25 ||
+		character->y < -25 || character->y > GAME_FIELD_H + 25) {
+		character->is_sleep = 1;
+		character_free(character);
+	}
+}
+@}
+Фея после достижения конечной точки исчезает только если она за пределами экрана.
+is_sleep устанавливается в 1, так как до окончания for персонаж ещё не удалён.
+
+
+Рисуем персонажа:
+@d characters_draw other characters @{
+case character_blue_moon_bunny_fairy:
+	character_blue_moon_bunny_fairy_draw(character);
+	break;
+@}
+
+@d Draw functions for different characters @{
+static void character_blue_moon_bunny_fairy_draw(CharacterList *character) {
+	static int id = -1;
+
+	if(id == -1)
+		id = image_load("blue_fairy.png");
+
+	if(character->is_sleep == 1)
+		return;
+
+	if(character->x == character->move_x) {
+		if(character->movement_animation > 200)
+			character->movement_animation = 0;
+
+		if(character->movement_animation < 50)
+			image_draw_center_t(id,
+				GAME_FIELD_X + character->x,
+				GAME_FIELD_Y + character->y,
+				2, 13, 2+120, 13+108,
+				0, 0.4);
+		else if(character->movement_animation < 100)
+			image_draw_center_t(id,
+				GAME_FIELD_X + character->x,
+				GAME_FIELD_Y + character->y,
+				120, 13, 120+120, 13+108,
+				0, 0.4);
+		else if(character->movement_animation < 150)
+			image_draw_center_t(id,
+				GAME_FIELD_X + character->x,
+				GAME_FIELD_Y + character->y,
+				240, 12, 240+120, 12+109,
+				0, 0.4);
+		else
+			image_draw_center_t(id,
+				GAME_FIELD_X + character->x,
+				GAME_FIELD_Y + character->y,
+				365, 12, 365+122, 12+109,
+				0, 0.4);
+	} else if(character->x < character->move_x) {
+		@<character_blue_moon_bunny_fairy_draw left@>
+	} else if(character->x > character->move_x) {
+		@<character_blue_moon_bunny_fairy_draw right@>
+	}
+}
+@}
+
+@d character_blue_moon_bunny_fairy_draw left @{
+if(character->last_horizontal != 1)
+	character->movement_animation = 0;
+
+character->last_horizontal = 1;
+
+if(character->movement_animation > 200)
+	character->movement_animation = 0;
+
+if(character->movement_animation < 50)
+	image_draw_center_t(id,
+		GAME_FIELD_X + character->x,
+		GAME_FIELD_Y + character->y,
+		8, 123, 8+105, 123+123,
+		0, 0.4);
+else if(character->movement_animation < 100)
+	image_draw_center_t(id,
+		GAME_FIELD_X + character->x,
+		GAME_FIELD_Y + character->y,
+		127, 123, 127+105, 123+123,
+		0, 0.4);
+else  if(character->movement_animation < 150)
+	image_draw_center_t(id,
+		GAME_FIELD_X + character->x,
+		GAME_FIELD_Y + character->y,
+		242, 123, 242+105, 123+123,
+		0, 0.4);
+else
+	image_draw_center_t(id,
+		GAME_FIELD_X + character->x,
+		GAME_FIELD_Y + character->y,
+		365, 123, 365+105, 123+123,
+		0, 0.4);
+@}
+
+@d character_blue_moon_bunny_fairy_draw right @{
+if(character->last_horizontal != -1)
+	character->movement_animation = 0;
+
+character->last_horizontal = -1;
+
+if(character->movement_animation > 200)
+	character->movement_animation = 0;
+
+if(character->movement_animation < 50)
+	image_draw_center_t_mirror(id,
+		GAME_FIELD_X + character->x,
+		GAME_FIELD_Y + character->y,
+		8, 123, 8+105, 123+123,
+		0, 0.4);
+else if(character->movement_animation < 100)
+	image_draw_center_t_mirror(id,
+		GAME_FIELD_X + character->x,
+		GAME_FIELD_Y + character->y,
+		127, 123, 127+105, 123+123,
+		0, 0.4);
+else  if(character->movement_animation < 150)
+	image_draw_center_t_mirror(id,
+		GAME_FIELD_X + character->x,
+		GAME_FIELD_Y + character->y,
+		242, 123, 242+105, 123+123,
+		0, 0.4);
+else
+	image_draw_center_t_mirror(id,
+		GAME_FIELD_X + character->x,
+		GAME_FIELD_Y + character->y,
+		365, 123, 365+105, 123+123,
+		0, 0.4);
+@}
+
+Повреждение от пуль:
+@d damage_calculate other enemy characters @{
+case character_blue_moon_bunny_fairy:
+	if(bullet->bullet_type == bullet_reimu_first)
+		character->hp -= 1000;
+	break;
+@}
 
 ===========================================================
 
