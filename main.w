@@ -1647,10 +1647,13 @@ CharacterList *character_blue_moon_fairy_create(int begin_x, int begin_y,
 
 	character->radius = 10;
 
+	character->speed = 0;
+
 	return character;
 }
 @}
-radius - радиус хитбокса.
+radius - радиус хитбокса;
+speed - скорость(описана ниже).
 Используются три точки как и описано выше.
 
 Добавим в CharacterList дополнительные поля:
@@ -1681,15 +1684,23 @@ case character_blue_moon_fairy:
 	break;
 @}
 
+Добавление time points с возможностью изменять скорость:
 @d Different characters set weak time_point functions @{
 static void character_blue_moon_fairy_set_weak_time_point_x(CharacterList *character) {
-	character->time_point_for_movement_to_x = 5;
+	character->time_point_for_movement_to_x = 100 - (character->speed / 1.1);
 }
 
 static void character_blue_moon_fairy_set_weak_time_point_y(CharacterList *character) {
-	character->time_point_for_movement_to_y = 5;
+	character->time_point_for_movement_to_y = 100 - (character->speed / 1.1);
 }
 @}
+
+Добавим параметр скорости персонажам:
+@d Character struct param @{
+int speed;
+@}
+0 - минимальная скорость; 100 - максимальная.
+
 
 Функции обновления time points:
 @d characters_update_all_time_points other characters @{
@@ -1732,6 +1743,10 @@ static void character_blue_moon_fairy_ai_control(CharacterList *character) {
 if(character->step_of_movement == 0) {
 	character_move_to_point(character, character->move_x, character->move_y);
 
+	character->speed = 60 + (log(character->move_percent+1) / log(101)) * 100.0;
+	if(character->speed > 100)
+		character->speed = 100;
+
 	if(character->move_percent == 0) {
 		character->time = 6000;
 		character->step_of_movement = 1;
@@ -1760,6 +1775,11 @@ if(character->step_of_movement == 2) {
 @d character_blue_moon_fairy_ai_control move to up @{
 if(character->step_of_movement == 3) {
 	character_move_to_point(character, character->move_x, character->move_y);
+
+	character->speed = 130 - pow(101, character->move_percent/100.0) + 1;
+	if(character->speed > 100)
+		character->speed = 100;
+
 	if(character->move_percent == 0)
 		character->step_of_movement = 4;
 }
