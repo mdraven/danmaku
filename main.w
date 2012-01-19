@@ -1731,13 +1731,13 @@ if(character->step_of_movement == 0) {
 	character_move_to_point(character, character->move_x, character->move_y);
 
 	if(character->move_percent == 0) {
-		character->time = 500;
+		character->time = 6000;
 		character->step_of_movement = 1;
 	}
 }
 @}
 
-Ждем полсекунды(character->time выше):
+Ждем 3 секунды(character->time выше):
 @d character_blue_moon_fairy_ai_control wait @{
 if(character->step_of_movement == 1) {
 	character->time = timer_calc(character->time);
