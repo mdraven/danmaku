@@ -846,6 +846,7 @@ int is_rad_collide(int x1, int y1, int r1, int x2, int y2, int r2) {
 
 Опишем структуру персонажа:
 @d Character public structs @{
+#define CHARACTER_NUM_ARGS 15
 struct CharacterList {
 	struct CharacterList *prev;
 	struct CharacterList *next;
@@ -855,9 +856,8 @@ struct CharacterList {
 	int y;
 	int is_sleep;
 	int character_type;
-	int time_point_for_movement_to_x;
-	int time_point_for_movement_to_y;
-	@<Character struct param@>
+	int radius;
+	int args[CHARACTER_NUM_ARGS];
 };
 
 typedef struct CharacterList CharacterList;
@@ -868,6 +868,9 @@ typedef struct CharacterList CharacterList;
   is_sleep - флаг, спит персонаж или действует на поле игры. Если персонаж умер,
   		   	 то флаг устанавливается(true).
   character_type - тип персонажа, основной параметр для диспетчеризации
+  radius - радиус хитбокса
+  args - прочие аргументы
+FIXME
   time_point_for_movement_to_x - может или нет персонаж переместиться по координате x,
   							   	 если этот параметр равен 0, то может. Этот параметр
 								 уменьшается функцией characters_update_all_time_points,
@@ -1011,26 +1014,26 @@ CharacterList *character_reimu_create() {
 	CharacterList *character = character_get_free_cell();
 
 	character->hp = 100;
-	character->is_sleep = 1;
-	character->character_type = character_reimu;
-	character->time_point_for_movement_to_x = 0;
-	character->time_point_for_movement_to_y = 0;
-
-	character->last_horizontal = 0;
-	character->movement_animation = 0;
-
-	character->step_of_movement = 0;
-
 	character->x = player_x;
 	character->y = player_y;
-
+	character->is_sleep = 1;
+	character->character_type = character_reimu;
 	character->radius = 10;
+
+	character->args[0] = 0; //character->time_point_for_movement_to_x
+	character->args[1] = 0; //character->time_point_for_movement_to_y
+
+	character->args[2] = 0; //character->last_horizontal
+	character->args[3] = 0; //character->movement_animation
+
+	character->args[4] = 0; //character->step_of_movement
+
+	// args: 5 6 7 move_percent move_begin_x move_begin_y
 
 	return character;
 }
 @}
-player_coord_x, player_coord_y - глобальные координаты игрока.
-radius - радиус хитбокса.
+
 
 @d Character public prototypes @{@-
 CharacterList *character_reimu_create();
@@ -1042,20 +1045,19 @@ CharacterList *character_marisa_create() {
 	CharacterList *character = character_get_free_cell();
 
 	character->hp = 100;
-	character->is_sleep = 1;
-	character->character_type = character_marisa;
-	character->time_point_for_movement_to_x = 0;
-	character->time_point_for_movement_to_y = 0;
-
-	character->last_horizontal = 0;
-	character->movement_animation = 0;
-
-	character->step_of_movement = 0;
-
 	character->x = player_x;
 	character->y = player_y;
-
+	character->is_sleep = 1;
+	character->character_type = character_marisa;
 	character->radius = 10;
+
+	character->args[0] = 0;
+	character->args[1] = 0;
+
+	character->args[2] = 0;
+	character->args[3] = 0;
+
+	character->args[4] = 0;
 
 	return character;
 }
@@ -1074,8 +1076,10 @@ CharacterList *character_marisa_create();
 @<Different characters set weak time_point functions@>
 @<character_set_weak_time_point functions@>
 
-static void character_move_to(CharacterList *character, int move_to) {
-	if(character->time_point_for_movement_to_x == 0) {
+static void character_move_to(CharacterList *character,
+	int args,
+	int move_to) {
+	if(character->args[args] == 0) {
 		if(move_to == character_move_to_left) {
 			character_set_weak_time_point_x(character);
 			character->x--;
@@ -1086,7 +1090,7 @@ static void character_move_to(CharacterList *character, int move_to) {
 		}
 	}
 
-	if(character->time_point_for_movement_to_y == 0) {
+	if(character->args[args+1] == 0) {
 		if(move_to == character_move_to_up) {
 			character_set_weak_time_point_y(character);
 			character->y--;
@@ -1098,12 +1102,13 @@ static void character_move_to(CharacterList *character, int move_to) {
 	}
 }
 @}
-
 В этой функции используются функции character_set_weak_time_point_x и
-character_set_weak_time_point_y. Они определяют тип персонажа character и
-вызывают специализированию функцию для каждого типа персонажа. Она устанавливает
-значение для time_point_for_movement_to_x и time_point_for_movement_to_y
-после того как было сделано перемещение.
+  character_set_weak_time_point_y. Они определяют тип персонажа character и
+  вызывают специализированию функцию для каждого типа персонажа. Она устанавливает
+  значение для time_point_for_movement_to_x и time_point_for_movement_to_y
+  после того как было сделано перемещение.
+Аргумент функции args содержит номер начиная с которого
+  отсчитываются параметры time_point_for_movement_to_x/y в args.
 
 Как видно, ход по x или y возможен только если соответствующий time_point равен нулю.
 
@@ -1115,7 +1120,7 @@ enum {
 @}
 
 @d Character private prototypes @{
-static void character_move_to(CharacterList *character, int move_to);
+static void character_move_to(CharacterList *character, int args, int move_to);
 @}
 
 
@@ -1157,19 +1162,19 @@ static void character_set_weak_time_point_y(CharacterList *character) {
 
 @d Different characters set weak time_point functions @{
 static void character_reimu_set_weak_time_point_x(CharacterList *character) {
-	character->time_point_for_movement_to_x = 5;
+	character->args[0] = 5;
 }
 
 static void character_reimu_set_weak_time_point_y(CharacterList *character) {
-	character->time_point_for_movement_to_y = 5;
+	character->args[1] = 5;
 }
 
 static void character_marisa_set_weak_time_point_x(CharacterList *character) {
-	character->time_point_for_movement_to_x = 10;
+	character->args[0] = 10;
 }
 
 static void character_marisa_set_weak_time_point_y(CharacterList *character) {
-	character->time_point_for_movement_to_y = 10;
+	character->args[1] = 10;
 }
 @}
 
@@ -1212,23 +1217,23 @@ void characters_update_all_time_points(void);
 персонажей:
 @d Update time point for different characters @{
 static void character_reimu_update_time_points(CharacterList *character) {
-	if(character->time_point_for_movement_to_x > 0)
-		character->time_point_for_movement_to_x--;
+	if(character->args[0] > 0)
+		character->args[0]--;
 
-	if(character->time_point_for_movement_to_y > 0)
-		character->time_point_for_movement_to_y--; 
+	if(character->args[1] > 0)
+		character->args[1]--; 
 
-	character->movement_animation++;
+	character->args[3]++; //character->movement_animation
 }
 
 static void character_marisa_update_time_points(CharacterList *character) {
-	if(character->time_point_for_movement_to_x > 0)
-		character->time_point_for_movement_to_x--;
+	if(character->args[0] > 0)
+		character->args[0]--;
 
-	if(character->time_point_for_movement_to_y > 0)
-		character->time_point_for_movement_to_y--;
+	if(character->args[1] > 0)
+		character->args[1]--; 
 
-	character->movement_animation++;
+	character->args[3]++; //character->movement_animation
 }
 @}
 Фаза анимации movement_animation тоже обновляется здесь.
@@ -1295,7 +1300,11 @@ character_move_to_point - движение к точке.
 Каждый её вызов передвигает персонаж character ближе к точке (x,y)
 
 @d Helper functions @{
-static void character_move_to_point(CharacterList *character, int x, int y) {
+static void character_move_to_point(CharacterList *character, int args1, int args2, int x, int y) {
+	int *const move_percent = &character->args[args1];
+	int *const move_begin_x = &character->args[args1+1];
+	int *const move_begin_y = &character->args[args1+2];
+
 	@<character_move_to_point params@>
 	@<character_move_to_point is end of movement?@>
 	@<character_move_to_point save start coordinate@>
@@ -1303,11 +1312,16 @@ static void character_move_to_point(CharacterList *character, int x, int y) {
 	@<character_move_to_point choose direction@>
 }
 @}
+move_percent - процент пути который осталось пройти. В конце пути он равен 0.
+Для того чтобы сбросить старое движение и начать новое, нужно присвоить move_percent 0.
+move_begin_x, move_begin_y - начальные координаты движения.
+args1 - указывает на move_percent, move_begin_x, move_begin_y
+args2 - указывает на time_point_for_movement_to_x/y
 
 Проверим достигли мы конечной точки или нет:
 @d character_move_to_point is end of movement? @{
 if(character->x == x && character->y == y) {
-	character->move_percent = 0;
+	*move_percent = 0;
 	return;
 }
 @}
@@ -1317,9 +1331,9 @@ if(character->x == x && character->y == y) {
 Если мы только начали движение, то нужно запомнить начальные координаты
 движения:
 @d character_move_to_point save start coordinate @{
-if(character->move_percent == 0) {
-	character->move_begin_x = character->x;
-	character->move_begin_y = character->y;
+if(*move_percent == 0) {
+	*move_begin_x = character->x;
+	*move_begin_y = character->y;
 }
 @}
 Можно считать, что move_percent = 100.
@@ -1331,8 +1345,8 @@ if(character->move_percent == 0) {
 	int dx, dy;
 	float all, last;
 
-	dx = character->move_begin_x - x;
-	dy = character->move_begin_y - y;
+	dx = *move_begin_x - x;
+	dy = *move_begin_y - y;
 	@<character_move_to_point find correction coef@>
 
 	all = sqrt(dx*dx + dy*dy);
@@ -1343,22 +1357,12 @@ if(character->move_percent == 0) {
 
 	last = sqrt(dx*dx + dy*dy);
 
-	character->move_percent = (int)((last/all) * 100.0);
+	*move_percent = (int)((last/all) * 100.0);
 }
 @}
 Поиски correction coef не относятся к этой задаче, зачем они написано ниже.
 FIXME: возможно стоит перенести поиск процента оставшегося растояния в отдельную функцию,
 а атрибут move_percent убрать. (+) освободим память, (-) чаще будем пересчитывать move_percent.
-
-Добавим к структуре новые параметры:
-@d Character struct param @{
-int move_percent;
-int move_begin_x;
-int move_begin_y;
-@}
-move_percent - процент пути который осталось пройти. В конце пути он равен 0.
-Для того чтобы сбросить старое движение и начать новое, нужно присвоить move_percent 0.
-move_begin_x, move_begin_y - начальные координаты движения.
 
 
 Найдем коэффициент с которого мы будем сверять отклонение от маршрута:
@@ -1401,16 +1405,16 @@ else {
 
 if(fx == 1 && character->x != x) {
 	if(character->x > x)
-		character_move_to(character, character_move_to_left);
+		character_move_to(character, args2, character_move_to_left);
 	else
-		character_move_to(character, character_move_to_right);
+		character_move_to(character, args2, character_move_to_right);
 }
 
 if(fy == 1 && character->y != y) {
 	if(character->y > y)
-		character_move_to(character, character_move_to_up);
+		character_move_to(character, args2, character_move_to_up);
 	else
-		character_move_to(character, character_move_to_down);
+		character_move_to(character, args2, character_move_to_down);
 }
 @}
 
@@ -1446,25 +1450,29 @@ typedef struct {
 @}
 
 @d Reimu ai control @{
+int *const step_of_movement = &character->args[4];
+int *const move_percent = &character->args[5];
 Point p[] = {{100, 100}, {200, 10}, {10, 200}, {200, 200}, {10, 10}};
 
-if(character->step_of_movement == 5)
-	character->step_of_movement = 0;
+if(*step_of_movement == 5)
+	*step_of_movement = 0;
 
-character_move_to_point(character, p[character->step_of_movement].x, p[character->step_of_movement].y);
+character_move_to_point(character, 5, 0, p[*step_of_movement].x, p[*step_of_movement].y);
 
-if(character->move_percent == 0) {
-	character->step_of_movement++;
+if(*move_percent == 0) {
+	(*step_of_movement)++;
 }
 @}
+0 в character_move_to_point показывает args time_point_for_movement_to_x/y,
+  а 5 move_percent.
 
 Перемещаемся между точками.
 
 
 В будущем нам могут понадобиться две переменные:
 @d Character struct param @{
-int move_x;
-int move_y;
+//int move_x;
+//int move_y;
 @}
 Они требуются, когда нужно где-то сохранить точку куда двигается персонаж.
 Используются в ai, а move_x и в функции вырисовки.
@@ -1472,7 +1480,7 @@ int move_y;
 
 Иногда нужно ждать некоторое время, таймер можно хранить здесь:
 @d Character struct param @{
-int time;
+//int time;
 @}
 
 ===========================================================
@@ -1631,44 +1639,39 @@ CharacterList *character_blue_moon_fairy_create(int begin_x, int begin_y,
 	character->hp = 100;
 	character->is_sleep = 1;
 	character->character_type = character_blue_moon_fairy;
-	character->time_point_for_movement_to_x = 0;
-	character->time_point_for_movement_to_y = 0;
-
-	character->move_x = to_x;
-	character->move_y = to_y;
-
-	character->end_x = end_x;
-	character->end_y = end_y;
-
-	character->last_horizontal = 0;
-	character->movement_animation = 0;
-
-	character->step_of_movement = 0;
-
 	character->radius = 10;
 
-	character->speed = 0;
+	character->args[0] = 0; //time_point_for_movement_to_x
+	character->args[1] = 0; //time_point_for_movement_to_y
+
+	character->args[2] = to_x; //move_x
+	character->args[3] = to_y; //move_y
+
+	character->args[4] = end_x; //end_x
+	character->args[5] = end_y; //end_y
+
+	character->args[6] = 0; //last_horizontal
+	character->args[7] = 0; //movement_animation
+
+	character->args[8] = 0; //speed
+
+	character->args[9] = 0; //step_of_movement
+
+	// args: 10 11 12 move_percent move_begin_x move_begin_y
+	// args: 13 time
 
 	return character;
 }
 @}
 radius - радиус хитбокса;
 speed - скорость(описана ниже).
+end_x, end_y - определены для синей феи, в эту точку она будет лететь назад
+speed - 0 - минимальная скорость; 100 - максимальная
 Используются три точки как и описано выше.
 
-Добавим в CharacterList дополнительные поля:
-@d Character struct param @{
-int end_x;
-int end_y;
-@}
-Определены для синей феи, в эту точку она будет лететь назад.
-  Если потребуются параметры для других персонажей, то соит прибегнуть к union.
-Эти поля нужны далеко не каждому вражескому персонажу, и это говорит о неоптимальности
-  размещения данных. Возможно стоит использовать что-то более ООП'ное, например, подструктуры.
-  Но я думаю, что нынешний подход лучше чем arg[0], arg[1] итд.
 
 @d Character public prototypes @{@-
-CharacterList *character_blue_moon_fairy_create(int x, int y, int to_x, int to_y, int end_x, int end_y);
+CharacterList *character_blue_moon_fairy_create(int begin_x, int begin_y, int to_x, int to_y, int end_x, int end_y);
 @}
 
 Функции установки time points после совершения перемещения:
@@ -1687,20 +1690,13 @@ case character_blue_moon_fairy:
 Добавление time points с возможностью изменять скорость:
 @d Different characters set weak time_point functions @{
 static void character_blue_moon_fairy_set_weak_time_point_x(CharacterList *character) {
-	character->time_point_for_movement_to_x = 100 - (character->speed / 1.1);
+	character->args[0] = 100 - (character->args[8] / 1.1);
 }
 
 static void character_blue_moon_fairy_set_weak_time_point_y(CharacterList *character) {
-	character->time_point_for_movement_to_y = 100 - (character->speed / 1.1);
+	character->args[1] = 100 - (character->args[8] / 1.1);
 }
 @}
-
-Добавим параметр скорости персонажам:
-@d Character struct param @{
-int speed;
-@}
-0 - минимальная скорость; 100 - максимальная.
-
 
 Функции обновления time points:
 @d characters_update_all_time_points other characters @{
@@ -1711,15 +1707,16 @@ case character_blue_moon_fairy:
 
 @d Update time point for different characters @{
 static void character_blue_moon_fairy_update_time_points(CharacterList *character) {
-	if(character->time_point_for_movement_to_x > 0)
-		character->time_point_for_movement_to_x--;
+	if(character->args[0] > 0)
+		character->args[0]--;
 
-	if(character->time_point_for_movement_to_y > 0)
-		character->time_point_for_movement_to_y--;
+	if(character->args[1] > 0)
+		character->args[1]--;
 
-	character->movement_animation++;
+	character->args[7]++;
 }
 @}
+Меняем и movement_animation
 
 AI феи:
 @d characters_ai_control other characters @{
@@ -1730,6 +1727,15 @@ case character_blue_moon_fairy:
 
 @d AI functions for different characters @{
 static void character_blue_moon_fairy_ai_control(CharacterList *character) {
+	int *const move_x = &character->args[2];
+	int *const move_y = &character->args[3];
+	int *const end_x = &character->args[4];
+	int *const end_y = &character->args[5];
+	int *const speed = &character->args[8];
+	int *const step_of_movement = &character->args[9];
+	int *const move_percent = &character->args[10];
+	int *const time = &character->args[13];
+
 	@<character_blue_moon_fairy_ai_control move to down@>
 	@<character_blue_moon_fairy_ai_control wait@>
 	@<character_blue_moon_fairy_ai_control go away@>
@@ -1740,54 +1746,54 @@ static void character_blue_moon_fairy_ai_control(CharacterList *character) {
 
 Перемещаемся вперёд:
 @d character_blue_moon_fairy_ai_control move to down @{
-if(character->step_of_movement == 0) {
-	character_move_to_point(character, character->move_x, character->move_y);
+if(*step_of_movement == 0) {
+	character_move_to_point(character, 10, 0, *move_x, *move_y);
 
-	character->speed = 60 + (log(character->move_percent+1) / log(101)) * 100.0;
-	if(character->speed > 100)
-		character->speed = 100;
+	*speed = 60 + (log(*move_percent+1) / log(101)) * 100.0;
+	if(*speed > 100)
+		*speed = 100;
 
-	if(character->move_percent == 0) {
-		character->time = 6000;
-		character->step_of_movement = 1;
+	if(*move_percent == 0) {
+		*time = 6000;
+		*step_of_movement = 1;
 	}
 }
 @}
 
 Ждем 3 секунды(character->time выше):
 @d character_blue_moon_fairy_ai_control wait @{
-if(character->step_of_movement == 1) {
-	character->time--;
+if(*step_of_movement == 1) {
+	(*time)--;
 
-	if(character->time == 0)
-		character->step_of_movement = 2;
+	if(*time == 0)
+		*step_of_movement = 2;
 }
 @}
 
 Летим к конечной точке:
 @d character_blue_moon_fairy_ai_control go away @{
-if(character->step_of_movement == 2) {
-	character->move_x = character->end_x;
-	character->move_y = character->end_y;
-	character->step_of_movement = 3;
+if(*step_of_movement == 2) {
+	*move_x = *end_x;
+	*move_y = *end_y;
+	*step_of_movement = 3;
 }
 @}
 
 @d character_blue_moon_fairy_ai_control move to up @{
-if(character->step_of_movement == 3) {
-	character_move_to_point(character, character->move_x, character->move_y);
+if(*step_of_movement == 3) {
+	character_move_to_point(character, 10, 0, *move_x, *move_y);
 
-	character->speed = 130 - pow(101, character->move_percent/100.0) + 1;
-	if(character->speed > 100)
-		character->speed = 100;
+	*speed = 130 - pow(101, *move_percent/100.0) + 1;
+	if(*speed > 100)
+		*speed = 100;
 
-	if(character->move_percent == 0)
-		character->step_of_movement = 4;
+	if(*move_percent == 0)
+		*step_of_movement = 4;
 }
 @}
 
 @d character_blue_moon_fairy_ai_control remove @{
-if(character->step_of_movement == 4) {
+if(*step_of_movement == 4) {
 	if(character->x < -25 || character->x > GAME_FIELD_W + 25 ||
 		character->y < -25 || character->y > GAME_FIELD_H + 25) {
 		character->is_sleep = 1;
@@ -1807,6 +1813,10 @@ case character_blue_moon_fairy:
 
 @d Draw functions for different characters @{
 static void character_blue_moon_fairy_draw(CharacterList *character) {
+	int *const move_x = &character->args[2];
+	int *const last_horizontal = &character->args[6];
+	int *const movement_animation = &character->args[7];
+
 	static int id = -1;
 
 	if(id == -1)
@@ -1815,23 +1825,23 @@ static void character_blue_moon_fairy_draw(CharacterList *character) {
 	if(character->is_sleep == 1)
 		return;
 
-	if(character->x == character->move_x) {
-		if(character->movement_animation > 200)
-			character->movement_animation = 0;
+	if(character->x == *move_x) {
+		if(*movement_animation > 200)
+			*movement_animation = 0;
 
-		if(character->movement_animation < 50)
+		if(*movement_animation < 50)
 			image_draw_center_t(id,
 				GAME_FIELD_X + character->x,
 				GAME_FIELD_Y + character->y,
 				2, 13, 2+120, 13+108,
 				0, 0.4);
-		else if(character->movement_animation < 100)
+		else if(*movement_animation < 100)
 			image_draw_center_t(id,
 				GAME_FIELD_X + character->x,
 				GAME_FIELD_Y + character->y,
 				120, 13, 120+120, 13+108,
 				0, 0.4);
-		else if(character->movement_animation < 150)
+		else if(*movement_animation < 150)
 			image_draw_center_t(id,
 				GAME_FIELD_X + character->x,
 				GAME_FIELD_Y + character->y,
@@ -1843,36 +1853,36 @@ static void character_blue_moon_fairy_draw(CharacterList *character) {
 				GAME_FIELD_Y + character->y,
 				365, 12, 365+122, 12+109,
 				0, 0.4);
-	} else if(character->x < character->move_x) {
+	} else if(character->x < *move_x) {
 		@<character_blue_moon_fairy_draw left@>
-	} else if(character->x > character->move_x) {
+	} else if(character->x > *move_x) {
 		@<character_blue_moon_fairy_draw right@>
 	}
 }
 @}
 
 @d character_blue_moon_fairy_draw left @{
-if(character->last_horizontal != 1)
-	character->movement_animation = 0;
+if(*last_horizontal != 1)
+	*movement_animation = 0;
 
-character->last_horizontal = 1;
+*last_horizontal = 1;
 
-if(character->movement_animation > 200)
-	character->movement_animation = 0;
+if(*movement_animation > 200)
+	*movement_animation = 0;
 
-if(character->movement_animation < 50)
+if(*movement_animation < 50)
 	image_draw_center_t(id,
 		GAME_FIELD_X + character->x,
 		GAME_FIELD_Y + character->y,
 		8, 123, 8+105, 123+123,
 		0, 0.4);
-else if(character->movement_animation < 100)
+else if(*movement_animation < 100)
 	image_draw_center_t(id,
 		GAME_FIELD_X + character->x,
 		GAME_FIELD_Y + character->y,
 		127, 123, 127+105, 123+123,
 		0, 0.4);
-else  if(character->movement_animation < 150)
+else if(*movement_animation < 150)
 	image_draw_center_t(id,
 		GAME_FIELD_X + character->x,
 		GAME_FIELD_Y + character->y,
@@ -1887,27 +1897,27 @@ else
 @}
 
 @d character_blue_moon_fairy_draw right @{
-if(character->last_horizontal != -1)
-	character->movement_animation = 0;
+if(*last_horizontal != -1)
+	*movement_animation = 0;
 
-character->last_horizontal = -1;
+*last_horizontal = -1;
 
-if(character->movement_animation > 200)
-	character->movement_animation = 0;
+if(*movement_animation > 200)
+	*movement_animation = 0;
 
-if(character->movement_animation < 50)
+if(*movement_animation < 50)
 	image_draw_center_t_mirror(id,
 		GAME_FIELD_X + character->x,
 		GAME_FIELD_Y + character->y,
 		8, 123, 8+105, 123+123,
 		0, 0.4);
-else if(character->movement_animation < 100)
+else if(*movement_animation < 100)
 	image_draw_center_t_mirror(id,
 		GAME_FIELD_X + character->x,
 		GAME_FIELD_Y + character->y,
 		127, 123, 127+105, 123+123,
 		0, 0.4);
-else  if(character->movement_animation < 150)
+else if(*movement_animation < 150)
 	image_draw_center_t_mirror(id,
 		GAME_FIELD_X + character->x,
 		GAME_FIELD_Y + character->y,
@@ -1949,30 +1959,33 @@ CharacterList *character_blue_moon_bunny_fairy_create(int begin_x, int begin_y,
 	character->hp = 100;
 	character->is_sleep = 1;
 	character->character_type = character_blue_moon_bunny_fairy;
-	character->time_point_for_movement_to_x = 0;
-	character->time_point_for_movement_to_y = 0;
-
-	character->move_x = to_x;
-	character->move_y = to_y;
-
-	character->end_x = end_x;
-	character->end_y = end_y;
-
-	character->last_horizontal = 0;
-	character->movement_animation = 0;
-
-	character->step_of_movement = 0;
-
 	character->radius = 10;
 
-	character->speed = 0;
+	character->args[0] = 0; //time_point_for_movement_to_x
+	character->args[1] = 0; //time_point_for_movement_to_y
+
+	character->args[2] = to_x; //move_x
+	character->args[3] = to_y; //move_y
+
+	character->args[4] = end_x; //end_x
+	character->args[5] = end_y; //end_y
+
+	character->args[6] = 0; //last_horizontal
+	character->args[7] = 0; //movement_animation
+
+	character->args[8] = 0; //speed
+
+	character->args[9] = 0; //step_of_movement
+
+	// args: 10 11 12 move_percent move_begin_x move_begin_y
+	// args: 13 time
 
 	return character;
 }
 @}
 
 @d Character public prototypes @{@-
-CharacterList *character_blue_moon_bunny_fairy_create(int x, int y, int to_x, int to_y, int end_x, int end_y);
+CharacterList *character_blue_moon_bunny_fairy_create(int begin_x, int begin_y, int to_x, int to_y, int end_x, int end_y);
 @}
 
 @d character_set_weak_time_point_x other characters @{
@@ -1989,11 +2002,11 @@ case character_blue_moon_bunny_fairy:
 
 @d Different characters set weak time_point functions @{
 static void character_blue_moon_bunny_fairy_set_weak_time_point_x(CharacterList *character) {
-	character->time_point_for_movement_to_x = 10 - (character->speed / 10.1);
+	character->args[0] = 10 - (character->args[9] / 10.1);
 }
 
 static void character_blue_moon_bunny_fairy_set_weak_time_point_y(CharacterList *character) {
-	character->time_point_for_movement_to_y = 10 - (character->speed / 10.1);
+	character->args[1] = 10 - (character->args[9] / 10.1);
 }
 @}
 
@@ -2005,13 +2018,13 @@ case character_blue_moon_bunny_fairy:
 
 @d Update time point for different characters @{
 static void character_blue_moon_bunny_fairy_update_time_points(CharacterList *character) {
-	if(character->time_point_for_movement_to_x > 0)
-		character->time_point_for_movement_to_x--;
+	if(character->args[0] > 0)
+		character->args[0]--;
 
-	if(character->time_point_for_movement_to_y > 0)
-		character->time_point_for_movement_to_y--;
+	if(character->args[1] > 0)
+		character->args[1]--;
 
-	character->movement_animation++;
+	character->args[7]++;
 }
 @}
 
@@ -2023,6 +2036,15 @@ case character_blue_moon_bunny_fairy:
 
 @d AI functions for different characters @{
 static void character_blue_moon_bunny_fairy_ai_control(CharacterList *character) {
+	int *const move_x = &character->args[2];
+	int *const move_y = &character->args[3];
+	int *const end_x = &character->args[4];
+	int *const end_y = &character->args[5];
+	int *const speed = &character->args[8];
+	int *const step_of_movement = &character->args[9];
+	int *const move_percent = &character->args[10];
+	int *const time = &character->args[13];
+
 	@<character_blue_moon_bunny_fairy_ai_control move to down@>
 	@<character_blue_moon_bunny_fairy_ai_control wait@>
 	@<character_blue_moon_bunny_fairy_ai_control go away@>
@@ -2033,48 +2055,48 @@ static void character_blue_moon_bunny_fairy_ai_control(CharacterList *character)
 
 Перемещаемся вперёд:
 @d character_blue_moon_bunny_fairy_ai_control move to down @{
-if(character->step_of_movement == 0) {
-	character->speed = 50;
-	character_move_to_point(character, character->move_x, character->move_y);
+if(*step_of_movement == 0) {
+	*speed = 50;
+	character_move_to_point(character, 10, 0, *move_x, *move_y);
 
-	if(character->move_percent == 0) {
-		character->time = 12000;
-		character->step_of_movement = 1;
+	if(*move_percent == 0) {
+		*time = 12000;
+		*step_of_movement = 1;
 	}
 }
 @}
 
 Ждем 3 секунды(character->time выше):
 @d character_blue_moon_bunny_fairy_ai_control wait @{
-if(character->step_of_movement == 1) {
-	character->time--;
+if(*step_of_movement == 1) {
+	(*time)--;
 
-	if(character->time == 0)
-		character->step_of_movement = 2;
+	if(*time == 0)
+		*step_of_movement = 2;
 }
 @}
 
 Летим к конечной точке:
 @d character_blue_moon_bunny_fairy_ai_control go away @{
-if(character->step_of_movement == 2) {
-	character->move_x = character->end_x;
-	character->move_y = character->end_y;
-	character->step_of_movement = 3;
+if(*step_of_movement == 2) {
+	*move_x = *end_x;
+	*move_y = *end_y;
+	*step_of_movement = 3;
 }
 @}
 
 @d character_blue_moon_bunny_fairy_ai_control move to up @{
-if(character->step_of_movement == 3) {
-	character->speed = 10;
-	character_move_to_point(character, character->move_x, character->move_y);
+if(*step_of_movement == 3) {
+	*speed = 10;
+	character_move_to_point(character, 10, 0, *move_x, *move_y);
 
-	if(character->move_percent == 0)
-		character->step_of_movement = 4;
+	if(*move_percent == 0)
+		*step_of_movement = 4;
 }
 @}
 
 @d character_blue_moon_bunny_fairy_ai_control remove @{
-if(character->step_of_movement == 4) {
+if(*step_of_movement == 4) {
 	if(character->x < -25 || character->x > GAME_FIELD_W + 25 ||
 		character->y < -25 || character->y > GAME_FIELD_H + 25) {
 		character->is_sleep = 1;
@@ -2095,6 +2117,10 @@ case character_blue_moon_bunny_fairy:
 
 @d Draw functions for different characters @{
 static void character_blue_moon_bunny_fairy_draw(CharacterList *character) {
+	int *const move_x = &character->args[2];
+	int *const last_horizontal = &character->args[6];
+	int *const movement_animation = &character->args[7];
+
 	static int id = -1;
 
 	if(id == -1)
@@ -2103,23 +2129,23 @@ static void character_blue_moon_bunny_fairy_draw(CharacterList *character) {
 	if(character->is_sleep == 1)
 		return;
 
-	if(character->x == character->move_x) {
-		if(character->movement_animation > 200)
-			character->movement_animation = 0;
+	if(character->x == *move_x) {
+		if(*movement_animation > 200)
+			*movement_animation = 0;
 
-		if(character->movement_animation < 50)
+		if(*movement_animation < 50)
 			image_draw_center_t(id,
 				GAME_FIELD_X + character->x,
 				GAME_FIELD_Y + character->y,
 				2, 13, 2+120, 13+108,
 				0, 0.4);
-		else if(character->movement_animation < 100)
+		else if(*movement_animation < 100)
 			image_draw_center_t(id,
 				GAME_FIELD_X + character->x,
 				GAME_FIELD_Y + character->y,
 				120, 13, 120+120, 13+108,
 				0, 0.4);
-		else if(character->movement_animation < 150)
+		else if(*movement_animation < 150)
 			image_draw_center_t(id,
 				GAME_FIELD_X + character->x,
 				GAME_FIELD_Y + character->y,
@@ -2131,36 +2157,36 @@ static void character_blue_moon_bunny_fairy_draw(CharacterList *character) {
 				GAME_FIELD_Y + character->y,
 				365, 12, 365+122, 12+109,
 				0, 0.4);
-	} else if(character->x < character->move_x) {
+	} else if(character->x < *move_x) {
 		@<character_blue_moon_bunny_fairy_draw left@>
-	} else if(character->x > character->move_x) {
+	} else if(character->x > *move_x) {
 		@<character_blue_moon_bunny_fairy_draw right@>
 	}
 }
 @}
 
 @d character_blue_moon_bunny_fairy_draw left @{
-if(character->last_horizontal != 1)
-	character->movement_animation = 0;
+if(*last_horizontal != 1)
+	*movement_animation = 0;
 
-character->last_horizontal = 1;
+*last_horizontal = 1;
 
-if(character->movement_animation > 200)
-	character->movement_animation = 0;
+if(*movement_animation > 200)
+	*movement_animation = 0;
 
-if(character->movement_animation < 50)
+if(*movement_animation < 50)
 	image_draw_center_t(id,
 		GAME_FIELD_X + character->x,
 		GAME_FIELD_Y + character->y,
 		8, 123, 8+105, 123+123,
 		0, 0.4);
-else if(character->movement_animation < 100)
+else if(*movement_animation < 100)
 	image_draw_center_t(id,
 		GAME_FIELD_X + character->x,
 		GAME_FIELD_Y + character->y,
 		127, 123, 127+105, 123+123,
 		0, 0.4);
-else  if(character->movement_animation < 150)
+else if(*movement_animation < 150)
 	image_draw_center_t(id,
 		GAME_FIELD_X + character->x,
 		GAME_FIELD_Y + character->y,
@@ -2175,27 +2201,27 @@ else
 @}
 
 @d character_blue_moon_bunny_fairy_draw right @{
-if(character->last_horizontal != -1)
-	character->movement_animation = 0;
+if(*last_horizontal != -1)
+	*movement_animation = 0;
 
-character->last_horizontal = -1;
+*last_horizontal = -1;
 
-if(character->movement_animation > 200)
-	character->movement_animation = 0;
+if(*movement_animation > 200)
+	*movement_animation = 0;
 
-if(character->movement_animation < 50)
+if(*movement_animation < 50)
 	image_draw_center_t_mirror(id,
 		GAME_FIELD_X + character->x,
 		GAME_FIELD_Y + character->y,
 		8, 123, 8+105, 123+123,
 		0, 0.4);
-else if(character->movement_animation < 100)
+else if(*movement_animation < 100)
 	image_draw_center_t_mirror(id,
 		GAME_FIELD_X + character->x,
 		GAME_FIELD_Y + character->y,
 		127, 123, 127+105, 123+123,
 		0, 0.4);
-else  if(character->movement_animation < 150)
+else if(*movement_animation < 150)
 	image_draw_center_t_mirror(id,
 		GAME_FIELD_X + character->x,
 		GAME_FIELD_Y + character->y,
@@ -3598,11 +3624,6 @@ return 1;
 int is_enemys;
 @}
 Если он установлен, то пуля выпущена врагом.
-
-Добавим радиус хитбокса для персонажей:
-@d Character struct param @{
-int radius;
-@}
 
 =========================================================
 
