@@ -4504,11 +4504,11 @@ static void bonus_set_weak_time_point_y(BonusList *bonus) {
 
 @d Set weak time points for concrete bonuses @{
 static void bonus_small_score_set_weak_time_point_x(BonusList *b) {
-	b->time_point_for_movement_to_x = 5 - (b->speed / 30);
+	b->time_point_for_movement_to_x = 5 - (b->speed / 21);
 }
 
 static void bonus_small_score_set_weak_time_point_y(BonusList *b) {
-	b->time_point_for_movement_to_y = 5 - (b->speed / 30);
+	b->time_point_for_movement_to_y = 5 - (b->speed / 21);
 }
 @}
 
@@ -4620,9 +4620,10 @@ int move_begin_y;
 @d Bonus functions @{
 static void bonus_move_to_slower(BonusList *bonus, int x, int y) {
 	bonus_move_to(bonus, x, y);
-	bonus->speed = bonus->move_percent;
+	bonus->speed = (log(bonus->move_percent+1) / log(101)) * 100.0;
 }
 @}
+Учитываем, что если z < 1, то log отрицательный. Поэтому прибавили 1.
 
 @d Bonus private prototypes @{@-
 static void bonus_move_to_slower(BonusList *bonus, int x, int y);
