@@ -847,6 +847,7 @@ int is_rad_collide(int x1, int y1, int r1, int x2, int y2, int r2) {
 Опишем структуру персонажа:
 @d Character public structs @{
 #define CHARACTER_NUM_ARGS 15
+
 struct CharacterList {
 	struct CharacterList *prev;
 	struct CharacterList *next;
@@ -870,27 +871,7 @@ typedef struct CharacterList CharacterList;
   character_type - тип персонажа, основной параметр для диспетчеризации
   radius - радиус хитбокса
   args - прочие аргументы
-FIXME
-  time_point_for_movement_to_x - может или нет персонаж переместиться по координате x,
-  							   	 если этот параметр равен 0, то может. Этот параметр
-								 уменьшается функцией characters_update_all_time_points,
-								 и увеличивается функцией перемещения по координате x
-  time_point_for_movement_to_y - аналогично time_point_for_movement_to_x
-
-Атрибуты структуры необходимые при анимации:
-@d Character struct param @{@-
-int last_horizontal;
-int movement_animation;
-@}
-last_horizontal - направление движения по горизонтали(-1 влево, 0 нет движения, 1 вправо);
-	при прошлой вырисовке персонажа(для продолжения	анимации); обнулять в конструкторе.
-movement_animation - фаза анимации; вначале равна 0, инкрементируется там же где уменьшается
-	time points; обнуляется в функции вырисовки; необходимо обнулять в конструкторе.
-
-Я пытался сделать анимацию как в player, те была ещё переменная horizontal, которая была
-	или 0, или -1, или 1. Но из-за того, что функция рисования линии не определяла движение
-	по диагонали, персонаж постоянно дёргался(смотрел то вперёд, то в сторону). Пришлось
-	делать с move_x, но это не плохо(кажется).
+  CHARACTER_NUM_ARGS - число агрументов args
 
 @o characters.c @{
 @<License@>
@@ -1020,20 +1001,30 @@ CharacterList *character_reimu_create() {
 	character->character_type = character_reimu;
 	character->radius = 10;
 
-	character->args[0] = 0; //character->time_point_for_movement_to_x
-	character->args[1] = 0; //character->time_point_for_movement_to_y
+	character->args[0] = 0; //time_point_for_movement_to_x
+	character->args[1] = 0; //time_point_for_movement_to_y
 
-	character->args[2] = 0; //character->last_horizontal
-	character->args[3] = 0; //character->movement_animation
+	character->args[2] = 0; //last_horizontal
+	character->args[3] = 0; //movement_animation
 
-	character->args[4] = 0; //character->step_of_movement
+	character->args[4] = 0; //step_of_movement
 
 	// args: 5 6 7 move_percent move_begin_x move_begin_y
 
 	return character;
 }
 @}
+time_point_for_movement_to_x - может или нет персонаж переместиться по координате x,
+  если этот параметр равен 0, то может. Этот параметр
+  уменьшается функцией characters_update_all_time_points,
+  и увеличивается функцией перемещения по координате x
+time_point_for_movement_to_y - аналогично time_point_for_movement_to_x
+step_of_movement - специальный параметр, который показывает какое действие совершается.
+	Необходимо обнулять в конструкторе.
 
+FIXME: last_horizontal, movement_animation не используются у рейму и марисы, потому что
+  анимация для них не написана. Если они не потребуются, то использовать по другому.
+  (Внизу есть код их инкрементации, не забыть удалить и его, если не используются)
 
 @d Character public prototypes @{@-
 CharacterList *character_reimu_create();
@@ -1051,13 +1042,15 @@ CharacterList *character_marisa_create() {
 	character->character_type = character_marisa;
 	character->radius = 10;
 
-	character->args[0] = 0;
-	character->args[1] = 0;
+	character->args[0] = 0; //time_point_for_movement_to_x
+	character->args[1] = 0; //time_point_for_movement_to_y
 
-	character->args[2] = 0;
-	character->args[3] = 0;
+	character->args[2] = 0; //last_horizontal
+	character->args[3] = 0; //movement_animation
 
-	character->args[4] = 0;
+	character->args[4] = 0; //step_of_movement
+
+	// args: 5 6 7 move_percent move_begin_x move_begin_y
 
 	return character;
 }
@@ -1079,7 +1072,10 @@ CharacterList *character_marisa_create();
 static void character_move_to(CharacterList *character,
 	int args,
 	int move_to) {
-	if(character->args[args] == 0) {
+	int *const time_point_for_movement_to_x = &character->args[args];
+	int *const time_point_for_movement_to_y = &character->args[args+1];
+
+	if(*time_point_for_movement_to_x == 0) {
 		if(move_to == character_move_to_left) {
 			character_set_weak_time_point_x(character);
 			character->x--;
@@ -1090,7 +1086,7 @@ static void character_move_to(CharacterList *character,
 		}
 	}
 
-	if(character->args[args+1] == 0) {
+	if(*time_point_for_movement_to_y == 0) {
 		if(move_to == character_move_to_up) {
 			character_set_weak_time_point_y(character);
 			character->y--;
@@ -1159,22 +1155,21 @@ static void character_set_weak_time_point_y(CharacterList *character) {
 @}
 
 Конкретные реализации функций обновления time_point:
-
 @d Different characters set weak time_point functions @{
 static void character_reimu_set_weak_time_point_x(CharacterList *character) {
-	character->args[0] = 5;
+	character->args[0] = 5; //time_point_for_movement_to_x
 }
 
 static void character_reimu_set_weak_time_point_y(CharacterList *character) {
-	character->args[1] = 5;
+	character->args[1] = 5; //time_point_for_movement_to_y
 }
 
 static void character_marisa_set_weak_time_point_x(CharacterList *character) {
-	character->args[0] = 10;
+	character->args[0] = 10; //time_point_for_movement_to_x
 }
 
 static void character_marisa_set_weak_time_point_y(CharacterList *character) {
-	character->args[1] = 10;
+	character->args[1] = 10; //time_point_for_movement_to_y
 }
 @}
 
@@ -1221,9 +1216,9 @@ static void character_reimu_update_time_points(CharacterList *character) {
 		character->args[0]--;
 
 	if(character->args[1] > 0)
-		character->args[1]--; 
+		character->args[1]--;
 
-	character->args[3]++; //character->movement_animation
+	character->args[3]++; //movement_animation
 }
 
 static void character_marisa_update_time_points(CharacterList *character) {
@@ -1231,9 +1226,9 @@ static void character_marisa_update_time_points(CharacterList *character) {
 		character->args[0]--;
 
 	if(character->args[1] > 0)
-		character->args[1]--; 
+		character->args[1]--;
 
-	character->args[3]++; //character->movement_animation
+	character->args[3]++; //movement_animation
 }
 @}
 Фаза анимации movement_animation тоже обновляется здесь.
@@ -1429,17 +1424,6 @@ int fx = 0, fy = 0;
 Опишем поведение боссов.
 Пусть оно пока храниться здесь, позже перенесу.
 
-Нам понадобиться специальный параметр, который показывает какое
-дествие совершается.
-
-@d Character struct param @{
-int step_of_movement;
-@}
-
-Добавим такую строку в функцию create всем персонажам:
-character->step_of_movement = 0;
-
-
 Босс движется из точки в точку. Достигает её. Мы изменяем step_of_movement,
 чтобы знать какой шаг делать потом.
 
@@ -1468,20 +1452,6 @@ if(*move_percent == 0) {
 
 Перемещаемся между точками.
 
-
-В будущем нам могут понадобиться две переменные:
-@d Character struct param @{
-//int move_x;
-//int move_y;
-@}
-Они требуются, когда нужно где-то сохранить точку куда двигается персонаж.
-Используются в ai, а move_x и в функции вырисовки.
-
-
-Иногда нужно ждать некоторое время, таймер можно хранить здесь:
-@d Character struct param @{
-//int time;
-@}
 
 ===========================================================
 
@@ -1667,6 +1637,19 @@ radius - радиус хитбокса;
 speed - скорость(описана ниже).
 end_x, end_y - определены для синей феи, в эту точку она будет лететь назад
 speed - 0 - минимальная скорость; 100 - максимальная
+move_x, move_y - требуются, когда нужно где-то сохранить точку куда двигается персонаж.
+  Используются в ai, а move_x и в функции вырисовки.
+Иногда нужно ждать некоторое время, таймер можно хранить в time
+last_horizontal - направление движения по горизонтали(-1 влево, 0 нет движения, 1 вправо);
+	при прошлой вырисовке персонажа(для продолжения	анимации); обнулять в конструкторе.
+movement_animation - фаза анимации; вначале равна 0, инкрементируется там же где уменьшается
+	time points; обнуляется в функции вырисовки; необходимо обнулять в конструкторе.
+
+Я пытался сделать анимацию как в player, те была ещё переменная horizontal, которая была
+	или 0, или -1, или 1. Но из-за того, что функция рисования линии не определяла движение
+	по диагонали, персонаж постоянно дёргался(смотрел то вперёд, то в сторону). Пришлось
+	делать с move_x, но это не плохо(кажется).
+
 Используются три точки как и описано выше.
 
 
