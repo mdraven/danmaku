@@ -838,10 +838,11 @@ int is_rad_collide(int x1, int y1, int r1, int x2, int y2, int r2) {
 @o characters.h @{
 @<License@>
 
+#include <stdint.h>
+
 @<Character public structs@>
 @<Character public prototypes@>
 @}
-
 
 
 Опишем структуру персонажа:
@@ -858,7 +859,7 @@ struct CharacterList {
 	int is_sleep;
 	int character_type;
 	int radius;
-	int args[CHARACTER_NUM_ARGS];
+	intptr_t args[CHARACTER_NUM_ARGS];
 };
 
 typedef struct CharacterList CharacterList;
@@ -877,6 +878,7 @@ typedef struct CharacterList CharacterList;
 @<License@>
 
 #include <stdio.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <math.h>
 
