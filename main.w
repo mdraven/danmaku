@@ -6114,11 +6114,13 @@ int main(void) {
 
 	{
 		int i;
-		for(i = 0; i <= 9; i++) {
-			CharacterList *character = character_blue_moon_fairy_create(30*i, 10, 30*i+100, 200, 30*i+150, -30);
-			character->is_sleep = 0;
+		for(i = 0; i < 1; i++) {
+			//CharacterList *character = character_blue_moon_fairy_create(30*i, 10, 30*i+100, 200, 30*i+150, -30);
+			//character->is_sleep = 0;
 		}
 
+		CharacterList *character = character_blue_moon_bunny_fairy_create(100, -10, 100, 200, 550, 250);
+		character->is_sleep = 0;
 	}
 
 /*	{
