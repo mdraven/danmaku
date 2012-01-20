@@ -1422,6 +1422,32 @@ int fx = 0, fy = 0;
 @}
 
 
+
+Далее нам понадобится функция для перемещения персонажа под определённым
+углом, на определённую дистанцию:
+@d Helper functions @{
+static void character_move_to_angle_and_radius(CharacterList *character,
+	int args1, int args2, float angle, float radius) {
+	int *const move_percent = &character->args[args1];
+	int *const move_begin_x = &character->args[args1+1];
+	int *const move_begin_y = &character->args[args1+2];
+	const double deg2rad = M_PI/180.0;
+	int move_x, move_y;
+
+	if(move_percent == 0) {
+		*move_begin_x = character->x;
+		*move_begin_y = character->y;
+	}
+
+	move_x = *move_begin_x + (int)(radius*cos(angle*deg2rad));
+	move_y = *move_begin_y + (int)(radius*sin(angle*deg2rad));
+
+	character_move_to_point(character, args1, args2, move_x, move_y);
+}
+@}
+args1 - указывает на move_percent, move_begin_x, move_begin_y
+args2 - указывает на time_point_for_movement_to_x/y
+
 ===========================================================
 
 
