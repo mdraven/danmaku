@@ -2315,6 +2315,8 @@ CharacterList *character_yellow_fire_create(CharacterList *parent,
 
 	// args: 7 8 9 move_percent move_begin_x move_begin_y
 
+	character->args[10] = 0; //radius
+
 	return character;
 }
 @}
@@ -2338,11 +2340,11 @@ case character_yellow_fire:
 
 @d Different characters set weak time_point functions @{
 static void character_yellow_fire_set_weak_time_point_x(CharacterList *character) {
-	character->args[0] = 10; //time_point_for_movement_x
+	character->args[0] = 30; //time_point_for_movement_x
 }
 
 static void character_yellow_fire_set_weak_time_point_y(CharacterList *character) {
-	character->args[1] = 10; //time_point_for_movement_y
+	character->args[1] = 30; //time_point_for_movement_y
 }
 @}
 
@@ -2376,43 +2378,27 @@ static void character_yellow_fire_ai_control(CharacterList *character) {
 	int *const step_of_movement = &character->args[5];
 	CharacterList *const parent = (CharacterList*)(character->args[6]);
 	int *const move_percent = &character->args[7];
+	int *const radius = &character->args[10];
 
-	@<character_yellow_fire_ai_control from (x,y) to his orbit@>
 	@<character_yellow_fire_ai_control counterclockwise fly@>
 	@<character_yellow_fire_ai_control does my parent alive?@>
 }
 @}
 
-Огонёк вылетает из родительского персонажа и летит по углу angle
-до тех пор пока не выйдет на орбиту:
-@d character_yellow_fire_ai_control from (x,y) to his orbit @{
-if(*step_of_movement == 0) {
-	character_move_to_angle_and_radius(character, 7, 0, *angle, 150);
-
-	int dx = character->x - parent->x;
-	int dy = character->y - parent->y;
-
-	if(dx*dx + dy*dy > 2500) {
-		*angle = atan2(dy, dx)*(180.0/M_PI);
-		*move_percent = 0;
-		*step_of_movement = 1;
-	}
-}
-@}
-Фея и огонёк двигаются относительно друг друга, поэтому нужно считать растояние между ними.
-Отлетаем на r=50, находим новое значение угла и переходим к следующей стадии.
-
-Начинаем летать против часовой стрелки:
+Начинаем летать против часовой стрелки и выходить на орбиту:
 @d character_yellow_fire_ai_control counterclockwise fly @{
-if(*step_of_movement == 1) {
+if(*step_of_movement == 0) {
 	if(*move_percent == 0 || *move_percent == 100) {
 		const double deg2rad = M_PI/180.0;
-		character->x = parent->x + (int)(50*cos((*angle)*deg2rad));
-		character->y = parent->y + (int)(50*sin((*angle)*deg2rad));
+		character->x = parent->x + (int)((*radius)*cos((*angle)*deg2rad));
+		character->y = parent->y + (int)((*radius)*sin((*angle)*deg2rad));
 
 		(*angle)--;
 		if(*angle == -1)
 			*angle = 359;
+
+		if(*radius != 50)
+			(*radius)++;
 	}
 
 	character_move_to_angle_and_radius(character, 7, 0, *angle - 90, 1);
@@ -2441,33 +2427,19 @@ static void character_yellow_fire_draw(CharacterList *character) {
 	if(character->is_sleep == 1)
 		return;
 
-	if(*step_of_movement == 0) {
-		image_draw_center_t(id,
-			GAME_FIELD_X + character->x,
-			GAME_FIELD_Y + character->y,
-			10, 7, 10+97, 7+97,
-			0, 0.3);
+	const double deg2rad = M_PI/180.0;
 
-		image_draw_center_t(id,
-			GAME_FIELD_X + (character->x + parent->x)/2,
-			GAME_FIELD_Y + (character->y + parent->y)/2,
-			10, 7, 10+97, 7+97,
-			0, 0.2);
-	} else {
-		const double deg2rad = M_PI/180.0;
+	image_draw_center_t(id,
+		GAME_FIELD_X + character->x,
+		GAME_FIELD_Y + character->y,
+		10, 7, 10+97, 7+97,
+		0, 0.3);
 
-		image_draw_center_t(id,
-			GAME_FIELD_X + character->x,
-			GAME_FIELD_Y + character->y,
-			10, 7, 10+97, 7+97,
-			0, 0.3);
-
-		image_draw_center_t(id,
-			GAME_FIELD_X + parent->x + (int)(50*cos((*angle+20)*deg2rad)),
-			GAME_FIELD_Y + parent->y + (int)(50*sin((*angle+20)*deg2rad)),
-			10, 7, 10+97, 7+97,
-			0, 0.1);
-	}
+	image_draw_center_t(id,
+		GAME_FIELD_X + parent->x + (int)((*radius)*cos((*angle+20)*deg2rad)),
+		GAME_FIELD_Y + parent->y + (int)((*radius)*sin((*angle+20)*deg2rad)),
+		10, 7, 10+97, 7+97,
+		0, 0.1);
 }
 @}
 
