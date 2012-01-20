@@ -2066,13 +2066,26 @@ static void character_blue_moon_bunny_fairy_ai_control(CharacterList *character)
 }
 @}
 
-Перемещаемся вперёд:
+Перемещаемся вперёд, когда достигнем точки назначения, то
+создаём огоньки и настраиваем таймер:
 @d character_blue_moon_bunny_fairy_ai_control move to down @{@-
 if(*step_of_movement == 0) {
 	*speed = 50;
 	character_move_to_point(character, 10, 0, *move_x, *move_y);
 
 	if(*move_percent == 0) {
+		CharacterList *fire = character_yellow_fire_create(character, 0, 0);
+		fire->is_sleep = 0;
+
+		fire = character_yellow_fire_create(character, 180, 0);
+		fire->is_sleep = 0;
+
+		fire = character_yellow_fire_create(character, 90, 0);
+		fire->is_sleep = 0;
+
+		fire = character_yellow_fire_create(character, 270, 0);
+		fire->is_sleep = 0;
+
 		*time = 12000;
 		*step_of_movement = 1;
 	}
@@ -2251,6 +2264,216 @@ else
 Повреждение от пуль:
 @d damage_calculate other enemy characters @{@-
 case character_blue_moon_bunny_fairy:
+	if(bullet->bullet_type == bullet_reimu_first)
+		character->hp -= 1000;
+	break;
+@}
+
+
+
+Жёлтый огонёк.
+
+Вылетает из феи с кроличьими ушами и начинает кружить вокруг неё(на easy 2 или 4 штуки).
+Заменяется пинктограммами для ёкаев.
+Кружит против часовой стрелки.
+Когда по 4 стреляют.
+
+Вокруг wriggl'а тоже что-то летает, но пусть это будет другой монстр(у него траектория сложнее).
+
+Следовательно:
+ - при создании будет параметр: стреляет или нет
+ - параметр угла под которым он вылетает
+
+@d Character types @{@-
+character_yellow_fire,
+@}
+
+@d Character functions @{
+CharacterList *character_yellow_fire_create(CharacterList *parent,
+	int angle, int is_fire) {
+	CharacterList *character = character_get_free_cell();
+
+	character->x = parent->x;
+	character->y = parent->y;
+	character->hp = 100;
+	character->is_sleep = 1;
+	character->character_type = character_yellow_fire;
+	character->radius = 10;
+
+	character->args[0] = 0; //time_point_for_movement_x
+	character->args[1] = 0; //time_point_for_movement_y
+
+	character->args[2] = angle; //angle
+
+	character->args[3] = is_fire; //is_fire
+
+	character->args[4] = 0; //movement_animation
+
+	character->args[5] = 0; //step_of_movement
+
+	character->args[6] = (intptr_t)parent; //parent
+
+	// args: 7 8 9 move_percent move_begin_x move_begin_y
+
+	return character;
+}
+@}
+
+
+@d Character public prototypes @{@-
+CharacterList *character_yellow_fire_create(CharacterList *parent, int angle, int is_fire);
+@}
+
+@d character_set_weak_time_point_x other characters @{@-
+case character_yellow_fire:
+	character_yellow_fire_set_weak_time_point_x(character);
+	break;
+@}
+
+@d character_set_weak_time_point_y other characters @{@-
+case character_yellow_fire:
+	character_yellow_fire_set_weak_time_point_y(character);
+	break;
+@}
+
+@d Different characters set weak time_point functions @{
+static void character_yellow_fire_set_weak_time_point_x(CharacterList *character) {
+	character->args[0] = 10; //time_point_for_movement_x
+}
+
+static void character_yellow_fire_set_weak_time_point_y(CharacterList *character) {
+	character->args[1] = 10; //time_point_for_movement_y
+}
+@}
+
+@d characters_update_all_time_points other characters @{@-
+case character_yellow_fire:
+	character_yellow_fire_update_time_points(character);
+	break;
+@}
+
+@d Update time point for different characters @{
+static void character_yellow_fire_update_time_points(CharacterList *character) {
+	if(character->args[0] > 0)
+		character->args[0]--;
+
+	if(character->args[1] > 0)
+		character->args[1]--;
+
+	character->args[4]++; //movement_animation
+}
+@}
+
+@d characters_ai_control other characters @{@-
+case character_yellow_fire:
+	character_yellow_fire_ai_control(character);
+	break;
+@}
+
+@d AI functions for different characters @{
+static void character_yellow_fire_ai_control(CharacterList *character) {
+	int *const angle = &character->args[2];
+	int *const step_of_movement = &character->args[5];
+	CharacterList *const parent = (CharacterList*)(character->args[6]);
+	int *const move_percent = &character->args[7];
+
+	@<character_yellow_fire_ai_control from (x,y) to his orbit@>
+	@<character_yellow_fire_ai_control counterclockwise fly@>
+	@<character_yellow_fire_ai_control does my parent alive?@>
+}
+@}
+
+Огонёк вылетает из родительского персонажа и летит по углу angle
+до тех пор пока не выйдет на орбиту:
+@d character_yellow_fire_ai_control from (x,y) to his orbit @{
+if(*step_of_movement == 0) {
+	character_move_to_angle_and_radius(character, 7, 0, *angle, 150);
+
+	int dx = character->x - parent->x;
+	int dy = character->y - parent->y;
+
+	if(dx*dx + dy*dy > 2500) {
+		*angle = atan2(dy, dx)*(180.0/M_PI);
+		*move_percent = 0;
+		*step_of_movement = 1;
+	}
+}
+@}
+Фея и огонёк двигаются относительно друг друга, поэтому нужно считать растояние между ними.
+Отлетаем на r=50, находим новое значение угла и переходим к следующей стадии.
+
+Начинаем летать против часовой стрелки:
+@d character_yellow_fire_ai_control counterclockwise fly @{
+if(*step_of_movement == 1) {
+	if(*move_percent == 0 || *move_percent == 100) {
+		const double deg2rad = M_PI/180.0;
+		character->x = parent->x + (int)(50*cos((*angle)*deg2rad));
+		character->y = parent->y + (int)(50*sin((*angle)*deg2rad));
+
+		(*angle)--;
+		if(*angle == -1)
+			*angle = 359;
+	}
+
+	character_move_to_angle_and_radius(character, 7, 0, *angle - 90, 1);
+}
+@}
+Считаем новое положение огонька и отлетаем на r=1 в перпендикулярном angle направлении.
+
+@d characters_draw other characters @{@-
+case character_yellow_fire:
+	character_yellow_fire_draw(character);
+	break;
+@}
+
+@d Draw functions for different characters @{
+static void character_yellow_fire_draw(CharacterList *character) {
+	int *const angle = &character->args[2];
+	int *const movement_animation = &character->args[3];
+	int *const step_of_movement = &character->args[5];
+	CharacterList *const parent = (CharacterList*)(character->args[6]);
+
+	static int id = -1;
+
+	if(id == -1)
+		id = image_load("sparks.png");
+
+	if(character->is_sleep == 1)
+		return;
+
+	if(*step_of_movement == 0) {
+		image_draw_center_t(id,
+			GAME_FIELD_X + character->x,
+			GAME_FIELD_Y + character->y,
+			10, 7, 10+97, 7+97,
+			0, 0.3);
+
+		image_draw_center_t(id,
+			GAME_FIELD_X + (character->x + parent->x)/2,
+			GAME_FIELD_Y + (character->y + parent->y)/2,
+			10, 7, 10+97, 7+97,
+			0, 0.2);
+	} else {
+		const double deg2rad = M_PI/180.0;
+
+		image_draw_center_t(id,
+			GAME_FIELD_X + character->x,
+			GAME_FIELD_Y + character->y,
+			10, 7, 10+97, 7+97,
+			0, 0.3);
+
+		image_draw_center_t(id,
+			GAME_FIELD_X + parent->x + (int)(50*cos((*angle+20)*deg2rad)),
+			GAME_FIELD_Y + parent->y + (int)(50*sin((*angle+20)*deg2rad)),
+			10, 7, 10+97, 7+97,
+			0, 0.1);
+	}
+}
+@}
+
+Повреждение от пуль:
+@d damage_calculate other enemy characters @{@-
+case character_yellow_fire:
 	if(bullet->bullet_type == bullet_reimu_first)
 		character->hp -= 1000;
 	break;
