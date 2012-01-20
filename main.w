@@ -956,8 +956,7 @@ static void character_pool_free_to_pool(void) {
 Надо вызывать после for обходящих список characters, но думаю что достаточно
 	вызывать только в ai_control.
 
-character_get_free_cell - функция возвращающая свободный дескриптор.
-Она устанавливает флаг is_noempty.
+character_get_free_cell - функция возвращающая свободный дескриптор:
 @d Character functions @{
 static CharacterList *character_get_free_cell(void) {
 	if(pool == NULL) {
@@ -1177,7 +1176,6 @@ static void character_marisa_set_weak_time_point_y(CharacterList *character) {
 
 Функция которая восстанавливает время до следующего хода
 у всех персонажей в игре:
-
 @d Character functions @{
 @<Update time point for different characters@>
 
@@ -1658,13 +1656,13 @@ CharacterList *character_blue_moon_fairy_create(int begin_x, int begin_y, int to
 @}
 
 Функции установки time points после совершения перемещения:
-@d character_set_weak_time_point_x other characters @{
+@d character_set_weak_time_point_x other characters @{@-
 case character_blue_moon_fairy:
 	character_blue_moon_fairy_set_weak_time_point_x(character);
 	break;
 @}
 
-@d character_set_weak_time_point_y other characters @{
+@d character_set_weak_time_point_y other characters @{@-
 case character_blue_moon_fairy:
 	character_blue_moon_fairy_set_weak_time_point_y(character);
 	break;
@@ -1682,7 +1680,7 @@ static void character_blue_moon_fairy_set_weak_time_point_y(CharacterList *chara
 @}
 
 Функции обновления time points:
-@d characters_update_all_time_points other characters @{
+@d characters_update_all_time_points other characters @{@-
 case character_blue_moon_fairy:
 	character_blue_moon_fairy_update_time_points(character);
 	break;
@@ -1702,7 +1700,7 @@ static void character_blue_moon_fairy_update_time_points(CharacterList *characte
 Меняем и movement_animation
 
 AI феи:
-@d characters_ai_control other characters @{
+@d characters_ai_control other characters @{@-
 case character_blue_moon_fairy:
 	character_blue_moon_fairy_ai_control(character);
 	break;
@@ -1728,7 +1726,7 @@ static void character_blue_moon_fairy_ai_control(CharacterList *character) {
 @}
 
 Перемещаемся вперёд:
-@d character_blue_moon_fairy_ai_control move to down @{
+@d character_blue_moon_fairy_ai_control move to down @{@-
 if(*step_of_movement == 0) {
 	character_move_to_point(character, 10, 0, *move_x, *move_y);
 
@@ -1744,7 +1742,7 @@ if(*step_of_movement == 0) {
 @}
 
 Ждем 3 секунды(character->time выше):
-@d character_blue_moon_fairy_ai_control wait @{
+@d character_blue_moon_fairy_ai_control wait @{@-
 if(*step_of_movement == 1) {
 	(*time)--;
 
@@ -1754,7 +1752,7 @@ if(*step_of_movement == 1) {
 @}
 
 Летим к конечной точке:
-@d character_blue_moon_fairy_ai_control go away @{
+@d character_blue_moon_fairy_ai_control go away @{@-
 if(*step_of_movement == 2) {
 	*move_x = *end_x;
 	*move_y = *end_y;
@@ -1762,7 +1760,7 @@ if(*step_of_movement == 2) {
 }
 @}
 
-@d character_blue_moon_fairy_ai_control move to up @{
+@d character_blue_moon_fairy_ai_control move to up @{@-
 if(*step_of_movement == 3) {
 	character_move_to_point(character, 10, 0, *move_x, *move_y);
 
@@ -1775,7 +1773,7 @@ if(*step_of_movement == 3) {
 }
 @}
 
-@d character_blue_moon_fairy_ai_control remove @{
+@d character_blue_moon_fairy_ai_control remove @{@-
 if(*step_of_movement == 4) {
 	if(character->x < -25 || character->x > GAME_FIELD_W + 25 ||
 		character->y < -25 || character->y > GAME_FIELD_H + 25) {
@@ -1788,7 +1786,7 @@ if(*step_of_movement == 4) {
 is_sleep устанавливается в 1, так как до окончания for персонаж ещё не удалён.
 
 Рисуем персонажа:
-@d characters_draw other characters @{
+@d characters_draw other characters @{@-
 case character_blue_moon_fairy:
 	character_blue_moon_fairy_draw(character);
 	break;
@@ -1844,7 +1842,7 @@ static void character_blue_moon_fairy_draw(CharacterList *character) {
 }
 @}
 
-@d character_blue_moon_fairy_draw left @{
+@d character_blue_moon_fairy_draw left @{@-
 if(*last_horizontal != 1)
 	*movement_animation = 0;
 
@@ -1879,7 +1877,7 @@ else
 		0, 0.4);
 @}
 
-@d character_blue_moon_fairy_draw right @{
+@d character_blue_moon_fairy_draw right @{@-
 if(*last_horizontal != -1)
 	*movement_animation = 0;
 
@@ -1915,7 +1913,7 @@ else
 @}
 
 Повреждение от пуль:
-@d damage_calculate other enemy characters @{
+@d damage_calculate other enemy characters @{@-
 case character_blue_moon_fairy:
 	if(bullet->bullet_type == bullet_reimu_first)
 		character->hp -= 1000;
@@ -1971,13 +1969,13 @@ CharacterList *character_blue_moon_bunny_fairy_create(int begin_x, int begin_y,
 CharacterList *character_blue_moon_bunny_fairy_create(int begin_x, int begin_y, int to_x, int to_y, int end_x, int end_y);
 @}
 
-@d character_set_weak_time_point_x other characters @{
+@d character_set_weak_time_point_x other characters @{@-
 case character_blue_moon_bunny_fairy:
 	character_blue_moon_bunny_fairy_set_weak_time_point_x(character);
 	break;
 @}
 
-@d character_set_weak_time_point_y other characters @{
+@d character_set_weak_time_point_y other characters @{@-
 case character_blue_moon_bunny_fairy:
 	character_blue_moon_bunny_fairy_set_weak_time_point_y(character);
 	break;
@@ -1993,7 +1991,7 @@ static void character_blue_moon_bunny_fairy_set_weak_time_point_y(CharacterList 
 }
 @}
 
-@d characters_update_all_time_points other characters @{
+@d characters_update_all_time_points other characters @{@-
 case character_blue_moon_bunny_fairy:
 	character_blue_moon_bunny_fairy_update_time_points(character);
 	break;
@@ -2011,7 +2009,7 @@ static void character_blue_moon_bunny_fairy_update_time_points(CharacterList *ch
 }
 @}
 
-@d characters_ai_control other characters @{
+@d characters_ai_control other characters @{@-
 case character_blue_moon_bunny_fairy:
 	character_blue_moon_bunny_fairy_ai_control(character);
 	break;
@@ -2037,7 +2035,7 @@ static void character_blue_moon_bunny_fairy_ai_control(CharacterList *character)
 @}
 
 Перемещаемся вперёд:
-@d character_blue_moon_bunny_fairy_ai_control move to down @{
+@d character_blue_moon_bunny_fairy_ai_control move to down @{@-
 if(*step_of_movement == 0) {
 	*speed = 50;
 	character_move_to_point(character, 10, 0, *move_x, *move_y);
@@ -2050,7 +2048,7 @@ if(*step_of_movement == 0) {
 @}
 
 Ждем 3 секунды(character->time выше):
-@d character_blue_moon_bunny_fairy_ai_control wait @{
+@d character_blue_moon_bunny_fairy_ai_control wait @{@-
 if(*step_of_movement == 1) {
 	(*time)--;
 
@@ -2060,7 +2058,7 @@ if(*step_of_movement == 1) {
 @}
 
 Летим к конечной точке:
-@d character_blue_moon_bunny_fairy_ai_control go away @{
+@d character_blue_moon_bunny_fairy_ai_control go away @{@-
 if(*step_of_movement == 2) {
 	*move_x = *end_x;
 	*move_y = *end_y;
@@ -2068,7 +2066,7 @@ if(*step_of_movement == 2) {
 }
 @}
 
-@d character_blue_moon_bunny_fairy_ai_control move to up @{
+@d character_blue_moon_bunny_fairy_ai_control move to up @{@-
 if(*step_of_movement == 3) {
 	*speed = 10;
 	character_move_to_point(character, 10, 0, *move_x, *move_y);
@@ -2078,7 +2076,7 @@ if(*step_of_movement == 3) {
 }
 @}
 
-@d character_blue_moon_bunny_fairy_ai_control remove @{
+@d character_blue_moon_bunny_fairy_ai_control remove @{@-
 if(*step_of_movement == 4) {
 	if(character->x < -25 || character->x > GAME_FIELD_W + 25 ||
 		character->y < -25 || character->y > GAME_FIELD_H + 25) {
@@ -2092,7 +2090,7 @@ is_sleep устанавливается в 1, так как до окончан�
 
 
 Рисуем персонажа:
-@d characters_draw other characters @{
+@d characters_draw other characters @{@-
 case character_blue_moon_bunny_fairy:
 	character_blue_moon_bunny_fairy_draw(character);
 	break;
@@ -2148,7 +2146,7 @@ static void character_blue_moon_bunny_fairy_draw(CharacterList *character) {
 }
 @}
 
-@d character_blue_moon_bunny_fairy_draw left @{
+@d character_blue_moon_bunny_fairy_draw left @{@-
 if(*last_horizontal != 1)
 	*movement_animation = 0;
 
@@ -2183,7 +2181,7 @@ else
 		0, 0.4);
 @}
 
-@d character_blue_moon_bunny_fairy_draw right @{
+@d character_blue_moon_bunny_fairy_draw right @{@-
 if(*last_horizontal != -1)
 	*movement_animation = 0;
 
@@ -2219,7 +2217,7 @@ else
 @}
 
 Повреждение от пуль:
-@d damage_calculate other enemy characters @{
+@d damage_calculate other enemy characters @{@-
 case character_blue_moon_bunny_fairy:
 	if(bullet->bullet_type == bullet_reimu_first)
 		character->hp -= 1000;
@@ -3569,7 +3567,7 @@ if(character->hp <= 0) {
 @d Bullet public prototypes @{
 int bullet_collide(BulletList *bullet, int x, int y, int radius);
 @}
-Принимает дискриптор пули, координаты хитбокса персонажа и радиус хитбокса.
+Принимает дескриптор пули, координаты хитбокса персонажа и радиус хитбокса.
 
 @d Bullet functions @{
 int bullet_collide(BulletList *bullet, int x, int y, int radius) {
