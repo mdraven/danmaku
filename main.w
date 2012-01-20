@@ -874,6 +874,10 @@ typedef struct CharacterList CharacterList;
   args - прочие аргументы
   CHARACTER_NUM_ARGS - число агрументов args
 
+Для CharacterList используется переменная args фиксированного размера для того, чтобы
+  избежать фрагментации памяти. Блоки одинакового размера при удалении можно хранить в одном
+  списке и при необходимости ипользовать повторно без написания сложного аллокатора.
+
 @o characters.c @{
 @<License@>
 
@@ -2007,7 +2011,7 @@ static void character_blue_moon_bunny_fairy_update_time_points(CharacterList *ch
 	if(character->args[1] > 0)
 		character->args[1]--;
 
-	character->args[7]++;
+	character->args[7]++; //movement_animation
 }
 @}
 
