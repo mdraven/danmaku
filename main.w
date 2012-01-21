@@ -856,7 +856,6 @@ struct CharacterList {
 	int hp;
 	int x;
 	int y;
-	int is_sleep;
 	int character_type;
 	int radius;
 	intptr_t args[CHARACTER_NUM_ARGS];
@@ -866,9 +865,7 @@ typedef struct CharacterList CharacterList;
 @}
 О структуре:
   hp - количество жизней персонажа
-  x, y - координаты, когда он не спит
-  is_sleep - флаг, спит персонаж или действует на поле игры. Если персонаж умер,
-  		   	 то флаг устанавливается(true).
+  x, y - координаты
   character_type - тип персонажа, основной параметр для диспетчеризации
   radius - радиус хитбокса
   args - прочие аргументы
@@ -1002,7 +999,6 @@ CharacterList *character_reimu_create() {
 	character->hp = 100;
 	character->x = player_x;
 	character->y = player_y;
-	character->is_sleep = 1;
 	character->character_type = character_reimu;
 	character->radius = 10;
 
@@ -1043,7 +1039,6 @@ CharacterList *character_marisa_create() {
 	character->hp = 100;
 	character->x = player_x;
 	character->y = player_y;
-	character->is_sleep = 1;
 	character->character_type = character_marisa;
 	character->radius = 10;
 
@@ -1238,8 +1233,7 @@ static void character_marisa_update_time_points(CharacterList *character) {
 Фаза анимации movement_animation тоже обновляется здесь.
 
 
-Сделаем ход всеми компьютерными персонажами. Вражеские персонажи которые спят или
-мертвы пропускают ход:
+Сделаем ход всеми компьютерными персонажами:
 @d Character functions @{
 @<Helper functions@>
 @<AI functions for different characters@>
@@ -1248,15 +1242,6 @@ void characters_ai_control(void) {
 	CharacterList *character;
 
 	for(character = characters; character != NULL; character = character->next) {
-
-		if(character->hp <= 0) {
-			character_free(character);
-			continue;
-		}
-
-		if(character->is_sleep == 1)
-			continue;
-
 		switch(character->character_type) {
 			case character_reimu:
 				character_reimu_ai_control(character);
@@ -1468,6 +1453,8 @@ int *const step_of_movement = &character->args[4];
 int *const move_percent = &character->args[5];
 Point p[] = {{100, 100}, {200, 10}, {10, 200}, {200, 200}, {10, 10}};
 
+@<character_reimu_ai_control is character dead?@>
+
 if(*step_of_movement == 5)
 	*step_of_movement = 0;
 
@@ -1479,6 +1466,14 @@ if(*move_percent == 0) {
 @}
 0 в character_move_to_point показывает args time_point_for_movement_to_x/y,
   а 5 move_percent.
+
+Если у персонажа hp <= 0:
+@d character_reimu_ai_control is character dead? @{
+if(character->hp <= 0) {
+	character_free(character);
+	return;
+}
+@}
 
 Перемещаемся между точками.
 
@@ -1525,9 +1520,6 @@ static void character_reimu_draw(CharacterList *character) {
 	if(id == -1)
 		id = image_load("aya.png");
 
-	if(character->is_sleep == 1)
-		return;
-
 	image_draw_center(id,
 		GAME_FIELD_X + character->x,
 		GAME_FIELD_Y + character->y,
@@ -1539,9 +1531,6 @@ static void character_marisa_draw(CharacterList *character) {
 
 	if(id == -1)
 		id = image_load("marisa.png");
-
-	if(character->is_sleep == 1)
-		return;
 
 	image_draw_center(id,
 		GAME_FIELD_X + character->x,
@@ -1637,7 +1626,6 @@ CharacterList *character_blue_moon_fairy_create(int begin_x, int begin_y,
 	character->x = begin_x;
 	character->y = begin_y;
 	character->hp = 100;
-	character->is_sleep = 1;
 	character->character_type = character_blue_moon_fairy;
 	character->radius = 10;
 
@@ -1749,11 +1737,20 @@ static void character_blue_moon_fairy_ai_control(CharacterList *character) {
 	int *const move_percent = &character->args[10];
 	int *const time = &character->args[13];
 
+	@<character_blue_moon_fairy_ai_control is character dead?@>
 	@<character_blue_moon_fairy_ai_control move to down@>
 	@<character_blue_moon_fairy_ai_control wait@>
 	@<character_blue_moon_fairy_ai_control go away@>
 	@<character_blue_moon_fairy_ai_control move to up@>
 	@<character_blue_moon_fairy_ai_control remove@>
+}
+@}
+
+Если у персонажа hp <= 0:
+@d character_blue_moon_fairy_ai_control is character dead? @{
+if(character->hp <= 0) {
+	character_free(character);
+	return;
 }
 @}
 
@@ -1809,13 +1806,11 @@ if(*step_of_movement == 3) {
 if(*step_of_movement == 4) {
 	if(character->x < -25 || character->x > GAME_FIELD_W + 25 ||
 		character->y < -25 || character->y > GAME_FIELD_H + 25) {
-		character->is_sleep = 1;
 		character_free(character);
 	}
 }
 @}
 Фея после достижения конечной точки исчезает только если она за пределами экрана.
-is_sleep устанавливается в 1, так как до окончания for персонаж ещё не удалён.
 
 Рисуем персонажа:
 @d characters_draw other characters @{@-
@@ -1834,9 +1829,6 @@ static void character_blue_moon_fairy_draw(CharacterList *character) {
 
 	if(id == -1)
 		id = image_load("blue_fairy.png");
-
-	if(character->is_sleep == 1)
-		return;
 
 	if(character->x == *move_x) {
 		if(*movement_animation > 200)
@@ -1970,7 +1962,6 @@ CharacterList *character_blue_moon_bunny_fairy_create(int begin_x, int begin_y,
 	character->x = begin_x;
 	character->y = begin_y;
 	character->hp = 100;
-	character->is_sleep = 1;
 	character->character_type = character_blue_moon_bunny_fairy;
 	character->radius = 10;
 
@@ -2058,11 +2049,20 @@ static void character_blue_moon_bunny_fairy_ai_control(CharacterList *character)
 	int *const move_percent = &character->args[10];
 	int *const time = &character->args[13];
 
+	@<character_blue_moon_bunny_fairy_ai_control is character dead?@>
 	@<character_blue_moon_bunny_fairy_ai_control move to down@>
 	@<character_blue_moon_bunny_fairy_ai_control wait@>
 	@<character_blue_moon_bunny_fairy_ai_control go away@>
 	@<character_blue_moon_bunny_fairy_ai_control move to up@>
 	@<character_blue_moon_bunny_fairy_ai_control remove@>
+}
+@}
+
+Если у персонажа hp <= 0:
+@d character_blue_moon_bunny_fairy_ai_control is character dead? @{
+if(character->hp <= 0) {
+	character_free(character);
+	return;
 }
 @}
 
@@ -2075,22 +2075,20 @@ if(*step_of_movement == 0) {
 
 	if(*move_percent == 0) {
 		CharacterList *fire = character_yellow_fire_create(character, 0, 0);
-		fire->is_sleep = 0;
 
 		fire = character_yellow_fire_create(character, 180, 0);
-		fire->is_sleep = 0;
 
 		fire = character_yellow_fire_create(character, 90, 0);
-		fire->is_sleep = 0;
 
 		fire = character_yellow_fire_create(character, 270, 0);
-		fire->is_sleep = 0;
 
 		*time = 12000;
 		*step_of_movement = 1;
 	}
 }
 @}
+Родитель ссылается только на одного ребёнка, но каждый ребёнок(кроме последнего) ссылается
+  на другого. Таким образом родитель может обойти их всех.
 
 Ждем 3 секунды(character->time выше):
 @d character_blue_moon_bunny_fairy_ai_control wait @{@-
@@ -2125,13 +2123,11 @@ if(*step_of_movement == 3) {
 if(*step_of_movement == 4) {
 	if(character->x < -25 || character->x > GAME_FIELD_W + 25 ||
 		character->y < -25 || character->y > GAME_FIELD_H + 25) {
-		character->is_sleep = 1;
 		character_free(character);
 	}
 }
 @}
 Фея после достижения конечной точки исчезает только если она за пределами экрана.
-is_sleep устанавливается в 1, так как до окончания for персонаж ещё не удалён.
 
 
 Рисуем персонажа:
@@ -2151,9 +2147,6 @@ static void character_blue_moon_bunny_fairy_draw(CharacterList *character) {
 
 	if(id == -1)
 		id = image_load("blue_fairy.png");
-
-	if(character->is_sleep == 1)
-		return;
 
 	if(character->x == *move_x) {
 		if(*movement_animation > 200)
@@ -2296,7 +2289,6 @@ CharacterList *character_yellow_fire_create(CharacterList *parent,
 	character->x = parent->x;
 	character->y = parent->y;
 	character->hp = 100;
-	character->is_sleep = 1;
 	character->character_type = character_yellow_fire;
 	character->radius = 10;
 
@@ -2380,11 +2372,22 @@ static void character_yellow_fire_ai_control(CharacterList *character) {
 	int *const move_percent = &character->args[7];
 	int *const radius = &character->args[10];
 
+	@<character_yellow_fire_ai_control is character dead?@>
 	@<character_yellow_fire_ai_control counterclockwise fly@>
 	@<character_yellow_fire_ai_control does my parent alive?@>
 }
 @}
 
+Если у персонажа hp <= 0:
+@d character_yellow_fire_ai_control is character dead? @{
+if(character->hp <= 0) {
+	character_remove_child((CharacterList*)(parent->args[14]),
+		character, 11);
+	character_free(character);
+	return;
+}
+@}
+Функция character_remove_child удаляет ребёнка из списка, но не из памяти.
 Начинаем летать против часовой стрелки и выходить на орбиту:
 @d character_yellow_fire_ai_control counterclockwise fly @{
 if(*step_of_movement == 0) {
@@ -2423,9 +2426,6 @@ static void character_yellow_fire_draw(CharacterList *character) {
 
 	if(id == -1)
 		id = image_load("sparks.png");
-
-	if(character->is_sleep == 1)
-		return;
 
 	const double deg2rad = M_PI/180.0;
 
@@ -3721,7 +3721,7 @@ for(bullet = bullets; bullet != NULL; bullet = bullet->next) {
 
 	for(character = characters; character != NULL; character = character->next) {
 
-		@<damage_calculate character hp=0 or is_sleep=1@>
+		@<damage_calculate character hp=0@>
 
 		@<damage_calculate collision check@>
 		@<damage_calculate character's damage unique@>
@@ -3731,9 +3731,9 @@ for(bullet = bullets; bullet != NULL; bullet = bullet->next) {
 }
 @}
 
-Проверяемый персонаж уже мертв или спит и не выводится на экран:
-@d damage_calculate character hp=0 or is_sleep=1 @{
-if(character->hp <= 0 || character->is_sleep == 1)
+Проверяемый персонаж уже мертв и не выводится на экран:
+@d damage_calculate character hp=0 @{
+if(character->hp <= 0)
 	continue;
 @}
 
@@ -3779,15 +3779,12 @@ switch(character->character_type) {
 }
 @}
 
-Если у персонажа нет жизней, то отметить is_sleep:
+Если у персонажа нет жизней:
 @d damage_calculate if hp<0 then character died @{
 if(character->hp <= 0) {
 	character->hp = 0;
-	character->is_sleep = 1;
 }
 @}
-Флаг устанавливается для всех персонажей, у кого hp <= 0,
-вне зависимости от того "умерли" ли они сейчас или давно.
 
 
 Напишем функцию bullet_collide:
@@ -3857,6 +3854,8 @@ int is_enemys;
 @}
 
 Надо придумать удобный и главное простой скриптовый язык.
+
+Поздний комментарий: флаг is_sleep был удалён из CharacterList
 
 Какие возможности нужно заложить в него?
 1.1) установку флага is_sleep у персонажа через N'ое время после установки(или сброса)
@@ -6343,11 +6342,9 @@ int main(void) {
 		int i;
 		for(i = 0; i < 1; i++) {
 			//CharacterList *character = character_blue_moon_fairy_create(30*i, 10, 30*i+100, 200, 30*i+150, -30);
-			//character->is_sleep = 0;
 		}
 
-		CharacterList *character = character_blue_moon_bunny_fairy_create(100, -10, 100, 200, 550, 250);
-		character->is_sleep = 0;
+		CharacterList *character = character_blue_moon_bunny_fairy_create(100, 30, 100, 200, 550, 250);
 	}
 
 /*	{
