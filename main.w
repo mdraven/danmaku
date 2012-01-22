@@ -983,7 +983,6 @@ static CharacterList *character_get_free_cell(void) {
 }
 @}
 
-
 Типы персонажей:
 @d Character public structs @{
 enum {
@@ -1646,6 +1645,8 @@ CharacterList *character_blue_moon_fairy_create(int begin_x, int begin_y,
 	character->args[9] = 0; //step_of_movement
 
 	// args: 10 11 12 move_percent move_begin_x move_begin_y
+	character->args[10] = 0;
+
 	// args: 13 time
 
 	return character;
@@ -1982,6 +1983,8 @@ CharacterList *character_blue_moon_bunny_fairy_create(int begin_x, int begin_y,
 	character->args[9] = 0; //step_of_movement
 
 	// args: 10 11 12 move_percent move_begin_x move_begin_y
+	character->args[10] = 0;
+
 	// args: 13 time
 
 	character->args[14] = (intptr_t)NULL; //child -- yellow fire
@@ -2472,8 +2475,8 @@ case character_yellow_fire:
 static void character_yellow_fire_draw(CharacterList *character) {
 	int *const angle = &character->args[2];
 	int *const movement_animation = &character->args[3];
-	int *const step_of_movement = &character->args[5];
 	CharacterList *const parent = (CharacterList*)(character->args[6]);
+	int *const radius = &character->args[10];
 
 	static int id = -1;
 
