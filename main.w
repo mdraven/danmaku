@@ -2061,10 +2061,12 @@ static void character_blue_moon_bunny_fairy_ai_control(CharacterList *character)
 Если у персонажа hp <= 0:
 @d character_blue_moon_bunny_fairy_ai_control is character dead? @{
 if(character->hp <= 0) {
+	@<character_blue_moon_bunny_fairy_ai_control remove all yellow fire childs@>
 	character_free(character);
 	return;
 }
 @}
+Когда закончатся жизни, то убиваем все дочерние жёлтые огоньки.
 
 Перемещаемся вперёд, когда достигнем точки назначения, то
 создаём огоньки и настраиваем таймер:
@@ -2317,6 +2319,24 @@ CharacterList *character_yellow_fire_create(CharacterList *parent,
 @d Character public prototypes @{@-
 CharacterList *character_yellow_fire_create(CharacterList *parent, int angle, int is_fire);
 @}
+
+
+При уничтожении феи с заячьими ушами удаляются и дочернии ему жёлтые огоньки:
+@d character_blue_moon_bunny_fairy_ai_control remove all yellow fire childs @{
+character_remove_hp_all_childs((CharacterList*)(character->args[14]), 11);
+@}
+
+@d Helper functions @{
+static void character_remove_hp_all_childs(CharacterList *first_child, int next_child_arg) {
+	CharacterList *p = first_child;
+
+	while(p != NULL) {
+		p->hp = 0;
+		p = (CharacterList*)(p->args[next_child_arg]);
+	}
+}
+@}
+next_child_arg - номер элемента args у child который указывает на следующий child.
 
 @d character_set_weak_time_point_x other characters @{@-
 case character_yellow_fire:
