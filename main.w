@@ -840,6 +840,7 @@ int is_rad_collide(int x1, int y1, int r1, int x2, int y2, int r2) {
 
 #include <stdint.h>
 
+@<Character public macros@>
 @<Character public structs@>
 @<Character public prototypes@>
 @}
@@ -874,6 +875,12 @@ typedef struct CharacterList CharacterList;
 Для CharacterList используется переменная args фиксированного размера для того, чтобы
   избежать фрагментации памяти. Блоки одинакового размера при удалении можно хранить в одном
   списке и при необходимости ипользовать повторно без написания сложного аллокатора.
+
+Для удобства доступа к названию аргумента введём макрос:
+@d Character public macros @{
+#define CMA(character_name, arg_name)  character_##character_name##_##arg_name##_arg
+@}
+CharacterMacroArgument
 
 @o characters.c @{
 @<License@>
@@ -1628,26 +1635,27 @@ CharacterList *character_blue_moon_fairy_create(int begin_x, int begin_y,
 	character->character_type = character_blue_moon_fairy;
 	character->radius = 10;
 
-	character->args[0] = 0; //time_point_for_movement_to_x
-	character->args[1] = 0; //time_point_for_movement_to_y
+	character->args[CMA(blue_moon_fairy, time_point_for_movement_x)] = 0;
+	character->args[CMA(blue_moon_fairy, time_point_for_movement_y)] = 0;
 
-	character->args[2] = to_x; //move_x
-	character->args[3] = to_y; //move_y
+	character->args[CMA(blue_moon_fairy, move_x)] = to_x;
+	character->args[CMA(blue_moon_fairy, move_y)] = to_y;
 
-	character->args[4] = end_x; //end_x
-	character->args[5] = end_y; //end_y
+	character->args[CMA(blue_moon_fairy, end_x)] = end_x;
+	character->args[CMA(blue_moon_fairy, end_y)] = end_y;
 
-	character->args[6] = 0; //last_horizontal
-	character->args[7] = 0; //movement_animation
+	character->args[CMA(blue_moon_fairy, last_horizontal)] = 0;
+	character->args[CMA(blue_moon_fairy, movement_animation)] = 0;
 
-	character->args[8] = 0; //speed
+	character->args[CMA(blue_moon_fairy, speed)] = 0;
 
-	character->args[9] = 0; //step_of_movement
+	character->args[CMA(blue_moon_fairy, step_of_movement)] = 0;
 
-	// args: 10 11 12 move_percent move_begin_x move_begin_y
-	character->args[10] = 0;
+	character->args[CMA(blue_moon_fairy, move_percent)] = 0;
+	character->args[CMA(blue_moon_fairy, move_begin_x)] = 0;
+	character->args[CMA(blue_moon_fairy, move_begin_y)] = 0;
 
-	// args: 13 time
+	character->args[CMA(blue_moon_fairy, time)] = 0;
 
 	return character;
 }
@@ -1671,10 +1679,31 @@ movement_animation - фаза анимации; вначале равна 0, и�
 
 Используются три точки как и описано выше.
 
-
 @d Character public prototypes @{@-
 CharacterList *character_blue_moon_fairy_create(int begin_x, int begin_y, int to_x, int to_y, int end_x, int end_y);
 @}
+
+@d Character public structs @{
+enum {
+	CMA(blue_moon_fairy, time_point_for_movement_x) = 0,
+	CMA(blue_moon_fairy, time_point_for_movement_y),
+	CMA(blue_moon_fairy, move_x),
+	CMA(blue_moon_fairy, move_y),
+	CMA(blue_moon_fairy, end_x),
+	CMA(blue_moon_fairy, end_y),
+	CMA(blue_moon_fairy, last_horizontal),
+	CMA(blue_moon_fairy, movement_animation),
+	CMA(blue_moon_fairy, speed),
+	CMA(blue_moon_fairy, step_of_movement),
+	CMA(blue_moon_fairy, move_percent),
+	CMA(blue_moon_fairy, move_begin_x),
+	CMA(blue_moon_fairy, move_begin_y),
+	CMA(blue_moon_fairy, time)
+};
+@}
+move_percent, move_begin_x, move_begin_y - должны следовать подряд, так как это используется
+  в character_move_to_point. Тоже самое и с time_point_for_movement_x, time_point_for_movement_y.
+CMA - макрос описанный выше, создаёт имя параметра через конкатенацию своих параметров.
 
 Функции установки time points после совершения перемещения:
 @d character_set_weak_time_point_x other characters @{@-
@@ -1692,11 +1721,11 @@ case character_blue_moon_fairy:
 Добавление time points с возможностью изменять скорость:
 @d Different characters set weak time_point functions @{
 static void character_blue_moon_fairy_set_weak_time_point_x(CharacterList *character) {
-	character->args[0] = 100 - (character->args[8] / 1.1);
+	character->args[CMA(blue_moon_fairy, time_point_for_movement_x)] = 100 - (character->args[CMA(blue_moon_fairy, speed)] / 1.1);
 }
 
 static void character_blue_moon_fairy_set_weak_time_point_y(CharacterList *character) {
-	character->args[1] = 100 - (character->args[8] / 1.1);
+	character->args[CMA(blue_moon_fairy, time_point_for_movement_y)] = 100 - (character->args[CMA(blue_moon_fairy, speed)] / 1.1);
 }
 @}
 
@@ -1709,13 +1738,13 @@ case character_blue_moon_fairy:
 
 @d Update time point for different characters @{
 static void character_blue_moon_fairy_update_time_points(CharacterList *character) {
-	if(character->args[0] > 0)
-		character->args[0]--;
+	if(character->args[CMA(blue_moon_fairy, time_point_for_movement_x)] > 0)
+		character->args[CMA(blue_moon_fairy, time_point_for_movement_x)]--;
 
-	if(character->args[1] > 0)
-		character->args[1]--;
+	if(character->args[CMA(blue_moon_fairy, time_point_for_movement_y)] > 0)
+		character->args[CMA(blue_moon_fairy, time_point_for_movement_y)]--;
 
-	character->args[7]++;
+	character->args[CMA(blue_moon_fairy, movement_animation)]++;
 }
 @}
 Меняем и movement_animation
@@ -1729,14 +1758,14 @@ case character_blue_moon_fairy:
 
 @d AI functions for different characters @{
 static void character_blue_moon_fairy_ai_control(CharacterList *character) {
-	int *const move_x = &character->args[2];
-	int *const move_y = &character->args[3];
-	int *const end_x = &character->args[4];
-	int *const end_y = &character->args[5];
-	int *const speed = &character->args[8];
-	int *const step_of_movement = &character->args[9];
-	int *const move_percent = &character->args[10];
-	int *const time = &character->args[13];
+	int *const move_x = &character->args[CMA(blue_moon_fairy, move_x)];
+	int *const move_y = &character->args[CMA(blue_moon_fairy, move_y)];
+	int *const end_x = &character->args[CMA(blue_moon_fairy, end_x)];
+	int *const end_y = &character->args[CMA(blue_moon_fairy, end_y)];
+	int *const speed = &character->args[CMA(blue_moon_fairy, speed)];
+	int *const step_of_movement = &character->args[CMA(blue_moon_fairy, step_of_movement)];
+	int *const move_percent = &character->args[CMA(blue_moon_fairy, move_percent)];
+	int *const time = &character->args[CMA(blue_moon_fairy, time)];
 
 	@<character_blue_moon_fairy_ai_control is character dead?@>
 	@<character_blue_moon_fairy_ai_control move to down@>
@@ -1758,7 +1787,8 @@ if(character->hp <= 0) {
 Перемещаемся вперёд:
 @d character_blue_moon_fairy_ai_control move to down @{@-
 if(*step_of_movement == 0) {
-	character_move_to_point(character, 10, 0, *move_x, *move_y);
+	character_move_to_point(character, CMA(blue_moon_fairy, move_percent),
+		CMA(blue_moon_fairy, time_point_for_movement_x), *move_x, *move_y);
 
 	*speed = 60 + (log(*move_percent+1) / log(101)) * 100.0;
 	if(*speed > 100)
@@ -1792,7 +1822,8 @@ if(*step_of_movement == 2) {
 
 @d character_blue_moon_fairy_ai_control move to up @{@-
 if(*step_of_movement == 3) {
-	character_move_to_point(character, 10, 0, *move_x, *move_y);
+	character_move_to_point(character, CMA(blue_moon_fairy, move_percent),
+		CMA(blue_moon_fairy, time_point_for_movement_x), *move_x, *move_y);
 
 	*speed = 130 - pow(101, *move_percent/100.0) + 1;
 	if(*speed > 100)
@@ -1822,9 +1853,9 @@ case character_blue_moon_fairy:
 
 @d Draw functions for different characters @{
 static void character_blue_moon_fairy_draw(CharacterList *character) {
-	int *const move_x = &character->args[2];
-	int *const last_horizontal = &character->args[6];
-	int *const movement_animation = &character->args[7];
+	int *const move_x = &character->args[CMA(blue_moon_fairy, move_x)];
+	int *const last_horizontal = &character->args[CMA(blue_moon_fairy, last_horizontal)];
+	int *const movement_animation = &character->args[CMA(blue_moon_fairy, movement_animation)];
 
 	static int id = -1;
 
@@ -1966,36 +1997,58 @@ CharacterList *character_blue_moon_bunny_fairy_create(int begin_x, int begin_y,
 	character->character_type = character_blue_moon_bunny_fairy;
 	character->radius = 10;
 
-	character->args[0] = 0; //time_point_for_movement_to_x
-	character->args[1] = 0; //time_point_for_movement_to_y
+	character->args[CMA(blue_moon_bunny_fairy, time_point_for_movement_x)] = 0;
+	character->args[CMA(blue_moon_bunny_fairy, time_point_for_movement_y)] = 0;
 
-	character->args[2] = to_x; //move_x
-	character->args[3] = to_y; //move_y
+	character->args[CMA(blue_moon_bunny_fairy, move_x)] = to_x;
+	character->args[CMA(blue_moon_bunny_fairy, move_y)] = to_y;
 
-	character->args[4] = end_x; //end_x
-	character->args[5] = end_y; //end_y
+	character->args[CMA(blue_moon_bunny_fairy, end_x)] = end_x;
+	character->args[CMA(blue_moon_bunny_fairy, end_y)] = end_y;
 
-	character->args[6] = 0; //last_horizontal
-	character->args[7] = 0; //movement_animation
+	character->args[CMA(blue_moon_bunny_fairy, last_horizontal)] = 0;
+	character->args[CMA(blue_moon_bunny_fairy, movement_animation)] = 0;
 
-	character->args[8] = 0; //speed
+	character->args[CMA(blue_moon_bunny_fairy, speed)] = 0;
 
-	character->args[9] = 0; //step_of_movement
+	character->args[CMA(blue_moon_bunny_fairy, step_of_movement)] = 0;
 
-	// args: 10 11 12 move_percent move_begin_x move_begin_y
-	character->args[10] = 0;
+	character->args[CMA(blue_moon_bunny_fairy, move_percent)] = 0;
+	character->args[CMA(blue_moon_bunny_fairy, move_begin_x)] = 0;
+	character->args[CMA(blue_moon_bunny_fairy, move_begin_y)] = 0;
 
-	// args: 13 time
+	character->args[CMA(blue_moon_bunny_fairy, time)] = 0;
 
-	character->args[14] = (intptr_t)NULL; //child -- yellow fire
+	character->args[CMA(blue_moon_bunny_fairy, child)] = (intptr_t)NULL; //child -- yellow fire
 
 	return character;
 }
 @}
 child - ссылка на одного из детей, у каждого ребёнка(кроме последнего) есть ссылка на другого.
+Описание остальных параметров аналогичны blue_moon_fairy
 
 @d Character public prototypes @{@-
 CharacterList *character_blue_moon_bunny_fairy_create(int begin_x, int begin_y, int to_x, int to_y, int end_x, int end_y);
+@}
+
+@d Character public structs @{
+enum {
+	CMA(blue_moon_bunny_fairy, time_point_for_movement_x) = 0,
+	CMA(blue_moon_bunny_fairy, time_point_for_movement_y),
+	CMA(blue_moon_bunny_fairy, move_x),
+	CMA(blue_moon_bunny_fairy, move_y),
+	CMA(blue_moon_bunny_fairy, end_x),
+	CMA(blue_moon_bunny_fairy, end_y),
+	CMA(blue_moon_bunny_fairy, last_horizontal),
+	CMA(blue_moon_bunny_fairy, movement_animation),
+	CMA(blue_moon_bunny_fairy, speed),
+	CMA(blue_moon_bunny_fairy, step_of_movement),
+	CMA(blue_moon_bunny_fairy, move_percent),
+	CMA(blue_moon_bunny_fairy, move_begin_x),
+	CMA(blue_moon_bunny_fairy, move_begin_y),
+	CMA(blue_moon_bunny_fairy, time),
+	CMA(blue_moon_bunny_fairy, child)
+};
 @}
 
 @d character_set_weak_time_point_x other characters @{@-
@@ -2012,11 +2065,11 @@ case character_blue_moon_bunny_fairy:
 
 @d Different characters set weak time_point functions @{
 static void character_blue_moon_bunny_fairy_set_weak_time_point_x(CharacterList *character) {
-	character->args[0] = 10 - (character->args[9] / 10.1);
+	character->args[CMA(blue_moon_bunny_fairy, time_point_for_movement_x)] = 10 - (character->args[CMA(blue_moon_bunny_fairy, speed)] / 10.1);
 }
 
 static void character_blue_moon_bunny_fairy_set_weak_time_point_y(CharacterList *character) {
-	character->args[1] = 10 - (character->args[9] / 10.1);
+	character->args[CMA(blue_moon_bunny_fairy, time_point_for_movement_y)] = 10 - (character->args[CMA(blue_moon_bunny_fairy, speed)] / 10.1);
 }
 @}
 
@@ -2028,13 +2081,13 @@ case character_blue_moon_bunny_fairy:
 
 @d Update time point for different characters @{
 static void character_blue_moon_bunny_fairy_update_time_points(CharacterList *character) {
-	if(character->args[0] > 0)
-		character->args[0]--;
+	if(character->args[CMA(blue_moon_bunny_fairy, time_point_for_movement_x)] > 0)
+		character->args[CMA(blue_moon_bunny_fairy, time_point_for_movement_x)]--;
 
-	if(character->args[1] > 0)
-		character->args[1]--;
+	if(character->args[CMA(blue_moon_bunny_fairy, time_point_for_movement_y)] > 0)
+		character->args[CMA(blue_moon_bunny_fairy, time_point_for_movement_y)]--;
 
-	character->args[7]++; //movement_animation
+	character->args[CMA(blue_moon_bunny_fairy, movement_animation)]++; //movement_animation
 }
 @}
 
@@ -2046,14 +2099,14 @@ case character_blue_moon_bunny_fairy:
 
 @d AI functions for different characters @{
 static void character_blue_moon_bunny_fairy_ai_control(CharacterList *character) {
-	int *const move_x = &character->args[2];
-	int *const move_y = &character->args[3];
-	int *const end_x = &character->args[4];
-	int *const end_y = &character->args[5];
-	int *const speed = &character->args[8];
-	int *const step_of_movement = &character->args[9];
-	int *const move_percent = &character->args[10];
-	int *const time = &character->args[13];
+	int *const move_x = &character->args[CMA(blue_moon_bunny_fairy, move_x)];
+	int *const move_y = &character->args[CMA(blue_moon_bunny_fairy, move_y)];
+	int *const end_x = &character->args[CMA(blue_moon_bunny_fairy, end_x)];
+	int *const end_y = &character->args[CMA(blue_moon_bunny_fairy, end_y)];
+	int *const speed = &character->args[CMA(blue_moon_bunny_fairy, speed)];
+	int *const step_of_movement = &character->args[CMA(blue_moon_bunny_fairy, step_of_movement)];
+	int *const move_percent = &character->args[CMA(blue_moon_bunny_fairy, move_percent)];
+	int *const time = &character->args[CMA(blue_moon_bunny_fairy, time)];
 
 	@<character_blue_moon_bunny_fairy_ai_control is character dead?@>
 	@<character_blue_moon_bunny_fairy_ai_control move to down@>
@@ -2067,22 +2120,37 @@ static void character_blue_moon_bunny_fairy_ai_control(CharacterList *character)
 Если у персонажа hp <= 0:
 @d character_blue_moon_bunny_fairy_ai_control is character dead? @{
 if(character->hp <= 0) {
-	@<character_blue_moon_bunny_fairy_ai_control remove all yellow fire childs@>
+	character_remove_hp_all_childs((CharacterList*)(character->args[CMA(blue_moon_bunny_fairy, child)]),
+		CMA(yellow_fire, next_child));
 	character_free(character);
 	return;
 }
 @}
-Когда закончатся жизни, то убиваем все дочерние жёлтые огоньки.
+При уничтожении феи с заячьими ушами удаляются и дочернии ему жёлтые огоньки.
+
+@d Helper functions @{
+static void character_remove_hp_all_childs(CharacterList *first_child, int next_child_arg) {
+	CharacterList *p = first_child;
+
+	while(p != NULL) {
+		p->hp = 0;
+		p = (CharacterList*)(p->args[next_child_arg]);
+	}
+}
+@}
+next_child_arg - номер элемента args у child который указывает на следующий child.
+
 
 Перемещаемся вперёд, когда достигнем точки назначения, то
 создаём огоньки и настраиваем таймер:
 @d character_blue_moon_bunny_fairy_ai_control move to down @{@-
 if(*step_of_movement == 0) {
 	*speed = 50;
-	character_move_to_point(character, 10, 0, *move_x, *move_y);
+	character_move_to_point(character, CMA(blue_moon_bunny_fairy, move_percent),
+		CMA(blue_moon_bunny_fairy, time_point_for_movement_x), *move_x, *move_y);
 
 	if(*move_percent == 0) {
-		CharacterList **const child = (CharacterList**)&(character->args[14]);
+		CharacterList **const child = (CharacterList**)&(character->args[CMA(blue_moon_bunny_fairy, child)]);
 		CharacterList *p;
 
 		p = character_yellow_fire_create(character, 0, 0, NULL);
@@ -2122,7 +2190,8 @@ if(*step_of_movement == 2) {
 @d character_blue_moon_bunny_fairy_ai_control move to up @{@-
 if(*step_of_movement == 3) {
 	*speed = 10;
-	character_move_to_point(character, 10, 0, *move_x, *move_y);
+	character_move_to_point(character, CMA(blue_moon_bunny_fairy, move_percent),
+		CMA(blue_moon_bunny_fairy, time_point_for_movement_x), *move_x, *move_y);
 
 	if(*move_percent == 0)
 		*step_of_movement = 4;
@@ -2149,9 +2218,9 @@ case character_blue_moon_bunny_fairy:
 
 @d Draw functions for different characters @{
 static void character_blue_moon_bunny_fairy_draw(CharacterList *character) {
-	int *const move_x = &character->args[2];
-	int *const last_horizontal = &character->args[6];
-	int *const movement_animation = &character->args[7];
+	int *const move_x = &character->args[CMA(blue_moon_bunny_fairy, move_x)];
+	int *const last_horizontal = &character->args[CMA(blue_moon_bunny_fairy, last_horizontal)];
+	int *const movement_animation = &character->args[CMA(blue_moon_bunny_fairy, movement_animation)];
 
 	static int id = -1;
 
@@ -2302,24 +2371,26 @@ CharacterList *character_yellow_fire_create(CharacterList *parent,
 	character->character_type = character_yellow_fire;
 	character->radius = 10;
 
-	character->args[0] = 0; //time_point_for_movement_x
-	character->args[1] = 0; //time_point_for_movement_y
+	character->args[CMA(yellow_fire, time_point_for_movement_x)] = 0;
+	character->args[CMA(yellow_fire, time_point_for_movement_y)] = 0;
 
-	character->args[2] = angle; //angle
+	character->args[CMA(yellow_fire, angle)] = angle;
 
-	character->args[3] = is_fire; //is_fire
+	character->args[CMA(yellow_fire, is_fire)] = is_fire;
 
-	character->args[4] = 0; //movement_animation
+	character->args[CMA(yellow_fire, movement_animation)] = 0;
 
-	character->args[5] = 0; //step_of_movement
+	character->args[CMA(yellow_fire, step_of_movement)] = 0;
 
-	character->args[6] = (intptr_t)parent; //parent
+	character->args[CMA(yellow_fire, parent)] = (intptr_t)parent;
 
-	// args: 7 8 9 move_percent move_begin_x move_begin_y
+	character->args[CMA(yellow_fire, move_percent)] = 0;
+	character->args[CMA(yellow_fire, move_begin_x)] = 0;
+	character->args[CMA(yellow_fire, move_begin_y)] = 0;
 
-	character->args[10] = 0; //radius
+	character->args[CMA(yellow_fire, radius)] = 0;
 
-	character->args[11] = (intptr_t)sister; //next child yellow fire
+	character->args[CMA(yellow_fire, next_child)] = (intptr_t)sister; //next child yellow fire
 
 	return character;
 }
@@ -2332,22 +2403,22 @@ CharacterList *character_yellow_fire_create(CharacterList *parent, int angle, in
 @}
 
 
-При уничтожении феи с заячьими ушами удаляются и дочернии ему жёлтые огоньки:
-@d character_blue_moon_bunny_fairy_ai_control remove all yellow fire childs @{
-character_remove_hp_all_childs((CharacterList*)(character->args[14]), 11);
+@d Character public structs @{
+enum {
+	CMA(yellow_fire, time_point_for_movement_x) = 0,
+	CMA(yellow_fire, time_point_for_movement_y),
+	CMA(yellow_fire, angle),
+	CMA(yellow_fire, is_fire),
+	CMA(yellow_fire, movement_animation),
+	CMA(yellow_fire, step_of_movement),
+	CMA(yellow_fire, parent),
+	CMA(yellow_fire, move_percent),
+	CMA(yellow_fire, move_begin_x),
+	CMA(yellow_fire, move_begin_y),
+	CMA(yellow_fire, radius),
+	CMA(yellow_fire, next_child)
+};
 @}
-
-@d Helper functions @{
-static void character_remove_hp_all_childs(CharacterList *first_child, int next_child_arg) {
-	CharacterList *p = first_child;
-
-	while(p != NULL) {
-		p->hp = 0;
-		p = (CharacterList*)(p->args[next_child_arg]);
-	}
-}
-@}
-next_child_arg - номер элемента args у child который указывает на следующий child.
 
 @d character_set_weak_time_point_x other characters @{@-
 case character_yellow_fire:
@@ -2363,11 +2434,11 @@ case character_yellow_fire:
 
 @d Different characters set weak time_point functions @{
 static void character_yellow_fire_set_weak_time_point_x(CharacterList *character) {
-	character->args[0] = 30; //time_point_for_movement_x
+	character->args[CMA(yellow_fire, time_point_for_movement_x)] = 30;
 }
 
 static void character_yellow_fire_set_weak_time_point_y(CharacterList *character) {
-	character->args[1] = 30; //time_point_for_movement_y
+	character->args[CMA(yellow_fire, time_point_for_movement_y)] = 30;
 }
 @}
 
@@ -2379,13 +2450,13 @@ case character_yellow_fire:
 
 @d Update time point for different characters @{
 static void character_yellow_fire_update_time_points(CharacterList *character) {
-	if(character->args[0] > 0)
-		character->args[0]--;
+	if(character->args[CMA(yellow_fire, time_point_for_movement_x)] > 0)
+		character->args[CMA(yellow_fire, time_point_for_movement_x)]--;
 
-	if(character->args[1] > 0)
-		character->args[1]--;
+	if(character->args[CMA(yellow_fire, time_point_for_movement_y)] > 0)
+		character->args[CMA(yellow_fire, time_point_for_movement_y)]--;
 
-	character->args[4]++; //movement_animation
+	character->args[CMA(yellow_fire, movement_animation)]++;
 }
 @}
 
@@ -2397,11 +2468,11 @@ case character_yellow_fire:
 
 @d AI functions for different characters @{
 static void character_yellow_fire_ai_control(CharacterList *character) {
-	int *const angle = &character->args[2];
-	int *const step_of_movement = &character->args[5];
-	CharacterList *const parent = (CharacterList*)(character->args[6]);
-	int *const move_percent = &character->args[7];
-	int *const radius = &character->args[10];
+	int *const angle = &character->args[CMA(yellow_fire, angle)];
+	int *const step_of_movement = &character->args[CMA(yellow_fire, step_of_movement)];
+	CharacterList *const parent = (CharacterList*)(character->args[CMA(yellow_fire, parent)]);
+	int *const move_percent = &character->args[CMA(yellow_fire, move_percent)];
+	int *const radius = &character->args[CMA(yellow_fire, radius)];
 
 	@<character_yellow_fire_ai_control is character dead?@>
 	@<character_yellow_fire_ai_control counterclockwise fly@>
@@ -2412,7 +2483,7 @@ static void character_yellow_fire_ai_control(CharacterList *character) {
 Если у персонажа hp <= 0:
 @d character_yellow_fire_ai_control is character dead? @{
 if(character->hp <= 0) {
-	character_remove_child(parent, 14, character, 11);
+	character_remove_child(parent, CMA(blue_moon_bunny_fairy, child), character, CMA(yellow_fire, next_child));
 	character_free(character);
 	return;
 }
@@ -2460,7 +2531,8 @@ if(*step_of_movement == 0) {
 			(*radius)++;
 	}
 
-	character_move_to_angle_and_radius(character, 7, 0, *angle - 90, 1);
+	character_move_to_angle_and_radius(character, CMA(yellow_fire, move_percent),
+		CMA(yellow_fire, time_point_for_movement_x), *angle - 90, 1);
 }
 @}
 Считаем новое положение огонька и отлетаем на r=1 в перпендикулярном angle направлении.
@@ -2473,10 +2545,10 @@ case character_yellow_fire:
 
 @d Draw functions for different characters @{
 static void character_yellow_fire_draw(CharacterList *character) {
-	int *const angle = &character->args[2];
-	int *const movement_animation = &character->args[3];
-	CharacterList *const parent = (CharacterList*)(character->args[6]);
-	int *const radius = &character->args[10];
+	int *const angle = &character->args[CMA(yellow_fire, angle)];
+	int *const movement_animation = &character->args[CMA(yellow_fire, movement_animation)];
+	CharacterList *const parent = (CharacterList*)(character->args[CMA(yellow_fire, parent)]);
+	int *const radius = &character->args[CMA(yellow_fire, radius)];
 
 	static int id = -1;
 
