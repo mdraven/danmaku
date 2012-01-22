@@ -1984,9 +1984,12 @@ CharacterList *character_blue_moon_bunny_fairy_create(int begin_x, int begin_y,
 	// args: 10 11 12 move_percent move_begin_x move_begin_y
 	// args: 13 time
 
+	character->args[14] = (intptr_t)NULL; //child -- yellow fire
+
 	return character;
 }
 @}
+child - ссылка на одного из детей, у каждого ребёнка(кроме последнего) есть ссылка на другого.
 
 @d Character public prototypes @{@-
 CharacterList *character_blue_moon_bunny_fairy_create(int begin_x, int begin_y, int to_x, int to_y, int end_x, int end_y);
@@ -2076,13 +2079,15 @@ if(*step_of_movement == 0) {
 	character_move_to_point(character, 10, 0, *move_x, *move_y);
 
 	if(*move_percent == 0) {
-		CharacterList *fire = character_yellow_fire_create(character, 0, 0);
+		CharacterList **const child = (CharacterList**)&(character->args[14]);
+		CharacterList *p;
 
-		fire = character_yellow_fire_create(character, 180, 0);
+		p = character_yellow_fire_create(character, 0, 0, NULL);
+		p = character_yellow_fire_create(character, 180, 0, p);
+		p = character_yellow_fire_create(character, 90, 0, p);
+		p = character_yellow_fire_create(character, 270, 0, p);
 
-		fire = character_yellow_fire_create(character, 90, 0);
-
-		fire = character_yellow_fire_create(character, 270, 0);
+		*child = p;
 
 		*time = 12000;
 		*step_of_movement = 1;
@@ -2285,7 +2290,7 @@ character_yellow_fire,
 
 @d Character functions @{
 CharacterList *character_yellow_fire_create(CharacterList *parent,
-	int angle, int is_fire) {
+	int angle, int is_fire, CharacterList *sister) {
 	CharacterList *character = character_get_free_cell();
 
 	character->x = parent->x;
@@ -2311,13 +2316,16 @@ CharacterList *character_yellow_fire_create(CharacterList *parent,
 
 	character->args[10] = 0; //radius
 
+	character->args[11] = (intptr_t)sister; //next child yellow fire
+
 	return character;
 }
 @}
-
+sister - ссылка на другой огонёк того же родителя parent.
+  По этой ссылке родитель сможет обойти всех своих детей ссылаясь только на одного.
 
 @d Character public prototypes @{@-
-CharacterList *character_yellow_fire_create(CharacterList *parent, int angle, int is_fire);
+CharacterList *character_yellow_fire_create(CharacterList *parent, int angle, int is_fire, CharacterList *sister);
 @}
 
 
@@ -2401,13 +2409,38 @@ static void character_yellow_fire_ai_control(CharacterList *character) {
 Если у персонажа hp <= 0:
 @d character_yellow_fire_ai_control is character dead? @{
 if(character->hp <= 0) {
-	character_remove_child((CharacterList*)(parent->args[14]),
-		character, 11);
+	character_remove_child(parent, 14, character, 11);
 	character_free(character);
 	return;
 }
 @}
 Функция character_remove_child удаляет ребёнка из списка, но не из памяти.
+
+@d Helper functions @{
+static void character_remove_child(CharacterList *parent, int child_arg,
+	CharacterList *child, int next_child_arg) {
+	CharacterList *p = (CharacterList*)(parent->args[child_arg]);
+
+	if(p != NULL && p == child) {
+		parent->args[child_arg] = child->args[next_child_arg];
+		return;
+	}
+
+	while(p != NULL) {
+		if((CharacterList*)(p->args[next_child_arg]) == child) {
+			p->args[next_child_arg] = child->args[next_child_arg];
+			break;
+		}
+
+		p = (CharacterList*)(p->args[next_child_arg]);
+	}
+}
+@}
+Он удаляет ребёнка child из списка с головой находящейся в parent, но не удаляет из памяти.
+child_arg - номер элемента args у parent который является головой списка.
+next_child_arg - номер элемента args у child который указывает на следующий child.
+
+
 Начинаем летать против часовой стрелки и выходить на орбиту:
 @d character_yellow_fire_ai_control counterclockwise fly @{
 if(*step_of_movement == 0) {
