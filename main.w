@@ -847,7 +847,7 @@ int is_rad_collide(int x1, int y1, int r1, int x2, int y2, int r2) {
 
 Опишем структуру персонажа:
 @d Character public structs @{
-#define CHARACTER_NUM_ARGS 15
+#define CHARACTER_NUM_ARGS 18
 
 struct CharacterList {
 	struct CharacterList *prev;
