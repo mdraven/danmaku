@@ -2609,6 +2609,176 @@ case character_yellow_fire:
 	break;
 @}
 
+
+
+Серые завихрения
+
+Похоже что летят по прямой. Не стреляют.
+
+@d Character types @{@-
+character_gray_swirl,
+@}
+
+@d Character functions @{
+CharacterList *character_gray_swirl_create(int begin_x, int begin_y,
+	int end_x, int end_y) {
+	CharacterList *character = character_get_free_cell();
+
+	character->x = begin_x;
+	character->y = begin_y;
+	character->hp = 100;
+	character->character_type = character_gray_swirl;
+	character->radius = 10;
+
+	character->args[CMA(gray_swirl, time_point_for_movement_x)] = 0;
+	character->args[CMA(gray_swirl, time_point_for_movement_y)] = 0;
+
+	character->args[CMA(gray_swirl, end_x)] = end_x;
+	character->args[CMA(gray_swirl, end_y)] = end_y;
+
+	character->args[CMA(gray_swirl, movement_animation)] = 0;
+
+	character->args[CMA(gray_swirl, move_percent)] = 0;
+	character->args[CMA(gray_swirl, move_begin_x)] = 0;
+	character->args[CMA(gray_swirl, move_begin_y)] = 0;
+
+	return character;
+}
+@}
+
+@d Character public prototypes @{@-
+CharacterList *character_gray_swirl_create(int begin_x, int begin_y, int end_x, int end_y);
+@}
+
+
+@d Character public structs @{
+enum {
+	CMA(gray_swirl, time_point_for_movement_x) = 0,
+	CMA(gray_swirl, time_point_for_movement_y),
+	CMA(gray_swirl, end_x),
+	CMA(gray_swirl, end_y),
+	CMA(gray_swirl, movement_animation),
+	CMA(gray_swirl, move_percent),
+	CMA(gray_swirl, move_begin_x),
+	CMA(gray_swirl, move_begin_y)
+};
+@}
+
+@d character_set_weak_time_point_x other characters @{@-
+case character_gray_swirl:
+	character_gray_swirl_set_weak_time_point_x(character);
+	break;
+@}
+
+@d character_set_weak_time_point_y other characters @{@-
+case character_gray_swirl:
+	character_gray_swirl_set_weak_time_point_y(character);
+	break;
+@}
+
+@d Different characters set weak time_point functions @{
+static void character_gray_swirl_set_weak_time_point_x(CharacterList *character) {
+	character->args[CMA(gray_swirl, time_point_for_movement_x)] = 5;
+}
+
+static void character_gray_swirl_set_weak_time_point_y(CharacterList *character) {
+	character->args[CMA(gray_swirl, time_point_for_movement_y)] = 5;
+}
+@}
+
+@d characters_update_all_time_points other characters @{@-
+case character_gray_swirl:
+	character_gray_swirl_update_time_points(character);
+	break;
+@}
+
+@d Update time point for different characters @{
+static void character_gray_swirl_update_time_points(CharacterList *character) {
+	if(character->args[CMA(gray_swirl, time_point_for_movement_x)] > 0)
+		character->args[CMA(gray_swirl, time_point_for_movement_x)]--;
+
+	if(character->args[CMA(gray_swirl, time_point_for_movement_y)] > 0)
+		character->args[CMA(gray_swirl, time_point_for_movement_y)]--;
+
+	character->args[CMA(gray_swirl, movement_animation)]++;
+}
+@}
+
+@d characters_ai_control other characters @{@-
+case character_gray_swirl:
+	character_gray_swirl_ai_control(character);
+	break;
+@}
+
+@d AI functions for different characters @{
+static void character_gray_swirl_ai_control(CharacterList *character) {
+	int *const end_x = &character->args[CMA(gray_swirl, end_x)];
+	int *const end_y = &character->args[CMA(gray_swirl, end_y)];
+	int *const move_percent = &character->args[CMA(gray_swirl, move_percent)];
+
+	@<character_gray_swirl_ai_control is character dead?@>
+	@<character_gray_swirl_ai_control move@>
+	@<character_gray_swirl_ai_control remove@>
+}
+@}
+
+Если у персонажа hp <= 0:
+@d character_gray_swirl_ai_control is character dead? @{
+if(character->hp <= 0) {
+	character_free(character);
+	return;
+}
+@}
+
+@d character_gray_swirl_ai_control move @{
+character_move_to_point(character, CMA(gray_swirl, move_percent),
+	CMA(gray_swirl, time_point_for_movement_x), *end_x, *end_y);
+@}
+
+@d character_gray_swirl_ai_control remove @{@-
+if(*move_percent == 100)
+	if(character->x < -25 || character->x > GAME_FIELD_W + 25 ||
+		character->y < -25 || character->y > GAME_FIELD_H + 25) {
+		character_free(character);
+	}
+@}
+
+Рисуем серое завихрение:
+@d characters_draw other characters @{@-
+case character_gray_swirl:
+	character_gray_swirl_draw(character);
+	break;
+@}
+
+@d Draw functions for different characters @{
+static void character_gray_swirl_draw(CharacterList *character) {
+	int *const movement_animation = &character->args[CMA(gray_swirl, movement_animation)];
+
+	static int id = -1;
+
+	if(id == -1)
+		id = image_load("sparks.png");
+
+	if(*movement_animation >= 720)
+		*movement_animation = 0;
+
+	image_draw_center_t(id,
+		GAME_FIELD_X + character->x,
+		GAME_FIELD_Y + character->y,
+		138, 12, 138+93, 12+93,
+		(*movement_animation)/2.0, 0.5);
+}
+@}
+
+Повреждение от пуль:
+@d damage_calculate other enemy characters @{@-
+case character_gray_swirl:
+	if(bullet->bullet_type == bullet_reimu_first)
+		character->hp -= 1000;
+	break;
+@}
+
+
 ===========================================================
 
 Игровой персонаж.
