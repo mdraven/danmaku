@@ -2506,7 +2506,7 @@ static void character_yellow_fire_ai_control(CharacterList *character) {
 
 	@<character_yellow_fire_ai_control is character dead?@>
 	@<character_yellow_fire_ai_control counterclockwise fly@>
-	@<character_yellow_fire_ai_control does my parent alive?@>
+	@<character_yellow_fire_ai_control remove@>
 }
 @}
 
@@ -2547,25 +2547,30 @@ next_child_arg - номер элемента args у child который ука
 
 Начинаем летать против часовой стрелки и выходить на орбиту:
 @d character_yellow_fire_ai_control counterclockwise fly @{
-if(*step_of_movement == 0) {
-	if(*move_percent == 0 || *move_percent == 100) {
-		const double deg2rad = M_PI/180.0;
-		character->x = parent->x + (int)((*radius)*cos((*angle)*deg2rad));
-		character->y = parent->y + (int)((*radius)*sin((*angle)*deg2rad));
+if(*move_percent == 0 || *move_percent == 100) {
+	const double deg2rad = M_PI/180.0;
+	character->x = parent->x + (int)((*radius)*cos((*angle)*deg2rad));
+	character->y = parent->y + (int)((*radius)*sin((*angle)*deg2rad));
 
-		(*angle)--;
-		if(*angle == -1)
-			*angle = 359;
+	(*angle)--;
+	if(*angle == -1)
+		*angle = 359;
 
-		if(*radius != 50)
-			(*radius)++;
-	}
-
-	character_move_to_angle_and_radius(character, CMA(yellow_fire, move_percent),
-		CMA(yellow_fire, time_point_for_movement_x), *angle - 90, 1);
+	if(*radius != 50)
+		(*radius)++;
 }
+
+character_move_to_angle_and_radius(character, CMA(yellow_fire, move_percent),
+	CMA(yellow_fire, time_point_for_movement_x), *angle - 90, 1);
 @}
 Считаем новое положение огонька и отлетаем на r=1 в перпендикулярном angle направлении.
+
+@d character_yellow_fire_ai_control remove @{
+if(character->x < -25 || character->x > GAME_FIELD_W + 25 ||
+	character->y < -25 || character->y > GAME_FIELD_H + 25) {
+	character_free(character);
+}
+@}
 
 @d characters_draw other characters @{@-
 case character_yellow_fire:
