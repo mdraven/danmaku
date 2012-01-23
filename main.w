@@ -1008,15 +1008,17 @@ CharacterList *character_reimu_create() {
 	character->character_type = character_reimu;
 	character->radius = 10;
 
-	character->args[0] = 0; //time_point_for_movement_to_x
-	character->args[1] = 0; //time_point_for_movement_to_y
+	character->args[CMA(reimu, time_point_for_movement_x)] = 0;
+	character->args[CMA(reimu, time_point_for_movement_y)] = 0;
 
-	character->args[2] = 0; //last_horizontal
-	character->args[3] = 0; //movement_animation
+	character->args[CMA(reimu, last_horizontal)] = 0;
+	character->args[CMA(reimu, movement_animation)] = 0;
 
-	character->args[4] = 0; //step_of_movement
+	character->args[CMA(reimu, step_of_movement)] = 0;
 
-	// args: 5 6 7 move_percent move_begin_x move_begin_y
+	character->args[CMA(reimu, move_percent)] = 0;
+	character->args[CMA(reimu, move_begin_x)] = 0;
+	character->args[CMA(reimu, move_begin_y)] = 0;
 
 	return character;
 }
@@ -1037,6 +1039,21 @@ FIXME: last_horizontal, movement_animation не используются у ре
 CharacterList *character_reimu_create();
 @}
 
+@d Character public structs @{
+enum {
+	CMA(reimu, time_point_for_movement_x) = 0,
+	CMA(reimu, time_point_for_movement_y),
+	CMA(reimu, last_horizontal),
+	CMA(reimu, movement_animation),
+	CMA(reimu, step_of_movement),
+	CMA(reimu, move_percent),
+	CMA(reimu, move_begin_x),
+	CMA(reimu, move_begin_y),
+};
+@}
+move_percent, move_begin_x, move_begin_y - должны следовать подряд, так как это используется
+  в character_move_to_point. Тоже самое и с time_point_for_movement_x, time_point_for_movement_y.
+
 Мариса:
 @d Character functions @{
 CharacterList *character_marisa_create() {
@@ -1048,15 +1065,17 @@ CharacterList *character_marisa_create() {
 	character->character_type = character_marisa;
 	character->radius = 10;
 
-	character->args[0] = 0; //time_point_for_movement_to_x
-	character->args[1] = 0; //time_point_for_movement_to_y
+	character->args[CMA(marisa, time_point_for_movement_x)] = 0;
+	character->args[CMA(marisa, time_point_for_movement_y)] = 0;
 
-	character->args[2] = 0; //last_horizontal
-	character->args[3] = 0; //movement_animation
+	character->args[CMA(marisa, last_horizontal)] = 0;
+	character->args[CMA(marisa, movement_animation)] = 0;
 
-	character->args[4] = 0; //step_of_movement
+	character->args[CMA(marisa, step_of_movement)] = 0;
 
-	// args: 5 6 7 move_percent move_begin_x move_begin_y
+	character->args[CMA(marisa, move_percent)] = 0;
+	character->args[CMA(marisa, move_begin_x)] = 0;
+	character->args[CMA(marisa, move_begin_y)] = 0;
 
 	return character;
 }
@@ -1066,7 +1085,18 @@ CharacterList *character_marisa_create() {
 CharacterList *character_marisa_create();
 @}
 
-
+@d Character public structs @{
+enum {
+	CMA(marisa, time_point_for_movement_x) = 0,
+	CMA(marisa, time_point_for_movement_y),
+	CMA(marisa, last_horizontal),
+	CMA(marisa, movement_animation),
+	CMA(marisa, step_of_movement),
+	CMA(marisa, move_percent),
+	CMA(marisa, move_begin_x),
+	CMA(marisa, move_begin_y),
+};
+@}
 
 Функции перемещения и восстановления очков перемещения.
 
@@ -1163,19 +1193,19 @@ static void character_set_weak_time_point_y(CharacterList *character) {
 Конкретные реализации функций обновления time_point:
 @d Different characters set weak time_point functions @{
 static void character_reimu_set_weak_time_point_x(CharacterList *character) {
-	character->args[0] = 5; //time_point_for_movement_to_x
+	character->args[CMA(reimu, time_point_for_movement_x)] = 5;
 }
 
 static void character_reimu_set_weak_time_point_y(CharacterList *character) {
-	character->args[1] = 5; //time_point_for_movement_to_y
+	character->args[CMA(reimu, time_point_for_movement_y)] = 5;
 }
 
 static void character_marisa_set_weak_time_point_x(CharacterList *character) {
-	character->args[0] = 10; //time_point_for_movement_to_x
+	character->args[CMA(marisa, time_point_for_movement_x)] = 10;
 }
 
 static void character_marisa_set_weak_time_point_y(CharacterList *character) {
-	character->args[1] = 10; //time_point_for_movement_to_y
+	character->args[CMA(marisa, time_point_for_movement_y)] = 10;
 }
 @}
 
@@ -1217,23 +1247,23 @@ void characters_update_all_time_points(void);
 персонажей:
 @d Update time point for different characters @{
 static void character_reimu_update_time_points(CharacterList *character) {
-	if(character->args[0] > 0)
-		character->args[0]--;
+	if(character->args[CMA(reimu, time_point_for_movement_x)] > 0)
+		character->args[CMA(reimu, time_point_for_movement_x)]--;
 
-	if(character->args[1] > 0)
-		character->args[1]--;
+	if(character->args[CMA(reimu, time_point_for_movement_y)] > 0)
+		character->args[CMA(reimu, time_point_for_movement_y)]--;
 
-	character->args[3]++; //movement_animation
+	character->args[CMA(reimu, movement_animation)]++;
 }
 
 static void character_marisa_update_time_points(CharacterList *character) {
-	if(character->args[0] > 0)
-		character->args[0]--;
+	if(character->args[CMA(marisa, time_point_for_movement_x)] > 0)
+		character->args[CMA(marisa, time_point_for_movement_x)]--;
 
-	if(character->args[1] > 0)
-		character->args[1]--;
+	if(character->args[CMA(marisa, time_point_for_movement_y)] > 0)
+		character->args[CMA(marisa, time_point_for_movement_y)]--;
 
-	character->args[3]++; //movement_animation
+	character->args[CMA(marisa, movement_animation)]++;
 }
 @}
 Фаза анимации movement_animation тоже обновляется здесь.
@@ -1455,8 +1485,8 @@ typedef struct {
 @}
 
 @d Reimu ai control @{
-int *const step_of_movement = &character->args[4];
-int *const move_percent = &character->args[5];
+int *const step_of_movement = &character->args[CMA(reimu, step_of_movement)];
+int *const move_percent = &character->args[CMA(reimu, move_percent)];
 Point p[] = {{100, 100}, {200, 10}, {10, 200}, {200, 200}, {10, 10}};
 
 @<character_reimu_ai_control is character dead?@>
