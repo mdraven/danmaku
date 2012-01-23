@@ -1175,7 +1175,7 @@ static void character_set_weak_time_point_x(CharacterList *character) {
 }
 
 static void character_set_weak_time_point_y(CharacterList *character) {
-	switch(characters->character_type) {
+	switch(character->character_type) {
 		case character_reimu:
 			character_reimu_set_weak_time_point_y(character);
 			break;
