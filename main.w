@@ -6764,11 +6764,12 @@ if(main_timer_frame == 0) {
 @}
 frames - необходим для подсчета FPS описаного ниже.
 
-Так как одного изменения в 1 мс. оказалось мало, то будем делать 2-ва:
+Засекаем время и делаем столько циклов обновления time points персонажей и вызовов
+их ai, сколько мс. прошло:
 @d Main cycle actions @{
 @<Timer for time points@>
 int i;
-for(i=0; i<2; i++) {
+for(i=0; i<(1000 - main_timer_time_points)*2; i++) {
 	@<Time points@>
 	@<Computer movements@>
 	@<Bullet movements@>
@@ -6784,35 +6785,28 @@ for(i=0; i<2; i++) {
 }
 @<Update time points@>
 @}
-Из-за того, что всё вызывается по два раза, то всё что раньше считалось 1 мс, теперь
-  надо считать 1/2 мс, те надо текст перечитать и умножить счётчики на 2(FIXME).
 
-Пересчет очков перемещения(time point). Добавим таймер для обновления time points:
 @d Timer for time points @{
-static int main_timer_time_points = 0;
-
+static int main_timer_time_points = 1000;
 main_timer_time_points = timer_calc(main_timer_time_points);
+@}
+
+Обновим таймер:
+@d Update time points @{
+main_timer_time_points = 1000;
 @}
 
 Пересчитаем time points для различных вещей:
 @d Time points @{
-if(main_timer_time_points == 0) {
-	characters_update_all_time_points();
-	player_update_all_time_points();
-	bullets_update_all_time_points();
-	bonuses_update_all_time_points();
-	dialog_update_all_time_points();
-	background_update_animation();
-}
+characters_update_all_time_points();
+player_update_all_time_points();
+bullets_update_all_time_points();
+bonuses_update_all_time_points();
+dialog_update_all_time_points();
+background_update_animation();
 @}
 Функции characters_update_all_time_points, player_update_all_time_points,
 bullets_update_all_time_points и bonuses_update_all_time_points вызываются раз в ~1 мс.
-
-Если таймер обнулился, то установим его ещё на 1 мс:
-@d Update time points @{
-if(main_timer_time_points == 0)
-	main_timer_time_points = 1;
-@}
 
 
 Добавим таймер для FPS.
