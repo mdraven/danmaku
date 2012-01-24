@@ -2117,7 +2117,7 @@ static void character_blue_moon_bunny_fairy_update_time_points(CharacterList *ch
 	if(character->args[CMA(blue_moon_bunny_fairy, time_point_for_movement_y)] > 0)
 		character->args[CMA(blue_moon_bunny_fairy, time_point_for_movement_y)]--;
 
-	character->args[CMA(blue_moon_bunny_fairy, movement_animation)]++; //movement_animation
+	character->args[CMA(blue_moon_bunny_fairy, movement_animation)]++;
 }
 @}
 
@@ -6805,9 +6805,6 @@ bonuses_update_all_time_points();
 dialog_update_all_time_points();
 background_update_animation();
 @}
-Функции characters_update_all_time_points, player_update_all_time_points,
-bullets_update_all_time_points и bonuses_update_all_time_points вызываются раз в ~1 мс.
-
 
 Добавим таймер для FPS.
 Считаем fps за 5 сек:
