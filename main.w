@@ -1494,14 +1494,13 @@ Point p[] = {{100, 100}, {200, 10}, {10, 200}, {200, 200}, {10, 10}};
 if(*step_of_movement == 5)
 	*step_of_movement = 0;
 
-character_move_to_point(character, 5, 0, p[*step_of_movement].x, p[*step_of_movement].y);
+character_move_to_point(character, CMA(reimu, move_percent),
+	CMA(reimu, time_point_for_movement_x), p[*step_of_movement].x, p[*step_of_movement].y);
 
 if(*move_percent == 0) {
 	(*step_of_movement)++;
 }
 @}
-0 в character_move_to_point показывает args time_point_for_movement_to_x/y,
-  а 5 move_percent.
 
 Если у персонажа hp <= 0:
 @d character_reimu_ai_control is character dead? @{
@@ -2198,7 +2197,7 @@ if(*step_of_movement == 0) {
 Родитель ссылается только на одного ребёнка, но каждый ребёнок(кроме последнего) ссылается
   на другого. Таким образом родитель может обойти их всех.
 
-Ждем 3 секунды(character->time выше):
+Ждем ~6 секунд(character->time выше):
 @d character_blue_moon_bunny_fairy_ai_control wait @{@-
 if(*step_of_movement == 1) {
 	(*time)--;
