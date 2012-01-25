@@ -2783,6 +2783,236 @@ case character_gray_swirl:
 @}
 
 
+Wriggle Nightbug
+
+ - похоже что летает беспорядочно. Берёт случайную точку и летит к ней.
+ - все время качается вверх-вниз.
+ - когда каким типом пуль атакует непонятно
+
+@d Character types @{@-
+character_wriggle_nightbug,
+@}
+
+Так как пока непонятно чем отличаются оба жука, то делаем одного. Если они
+  отличаются, то можно сделать параметр в конструкторе.
+
+@d Character functions @{
+CharacterList *character_wriggle_nightbug_create(int x, int y) {
+	CharacterList *character = character_get_free_cell();
+
+	character->x = x;
+	character->y = y;
+	character->hp = 100;
+	character->character_type = character_wriggle_nightbug;
+	character->radius = 10;
+
+	character->args[CMA(wriggle_nightbug, time_point_for_movement_x)] = 0;
+	character->args[CMA(wriggle_nightbug, time_point_for_movement_y)] = 0;
+
+	character->args[CMA(wriggle_nightbug, move_x)] = 0;
+	character->args[CMA(wriggle_nightbug, move_y)] = 0;
+
+	character->args[CMA(wriggle_nightbug, movement_animation)] = 0;
+
+	character->args[CMA(wriggle_nightbug, speed)] = 0;
+
+	character->args[CMA(wriggle_nightbug, step_of_movement)] = 0;
+
+	character->args[CMA(wriggle_nightbug, move_percent)] = 0;
+	character->args[CMA(wriggle_nightbug, move_begin_x)] = 0;
+	character->args[CMA(wriggle_nightbug, move_begin_y)] = 0;
+
+	character->args[CMA(wriggle_nightbug, time)] = 0;
+
+	return character;
+}
+@}
+
+
+@d Character public prototypes @{@-
+CharacterList *character_wriggle_nightbug_create(int x, int y);
+@}
+
+
+@d Character public structs @{
+enum {
+	CMA(wriggle_nightbug, time_point_for_movement_x) = 0,
+	CMA(wriggle_nightbug, time_point_for_movement_y),
+	CMA(wriggle_nightbug, move_x),
+	CMA(wriggle_nightbug, move_y),
+	CMA(wriggle_nightbug, movement_animation),
+	CMA(wriggle_nightbug, speed),
+	CMA(wriggle_nightbug, step_of_movement),
+	CMA(wriggle_nightbug, move_percent),
+	CMA(wriggle_nightbug, move_begin_x),
+	CMA(wriggle_nightbug, move_begin_y),
+	CMA(wriggle_nightbug, time)
+};
+@}
+
+@d character_set_weak_time_point_x other characters @{@-
+case character_wriggle_nightbug:
+	character_wriggle_nightbug_set_weak_time_point_x(character);
+	break;
+@}
+
+@d character_set_weak_time_point_y other characters @{@-
+case character_wriggle_nightbug:
+	character_wriggle_nightbug_set_weak_time_point_y(character);
+	break;
+@}
+
+@d Different characters set weak time_point functions @{
+static void character_wriggle_nightbug_set_weak_time_point_x(CharacterList *character) {
+	character->args[CMA(wriggle_nightbug, time_point_for_movement_x)] = 10 - (character->args[CMA(wriggle_nightbug, speed)] / 10.1);
+}
+
+static void character_wriggle_nightbug_set_weak_time_point_y(CharacterList *character) {
+	character->args[CMA(wriggle_nightbug, time_point_for_movement_y)] = 10 - (character->args[CMA(wriggle_nightbug, speed)] / 10.1);
+}
+@}
+
+@d characters_update_all_time_points other characters @{@-
+case character_wriggle_nightbug:
+	character_wriggle_nightbug_update_time_points(character);
+	break;
+@}
+
+@d Update time point for different characters @{
+static void character_wriggle_nightbug_update_time_points(CharacterList *character) {
+	if(character->args[CMA(wriggle_nightbug, time_point_for_movement_x)] > 0)
+		character->args[CMA(wriggle_nightbug, time_point_for_movement_x)]--;
+
+	if(character->args[CMA(wriggle_nightbug, time_point_for_movement_y)] > 0)
+		character->args[CMA(wriggle_nightbug, time_point_for_movement_y)]--;
+
+	character->args[CMA(wriggle_nightbug, movement_animation)]++;
+}
+@}
+
+@d characters_ai_control other characters @{@-
+case character_wriggle_nightbug:
+	character_wriggle_nightbug_ai_control(character);
+	break;
+@}
+
+@d AI functions for different characters @{
+static void character_wriggle_nightbug_ai_control(CharacterList *character) {
+	int *const move_x = &character->args[CMA(wriggle_nightbug, move_x)];
+	int *const move_y = &character->args[CMA(wriggle_nightbug, move_y)];
+	int *const speed = &character->args[CMA(wriggle_nightbug, speed)];
+	int *const step_of_movement = &character->args[CMA(wriggle_nightbug, step_of_movement)];
+	int *const move_percent = &character->args[CMA(wriggle_nightbug, move_percent)];
+	int *const time = &character->args[CMA(wriggle_nightbug, time)];
+
+	@<character_wriggle_nightbug_ai_control is character dead?@>
+	@<character_wriggle_nightbug_ai_control move to center@>
+	@<character_wriggle_nightbug_ai_control wait@>
+	@<character_wriggle_nightbug_ai_control choose place@>
+	@<character_wriggle_nightbug_ai_control move@>
+	@<character_wriggle_nightbug_ai_control remove@>
+}
+@}
+
+Если у персонажа hp <= 0:
+@d character_wriggle_nightbug_ai_control is character dead? @{
+if(character->hp <= 0) {
+	character_free(character);
+	return;
+}
+@}
+
+Подлетаем к нужной точке:
+@d character_wriggle_nightbug_ai_control move to center @{@-
+if(*step_of_movement == 0) {
+	character_move_to_point(character, CMA(wriggle_nightbug, move_percent),
+		CMA(wriggle_nightbug, time_point_for_movement_x),
+		250, 130);
+
+	if(*move_percent == 0) {
+		*time = 3000;
+		*step_of_movement = 1;
+	}
+}
+@}
+
+@d character_wriggle_nightbug_ai_control wait @{
+if(*step_of_movement == 1) {
+	(*time)--;
+
+	if(*time == 0)
+		*step_of_movement = 2;
+}
+@}
+
+@d character_wriggle_nightbug_ai_control choose place @{
+if(*step_of_movement == 2) {
+	int dx, dy;
+
+	do {
+		*move_x = rand()%320 + 90;
+		*move_y = rand()%70 + 80;
+
+		dx = character->x - *move_x;
+		dy = character->y - *move_y;
+	} while(dx*dx + dy*dy < 20000);
+
+	*step_of_movement = 3;
+}
+@}
+
+@d character_wriggle_nightbug_ai_control move @{
+if(*step_of_movement == 3) {
+	character_move_to_point(character, CMA(wriggle_nightbug, move_percent),
+		CMA(wriggle_nightbug, time_point_for_movement_x),
+		*move_x, *move_y);
+
+	if(*move_percent == 0) {
+		*time = 3000;
+		*step_of_movement = 1;
+	}
+}
+@}
+
+@d character_wriggle_nightbug_ai_control remove @{@-
+if(*step_of_movement == 9) {
+	if(character->x < -25 || character->x > GAME_FIELD_W + 25 ||
+		character->y < -25 || character->y > GAME_FIELD_H + 25) {
+		character_free(character);
+	}
+}
+@}
+
+
+@d characters_draw other characters @{@-
+case character_wriggle_nightbug:
+	character_wriggle_nightbug_draw(character);
+	break;
+@}
+
+@d Draw functions for different characters @{
+static void character_wriggle_nightbug_draw(CharacterList *character) {
+	static int id = -1;
+
+	if(id == -1)
+		id = image_load("aya.png");
+
+	image_draw_center(id,
+		GAME_FIELD_X + character->x,
+		GAME_FIELD_Y + character->y,
+		0, 0.07);
+}
+@}
+
+Повреждение от пуль:
+@d damage_calculate other enemy characters @{@-
+case character_wriggle_nightbug:
+	if(bullet->bullet_type == bullet_reimu_first)
+		character->hp -= 1000;
+	break;
+@}
+
+
 ===========================================================
 
 Игровой персонаж.
