@@ -3013,6 +3013,411 @@ case character_wriggle_nightbug:
 @}
 
 
+
+===========================================================
+
+Грамматика danmakufu script
+
+@o danmakufu.y @{
+%{
+@<danmakufu.y C defines@>
+%}
+
+@<danmakufu.y Bison defines@>
+%%
+@<danmakufu.y grammar@>
+%%
+@<danmakufu.y code@>
+@}
+
+@d danmakufu.y grammar @{
+script        : /* empty */
+              | script toplevel
+              ;
+		       
+toplevel      : SCRIPT_MAIN '{' lines '}'
+              | SCRIPT_CHILD SYMB '{' lines '}'
+              ;
+		       
+lines         : /* empty */
+              | lines line
+              ;
+		       
+line          : ';'
+              | let
+              | dog_block
+              | defsub_block
+              | deffunc_block
+              | deftask_block
+              ;
+
+let           : let_expr '=' ret_expr ';'
+              ;
+
+let_expr      : LET SYMB
+              ;
+
+dog_block     : '@' DOG_NAME '{' exprs '}'
+              ;
+
+defsub_block  : SUB SYMB '{' exprs '}'
+              ;
+
+deffunc_block : FUNCTION SYMB '(' lets ')' '{' exprs '}'
+			  | FUNCTION SYMB '(' args ')' '{' exprs '}'
+			  | FUNCTION SYMB '{' exprs '}'
+              ;
+
+deftask_block : TASK SYMB '(' lets ')' '{' exprs '}'
+			  | TASK SYMB '(' args ')' '{' exprs '}'
+			  | TASK SYMB '{' exprs '}'
+              ;
+
+exprs         : /* empty */
+              | exprs expr
+              ;
+
+expr          : deffunc_block
+              | defsub_block
+              | let
+              | call_func ';'
+              | call_keyword
+              | set_op
+              ;
+
+
+call_func     : FUNC_NAME '(' args ')'
+              ;
+
+call_keyword  : YIELD ';'
+              | BREAK ';'
+              | RETURN ret_expr ';'
+              | LOOP_TIMES '(' ret_expr ')' '{' exprs '}'
+              | LOOP_TIMES '{' exprs '}'
+              | if
+              ;
+
+if            : IF '(' ret_expr ')' '{' exprs '}' else_if
+              ;
+
+else_if       : /* empty */
+              | ELSE if
+              | ELSE '{' exprs '}'
+              ;
+
+ret_expr      : call_func
+              | arithm_op
+              | string_op
+              | array
+              ;
+
+args          : /* empty */
+              | ret_expr
+              | args ',' ret_expr
+              ;
+
+lets          : /* empty */
+              | let_expr
+              | lets ',' let_expr
+              ;
+
+set_op        : VAR '=' ret_expr ';'
+              | VAR ADD_SET_OP ret_expr ';'
+              | VAR SUB_SET_OP ret_expr ';'
+			  | VAR MUL_SET_OP ret_expr ';'
+			  | VAR DIV_SET_OP ret_expr ';'
+              ;
+
+arithm_op     : NUM
+              | VAR
+              | call_func
+              | arithm_op '+' arithm_op
+              | arithm_op '-' arithm_op
+              | arithm_op '*' arithm_op
+              | arithm_op '/' arithm_op
+              | arithm_op '<' arithm_op
+              | arithm_op '>' arithm_op
+              | arithm_op LOGICAL_OR arithm_op
+              | arithm_op LOGICAL_AND arithm_op
+              ;
+
+string_op     : STRING
+              | VAR
+              | call_func
+              | string_op '~' string_op
+              ;
+
+array         : '[' array_args ']'
+              ;
+
+array_args    : ret_expr
+              | array_args ',' ret_expr
+              ;
+@}
+
+VAR - имя переменной
+FUNC_NAME - имя функции
+SYMB - неизвестное имя
+STRING - строка в кавычках
+true/false - 1/0
+
+@d danmakufu.y Bison defines @{
+%token LOGICAL_OR
+%token LOGICAL_AND
+
+%token ADD_SET_OP
+%token SUB_SET_OP
+%token MUL_SET_OP
+%token DIV_SET_OP
+
+%token NUM
+%token STRING
+
+%token VAR
+%token SYMB
+%token FUNC_NAME
+
+%token DOG_NAME
+%token SCRIPT_MAIN
+%token SCRIPT_CHILD
+
+%token LET
+%token RETURN
+%token IF
+%token ELSE
+%token YIELD
+%token TASK
+%token LOOP_TIMES
+%token BREAK
+%token SUB
+%token FUNCTION
+
+@}
+
+
+Лексика danmakufu script
+
+@o danmakufu.l @{
+%{
+@<danmakufu.l C defines@>
+%}
+
+@<danmakufu.l Lex defines@>
+%%
+@<danmakufu.l vocabulary@>
+%%
+@<danmakufu.l code@>
+@}
+
+Совместим с Bison:
+@d danmakufu.l Lex defines @{
+%option bison-bridge bison-locations
+@}
+
+@d danmakufu.l vocabulary @{
+let                 return LET;
+function            return FUNCTION;
+sub                 return SUB;
+task                return TASK;
+yield               return YIELD;
+break               return BREAK;
+if                  return IF;
+else                return ELSE;
+loop                return LOOP_TIMES;
+times               return LOOP_TIMES;
+return              return RETURN;
+
+script_enemy_main   return SCRIPT_MAIN;
+
+script_enemy        return SCRIPT_CHILD;
+script_shot         return SCRIPT_CHILD;
+
+Initialize          return DOG_NAME;
+MainLoop            return DOG_NAME;
+DrawLoop            return DOG_NAME;
+Finalize            return DOG_NAME;
+BackGround          return DOG_NAME;
+
+\+                  return '+';
+-                   return '-';
+\*                  return '*';
+\/                  return '/';
+\<                  return '<';
+\>                  return '>';
+=                   return '=';
+;                   return ';';
+~                   return '~';
+,                   return ',';
+
+\(                  return '(';
+\)                  return ')';
+\{                  return '{';
+\}                  return '}';
+\[                  return '[';
+\]                  return ']';
+
+||                  return LOGICAL_OR;
+&&                  return LOGICAL_AND;
+
+\\=                 return DIV_SET_OP;
+\*=                 return MUL_SET_OP;
+-=                  return SUB_SET_OP;
+\+=                 return ADD_SET_OP;
+@}
+
+
+@d danmakufu.l vocabulary @{
+{DIGIT}+            return NUM;
+{DIGIT}+"."{DIGIT}* return NUM;
+@}
+
+@d danmakufu.l Lex defines @{
+DIGIT               [0-9]
+@}
+
+@d danmakufu.l vocabulary @{
+\"[^\"]*\"          return STRING;
+@}
+
+@d danmakufu.l vocabulary @{
+[[:alpha:]][[:alnum:]]*    {@<danmakufu.l is symbol, function or variable?@>}
+@}
+
+@d danmakufu.l is symbol, function or variable? @{
+DanmakufuWord *word = danmakufu_get_word(yytext);
+
+if(word == NULL)
+	return SYMB;
+else if(word->type == danmakufu_function)
+	return FUNCTION;
+else if(word->type == danmakufu_variable)
+	return VARIABLE;
+@}
+
+Макросы:
+@d danmakufu.l vocabulary @{
+#TouhouDanmakufu              return M_TOUHOUDANMAKUFU;
+#Title{IN_BRACKETS}           return M_TITLE;
+#Text{IN_BRACKETS}            return M_TEXT;
+#Image{IN_BRACKETS}           return M_IMAGE;
+#BackGround{IN_BRACKETS}      return M_BACKGROUND;
+#BGM{IN_BRACKETS}             return M_BGM;
+#PlayLevel{IN_BRACKETS}       return M_PLAYLEVEL;
+#Player{IN_BRACKETS}          return M_PLAYER;
+#ScriptVersion{IN_BRACKETS}   return M_SCRIPTVERSION;
+@}
+
+Текст в квадратных скобках:
+@d danmakufu.l Lex defines @{
+IN_BRACKETS         \[[^\]]*\]
+@}
+
+Удаление комментариев:
+@d danmakufu.l vocabulary @{
+\/\/[^\r\n]*                  /* empty */;
+@}
+
+Пропускаем пробелы и символы конца строки:
+@d danmakufu.l vocabulary @{
+[ \t\r\n]+                    /* empty */;
+@}
+
+===========================================================
+
+Список в котором храняться имена функций и переменных для danmakufu script.
+Используется лексическим и синтаксическим анализаторами.
+
+@o danmakufu_dict.h @{
+@<License@>
+
+@<danmakufu_dict public structs@>
+@<danmakufu_dict public prototypes@>
+@}
+
+@o danmakufu_dict.c @{
+@<License@>
+
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+
+#include "danmakufu_dict.h"
+
+@<danmakufu_dict private macros@>
+@<danmakufu_dict private structs@>
+@<danmakufu_dict private prototypes@>
+@<danmakufu_dict functions@>
+@}
+
+Слова хранятся в следующей структуре:
+@d danmakufu_dict public structs @{
+#define DANMAKUFU_WORD_MAX_LEN 80
+
+struct DanmakufuWord {
+	int type;
+	char name[DANMAKUFU_WORD_MAX_LEN];
+};
+
+typedef struct DanmakufuWord DanmakufuWord;
+@}
+
+Создадим глобальный список слов(виден только изнутри):
+@d danmakufu_dict private structs @{
+static DanmakufuWord words[DANMAKUFU_MAX_NUM_WORDS];
+static int words_pos;
+@}
+words_pos - указывает место, куда будет записано следующее слово.
+
+Максимальное количество слов:
+@d danmakufu_dict private macros @{
+#define DANMAKUFU_MAX_NUM_WORDS 500
+@}
+
+Функция поиска слова в списке:
+@d danmakufu_dict functions @{
+DanmakufuWord *danmakufu_get_word(const char *name) {
+	int i;
+
+	for(i=0; i<words_pos; i++)
+		if(strncmp(name, words[i].name, DANMAKUFU_WORD_MAX_LEN) == 0)
+			return &words[i];
+
+	return NULL;
+}
+@}
+Если слова нет, то возвращает NULL.
+
+@d danmakufu_dict public prototypes @{
+DanmakufuWord *danmakufu_get_word(const char *name);
+@}
+
+Функция добавления слова:
+@d danmakufu_dict functions @{
+DanmakufuWord *danmakufu_add_word(const char *name, int type) {
+	if(words_pos == DANMAKUFU_MAX_NUM_WORDS)
+		return NULL;
+
+	strncpy(words[words_pos].name, name, DANMAKUFU_WORD_MAX_LEN);
+	words[words_pos].type = type;
+
+	return &words[i];
+}
+@}
+Если слово не помещается, то возвращает NULL.
+
+@d danmakufu_dict public prototypes @{
+DanmakufuWord *danmakufu_add_word(const char *name, int type);
+@}
+
+Определим типы слов:
+@d danmakufu_dict public structs @{
+enum {
+	danmakufu_function,
+	danmakufu_variable
+};
+@}
+
+
 ===========================================================
 
 Игровой персонаж.
