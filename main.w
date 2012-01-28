@@ -3109,6 +3109,9 @@ else_if       : /* empty */
               ;
 
 ret_expr      : call_func
+              | VAR
+              | NUM
+              | STRING
               | arithm_op
               | string_op
               | array
@@ -3128,26 +3131,57 @@ set_op        : VAR '=' ret_expr ';'
 			  | VAR MUL_SET_OP ret_expr ';'
 			  | VAR DIV_SET_OP ret_expr ';'
               ;
+@}
 
-arithm_op     : NUM
+Добавим арифметические операции:
+@d danmakufu.y grammar @{
+arithm_elt    : NUM
               | VAR
               | call_func
-              | arithm_op '+' arithm_op
-              | arithm_op '-' arithm_op
-              | arithm_op '*' arithm_op
-              | arithm_op '/' arithm_op
-              | arithm_op '<' arithm_op
-              | arithm_op '>' arithm_op
-              | arithm_op LOGICAL_OR arithm_op
-              | arithm_op LOGICAL_AND arithm_op
               ;
 
-string_op     : STRING
+arithm_op     : arithm_elt '+' arithm_elt
+              | arithm_op '+' arithm_elt
+              | arithm_elt '-' arithm_elt
+              | arithm_op '-' arithm_elt
+              | arithm_elt '*' arithm_elt
+              | arithm_op '*' arithm_elt
+              | arithm_elt '/' arithm_elt
+              | arithm_op '/' arithm_elt
+              | arithm_elt '<' arithm_elt
+              | arithm_op '<' arithm_elt
+              | arithm_elt '>' arithm_elt
+              | arithm_op '>' arithm_elt
+              | arithm_elt LOGICAL_OR arithm_elt
+              | arithm_op LOGICAL_OR arithm_elt
+              | arithm_elt LOGICAL_AND arithm_elt
+              | arithm_op LOGICAL_AND arithm_elt
+              ;
+@}
+Именно операции, а не числа.
+arithm_elt играет вспомогательную роль и его лучше никуда кроме arithm_op не включать.
+  Ниже определёны операции над строками и у них тоже есть VAR и call_func как и у операций
+  над числами. А это значит, что будет конфликт shift/reduce, если использовать два типа
+  операций в одном месте, например так:
+    ret_expr    : arithm_op
+                | string_op
+                ;
+  Поэтому используются костыли arithm_elt и string_elt. И такой дурацкий дубляж строк.
+  Наверное есть более красивое решение проблемы, но стоит ли его искать, если всё
+  работает и так?
+
+@d danmakufu.y grammar @{
+string_elt    : STRING
               | VAR
               | call_func
-              | string_op '~' string_op
               ;
 
+string_op     : string_elt '~' string_elt
+              | string_op '~' string_elt
+              ;
+@}
+
+@d danmakufu.y grammar @{
 array         : '[' array_args ']'
               ;
 
