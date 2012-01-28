@@ -3063,12 +3063,14 @@ dog_block     : '@' DOG_NAME '{' exprs '}'
 defsub_block  : SUB SYMB '{' exprs '}'
               ;
 
-deffunc_block : FUNCTION SYMB '(' lets ')' '{' exprs '}'
+deffunc_block : FUNCTION SYMB '(' ')' '{' exprs '}'
+              | FUNCTION SYMB '(' lets ')' '{' exprs '}'
 			  | FUNCTION SYMB '(' args ')' '{' exprs '}'
 			  | FUNCTION SYMB '{' exprs '}'
               ;
 
-deftask_block : TASK SYMB '(' lets ')' '{' exprs '}'
+deftask_block : TASK SYMB '(' ')' '{' exprs '}'
+              | TASK SYMB '(' lets ')' '{' exprs '}'
 			  | TASK SYMB '(' args ')' '{' exprs '}'
 			  | TASK SYMB '{' exprs '}'
               ;
@@ -3086,7 +3088,8 @@ expr          : deffunc_block
               ;
 
 
-call_func     : FUNC_NAME '(' args ')'
+call_func     : FUNC_NAME '(' ')'
+              | FUNC_NAME '(' args ')'
               ;
 
 call_keyword  : YIELD ';'
@@ -3111,13 +3114,11 @@ ret_expr      : call_func
               | array
               ;
 
-args          : /* empty */
-              | ret_expr
+args          : ret_expr
               | args ',' ret_expr
               ;
 
-lets          : /* empty */
-              | let_expr
+lets          : let_expr
               | lets ',' let_expr
               ;
 
