@@ -3030,15 +3030,58 @@ case character_wriggle_nightbug:
 @<danmakufu.y code@>
 @}
 
+@d danmakufu.y C defines @{
+#include <stdio.h>
+#include <string.h>
+
+//#define YYPARSE_PARAM scanner
+//#define YYLEX_PARAM   scanner
+
+void yyerror(const char *str) {
+	fprintf(stderr, "error: %s\n", str);
+}
+ 
+int yywrap() {
+	return 1;
+} 
+  
+main() {
+	yyparse();
+}
+@}
+
+@d danmakufu.y Bison defines @{
+%locations
+%pure_parser
+
+%union {
+	char *str;
+	int num;
+}
+
+@}
+
 @d danmakufu.y grammar @{
 script        : /* empty */
               | script toplevel
               ;
 		       
-toplevel      : SCRIPT_MAIN '{' lines '}'
+toplevel      : SCRIPT_MAIN '{' lines '}'          { printf("SCRIPT_MAIN\n"); }
               | SCRIPT_CHILD SYMB '{' lines '}'
+              | macros
               ;
-		       
+
+macros        : M_TOUHOUDANMAKUFU
+              | M_TITLE
+              | M_TEXT
+              | M_IMAGE
+              | M_BACKGROUND
+              | M_BGM
+              | M_PLAYLEVEL
+              | M_PLAYER
+              | M_SCRIPTVERSION
+              ;
+
 lines         : /* empty */
               | lines line
               ;
@@ -3051,13 +3094,11 @@ line          : ';'
               | deftask_block
               ;
 
-let           : let_expr '=' ret_expr ';'
+let           : LET SYMB '=' ret_expr ';'          { printf("LET %s\n", $2); }
+              | LET SYMB ';'                       { printf("LET %s\n", $2); }
               ;
 
-let_expr      : LET SYMB
-              ;
-
-dog_block     : '@' DOG_NAME '{' exprs '}'
+dog_block     : DOG_NAME '{' exprs '}'             { printf("%s\n", $1); }
               ;
 
 defsub_block  : SUB SYMB '{' exprs '}'
@@ -3069,10 +3110,10 @@ deffunc_block : FUNCTION SYMB '(' ')' '{' exprs '}'
 			  | FUNCTION SYMB '{' exprs '}'
               ;
 
-deftask_block : TASK SYMB '(' ')' '{' exprs '}'
-              | TASK SYMB '(' lets ')' '{' exprs '}'
-			  | TASK SYMB '(' args ')' '{' exprs '}'
-			  | TASK SYMB '{' exprs '}'
+deftask_block : TASK SYMB '(' ')' '{' exprs '}'              { printf("TASK %s\n", $2); }
+              | TASK SYMB '(' lets ')' '{' exprs '}'         { printf("TASK %s\n", $2); }
+			  | TASK SYMB '(' args ')' '{' exprs '}'         { printf("TASK %s\n", $2); }
+			  | TASK SYMB '{' exprs '}'                      { printf("TASK %s\n", $2); }
               ;
 
 exprs         : /* empty */
@@ -3088,16 +3129,23 @@ expr          : deffunc_block
               ;
 
 
-call_func     : FUNC_NAME '(' ')'
-              | FUNC_NAME '(' args ')'
-              ;
-
 call_keyword  : YIELD ';'
               | BREAK ';'
               | RETURN ret_expr ';'
-              | LOOP_TIMES '(' ret_expr ')' '{' exprs '}'
-              | LOOP_TIMES '{' exprs '}'
+              | LOOP_TIMES '(' ret_expr ')' '{' exprs '}'    { printf("LOOP\n"); }
+              | LOOP_TIMES '{' exprs '}'                     { printf("LOOP\n"); }
+              | WHILE '(' ret_expr ')' '{' exprs '}'         { printf("WHILE\n"); }
+              | ascent                                       { printf("ASCENT\n"); }
+              | descent                                      { printf("DESCENT\n"); }
               | if
+              ;
+
+ascent        : ASCENT '(' LET SYMB IN ret_expr DOUBLE_DOT ret_expr ')' '{' exprs '}'
+              | ASCENT '(' SYMB IN ret_expr DOUBLE_DOT ret_expr ')' '{' exprs '}'
+              ;
+
+descent       : DESCENT '(' LET SYMB IN ret_expr DOUBLE_DOT ret_expr ')' '{' exprs '}'
+              | DESCENT '(' SYMB IN ret_expr DOUBLE_DOT ret_expr ')' '{' exprs '}'
               ;
 
 if            : IF '(' ret_expr ')' '{' exprs '}' else_if
@@ -3109,35 +3157,80 @@ else_if       : /* empty */
               ;
 
 ret_expr      : call_func
-              | VAR
-              | NUM
+              | symbol
+              | number
               | STRING
               | arithm_op
               | string_op
               | array
+              | indexing
               ;
+@}
 
+Более высокоуровневые элементы для чисел, символов, индексирования и вызова
+функции:
+@d danmakufu.y grammar @{
+number           : NUM
+                 | '-' NUM %prec NEG
+                 | '(' NUM ')'
+                 ; 	
+			       	 
+symbol           : SYMB
+                 | '-' SYMB %prec NEG
+                 | '(' SYMB ')'
+                 ; 	
+			       	 
+indexing_expr    : array '[' ret_expr ']'
+                 | indexing_expr '[' ret_expr ']'
+                 ; 	
+			       	 
+indexing         : indexing_expr
+                 | '-' indexing_expr %prec NEG
+                 | '(' indexing_expr ')'
+                 ; 	
+			       	 
+call_func_expr   : SYMB '(' ')'                       { printf("CALL %s\n", $1); }
+                 | SYMB '(' args ')'                  { printf("CALL %s\n", $1); }
+                 ; 	
+			       	 
+call_func        : call_func_expr
+                 | '-' call_func_expr %prec NEG
+                 | '(' call_func_expr ')'
+                 ; 	
+@}
+Эти конструкции с унарным минусом и скобками дублируются из-за того, что
+   эти разные типы нельзя слить в один, так как это нарушит typecheck.
+*_expr играют вспомогательную роль и не должны использоваться в других блоках
+   кроме одноимённых без _expr.
+
+@d danmakufu.y grammar @{
 args          : ret_expr
               | args ',' ret_expr
+              ;
+
+let_expr      : LET SYMB
               ;
 
 lets          : let_expr
               | lets ',' let_expr
               ;
 
-set_op        : VAR '=' ret_expr ';'
-              | VAR ADD_SET_OP ret_expr ';'
-              | VAR SUB_SET_OP ret_expr ';'
-			  | VAR MUL_SET_OP ret_expr ';'
-			  | VAR DIV_SET_OP ret_expr ';'
+set_op        : SYMB '=' ret_expr ';'
+              | SYMB ADD_SET_OP ret_expr ';'
+              | SYMB SUB_SET_OP ret_expr ';'
+			  | SYMB MUL_SET_OP ret_expr ';'
+			  | SYMB DIV_SET_OP ret_expr ';'
+              | SYMB INC_OP ';'
+              | SYMB DEC_OP ';'
               ;
 @}
 
 Добавим арифметические операции:
 @d danmakufu.y grammar @{
-arithm_elt    : NUM
-              | VAR
+arithm_elt    : number
+              | symbol
               | call_func
+              | indexing
               ;
 
 arithm_op     : arithm_elt '+' arithm_elt
@@ -3148,6 +3241,8 @@ arithm_op     : arithm_elt '+' arithm_elt
               | arithm_op '*' arithm_elt
               | arithm_elt '/' arithm_elt
               | arithm_op '/' arithm_elt
+              | arithm_elt '%' arithm_elt
+              | arithm_op '%' arithm_elt
               | arithm_elt '<' arithm_elt
               | arithm_op '<' arithm_elt
               | arithm_elt '>' arithm_elt
@@ -3156,6 +3251,11 @@ arithm_op     : arithm_elt '+' arithm_elt
               | arithm_op LOGICAL_OR arithm_elt
               | arithm_elt LOGICAL_AND arithm_elt
               | arithm_op LOGICAL_AND arithm_elt
+              | arithm_elt EQUAL_OP arithm_elt
+              | arithm_op EQUAL_OP arithm_elt
+              | arithm_elt NOT_EQUAL_OP arithm_elt
+              | arithm_op NOT_EQUAL_OP arithm_elt
+              | '(' arithm_op ')'
               ;
 @}
 Именно операции, а не числа.
@@ -3172,8 +3272,9 @@ arithm_elt играет вспомогательную роль и его луч
 
 @d danmakufu.y grammar @{
 string_elt    : STRING
-              | VAR
+              | SYMB
               | call_func
+              | indexing
               ;
 
 string_op     : string_elt '~' string_elt
@@ -3190,31 +3291,34 @@ array_args    : ret_expr
               ;
 @}
 
-VAR - имя переменной
-FUNC_NAME - имя функции
-SYMB - неизвестное имя
-STRING - строка в кавычках
-true/false - 1/0
 
 @d danmakufu.y Bison defines @{
 %token LOGICAL_OR
 %token LOGICAL_AND
 
+%token EQUAL_OP
+%token NOT_EQUAL_OP
+
 %token ADD_SET_OP
 %token SUB_SET_OP
 %token MUL_SET_OP
 %token DIV_SET_OP
+%token INC_OP
+%token DEC_OP
 
-%token NUM
-%token STRING
+%left '-' '+'
+%left '*' '/'
+%left NEG
+%right '^'
 
-%token VAR
-%token SYMB
-%token FUNC_NAME
+%token <num> NUM
+%token <str> STRING
 
-%token DOG_NAME
-%token SCRIPT_MAIN
-%token SCRIPT_CHILD
+%token <str> SYMB
+
+%token <str> DOG_NAME
+%token <str> SCRIPT_MAIN
+%token <str> SCRIPT_CHILD
 
 %token LET
 %token RETURN
@@ -3223,12 +3327,29 @@ true/false - 1/0
 %token YIELD
 %token TASK
 %token LOOP_TIMES
+%token WHILE
+%token ASCENT
+%token DESCENT
+%token IN
+%token DOUBLE_DOT
 %token BREAK
 %token SUB
 %token FUNCTION
-
 @}
 
+
+Макросы:
+@d danmakufu.y Bison defines @{
+%token <str> M_TOUHOUDANMAKUFU
+%token <str> M_TITLE
+%token <str> M_TEXT
+%token <str> M_IMAGE
+%token <str> M_BACKGROUND
+%token <str> M_BGM
+%token <str> M_PLAYLEVEL
+%token <str> M_PLAYER
+%token <str> M_SCRIPTVERSION
+@}
 
 Лексика danmakufu script
 
@@ -3249,6 +3370,10 @@ true/false - 1/0
 %option bison-bridge bison-locations
 @}
 
+@d danmakufu.l C defines @{
+#include "danmakufu.tab.h"
+@}
+
 @d danmakufu.l vocabulary @{
 let                 return LET;
 function            return FUNCTION;
@@ -3260,23 +3385,30 @@ if                  return IF;
 else                return ELSE;
 loop                return LOOP_TIMES;
 times               return LOOP_TIMES;
+while               return WHILE;
+ascent              return ASCENT;
+descent             return DESCENT;
+in                  return IN;
+".."                return DOUBLE_DOT;
 return              return RETURN;
 
 script_enemy_main   return SCRIPT_MAIN;
+script_stage_main   return SCRIPT_MAIN;
 
 script_enemy        return SCRIPT_CHILD;
 script_shot         return SCRIPT_CHILD;
 
-Initialize          return DOG_NAME;
-MainLoop            return DOG_NAME;
-DrawLoop            return DOG_NAME;
-Finalize            return DOG_NAME;
-BackGround          return DOG_NAME;
+@Initialize         { yylval->str=strdup(yytext); return DOG_NAME;}
+@MainLoop           { yylval->str=strdup(yytext); return DOG_NAME;}
+@DrawLoop           { yylval->str=strdup(yytext); return DOG_NAME;}
+@Finalize           { yylval->str=strdup(yytext); return DOG_NAME;}
+@BackGround         { yylval->str=strdup(yytext); return DOG_NAME;}
 
 \+                  return '+';
 -                   return '-';
 \*                  return '*';
 \/                  return '/';
+%                   return '%';
 \<                  return '<';
 \>                  return '>';
 =                   return '=';
@@ -3291,19 +3423,24 @@ BackGround          return DOG_NAME;
 \[                  return '[';
 \]                  return ']';
 
-||                  return LOGICAL_OR;
+"||"                return LOGICAL_OR;
 &&                  return LOGICAL_AND;
 
 \\=                 return DIV_SET_OP;
-\*=                 return MUL_SET_OP;
+"*="                return MUL_SET_OP;
 -=                  return SUB_SET_OP;
-\+=                 return ADD_SET_OP;
+"+="                return ADD_SET_OP;
+"++"                return INC_OP;
+--                  return DEC_OP;
+
+==                  return EQUAL_OP;
+!=                  return NOT_EQUAL_OP;
 @}
 
 
 @d danmakufu.l vocabulary @{
 {DIGIT}+            return NUM;
-{DIGIT}+"."{DIGIT}* return NUM;
+{DIGIT}+"."{DIGIT}+ return NUM;
 @}
 
 @d danmakufu.l Lex defines @{
@@ -3315,18 +3452,7 @@ DIGIT               [0-9]
 @}
 
 @d danmakufu.l vocabulary @{
-[[:alpha:]][[:alnum:]]*    {@<danmakufu.l is symbol, function or variable?@>}
-@}
-
-@d danmakufu.l is symbol, function or variable? @{
-DanmakufuWord *word = danmakufu_get_word(yytext);
-
-if(word == NULL)
-	return SYMB;
-else if(word->type == danmakufu_function)
-	return FUNCTION;
-else if(word->type == danmakufu_variable)
-	return VARIABLE;
+[[:alpha:]][[:alnum:]]*    { yylval->str=strdup(yytext); return SYMB; }
 @}
 
 Макросы:
