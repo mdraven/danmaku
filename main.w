@@ -3253,8 +3253,8 @@ set_op_elt    : SYMB
 set_op        : set_op_elt '=' ret_expr ';'
               | set_op_elt ADD_SET_OP ret_expr ';'
               | set_op_elt SUB_SET_OP ret_expr ';'
-			  | set_op_elt MUL_SET_OP ret_expr ';'
-			  | set_op_elt DIV_SET_OP ret_expr ';'
+              | set_op_elt MUL_SET_OP ret_expr ';'
+              | set_op_elt DIV_SET_OP ret_expr ';'
               | set_op_elt INC_OP ';'
               | set_op_elt DEC_OP ';'
               ;
