@@ -3129,7 +3129,7 @@ exprs         : /* empty */
 expr          : deffunc_block
               | defsub_block
               | let
-              | call_func ';'
+              | call_func_expr ';'
               | call_keyword
               | set_op
               ;
@@ -3141,11 +3141,30 @@ call_keyword  : YIELD ';'
               | LOOP_TIMES '(' ret_expr ')' '{' exprs '}'    { printf("LOOP\n"); }
               | LOOP_TIMES '{' exprs '}'                     { printf("LOOP\n"); }
               | WHILE '(' ret_expr ')' '{' exprs '}'         { printf("WHILE\n"); }
+              | LOCAL '{' exprs '}'                          { printf("LOCAL\n"); }
               | ascent                                       { printf("ASCENT\n"); }
               | descent                                      { printf("DESCENT\n"); }
               | if
+              | alternative
+              ;
+@}
+
+Danmakufu script'ный switch:
+@d danmakufu.y grammar @{
+alternative   : ALTERNATIVE '(' ret_expr ')' case other      { printf("ALTERNATIVE\n"); }
+              | ALTERNATIVE '(' ret_expr ')' case            { printf("ALTERNATIVE\n"); }
               ;
 
+case          : CASE '(' args ')' '{' exprs '}'              { printf("CASE\n"); }
+              | case CASE '(' args ')' '{' exprs '}'         { printf("CASE\n"); }
+              ;
+
+other         : OTHER '{' exprs '}'                          { printf("OTHER\n"); }
+              ;
+@}
+Выглядит как говно, зато без конфликта shift/reduce.
+
+@d danmakufu.y grammar @{
 ascent        : ASCENT '(' LET SYMB IN ret_expr DOUBLE_DOT ret_expr ')' '{' exprs '}'
               | ASCENT '(' SYMB IN ret_expr DOUBLE_DOT ret_expr ')' '{' exprs '}'
               ;
@@ -3153,7 +3172,9 @@ ascent        : ASCENT '(' LET SYMB IN ret_expr DOUBLE_DOT ret_expr ')' '{' expr
 descent       : DESCENT '(' LET SYMB IN ret_expr DOUBLE_DOT ret_expr ')' '{' exprs '}'
               | DESCENT '(' SYMB IN ret_expr DOUBLE_DOT ret_expr ')' '{' exprs '}'
               ;
+@}
 
+@d danmakufu.y grammar @{
 if            : IF '(' ret_expr ')' '{' exprs '}' else_if
               ;
 
@@ -3161,15 +3182,18 @@ else_if       : /* empty */
               | ELSE if
               | ELSE '{' exprs '}'
               ;
+@}
 
-ret_expr      : call_func
+Типы, которые возвращают значание:
+@d danmakufu.y grammar @{
+ret_expr      : call_func_ret
               | symbol
               | number
               | STRING
               | arithm_op
               | string_op
               | array
-              | indexing
+              | indexing_ret
               ;
 @}
 
@@ -3179,35 +3203,34 @@ ret_expr      : call_func
 number           : NUM
                  | '-' NUM %prec NEG
                  | '(' NUM ')'
-                 ; 	
-			       	 
+                 ;
+
 symbol           : SYMB
                  | '-' SYMB %prec NEG
                  | '(' SYMB ')'
-                 ; 	
-			       	 
+                 ;
+
 indexing_expr    : array '[' ret_expr ']'
+                 | SYMB '[' ret_expr ']'
                  | indexing_expr '[' ret_expr ']'
-                 ; 	
-			       	 
-indexing         : indexing_expr
+                 ;
+
+indexing_ret     : indexing_expr
                  | '-' indexing_expr %prec NEG
                  | '(' indexing_expr ')'
-                 ; 	
-			       	 
+                 ;
+
 call_func_expr   : SYMB '(' ')'                       { printf("CALL %s\n", $1); }
                  | SYMB '(' args ')'                  { printf("CALL %s\n", $1); }
-                 ; 	
-			       	 
-call_func        : call_func_expr
+                 ;
+
+call_func_ret    : call_func_expr
                  | '-' call_func_expr %prec NEG
                  | '(' call_func_expr ')'
-                 ; 	
+                 ;
 @}
 Эти конструкции с унарным минусом и скобками дублируются из-за того, что
    эти разные типы нельзя слить в один, так как это нарушит typecheck.
-*_expr играют вспомогательную роль и не должны использоваться в других блоках
-   кроме одноимённых без _expr.
 
 @d danmakufu.y grammar @{
 args          : ret_expr
@@ -3220,14 +3243,20 @@ let_expr      : LET SYMB
 lets          : let_expr
               | lets ',' let_expr
               ;
+@}
 
-set_op        : SYMB '=' ret_expr ';'
-              | SYMB ADD_SET_OP ret_expr ';'
-              | SYMB SUB_SET_OP ret_expr ';'
-			  | SYMB MUL_SET_OP ret_expr ';'
-			  | SYMB DIV_SET_OP ret_expr ';'
-              | SYMB INC_OP ';'
-              | SYMB DEC_OP ';'
+@d danmakufu.y grammar @{
+set_op_elt    : SYMB
+              | indexing_expr
+              ;
+
+set_op        : set_op_elt '=' ret_expr ';'
+              | set_op_elt ADD_SET_OP ret_expr ';'
+              | set_op_elt SUB_SET_OP ret_expr ';'
+			  | set_op_elt MUL_SET_OP ret_expr ';'
+			  | set_op_elt DIV_SET_OP ret_expr ';'
+              | set_op_elt INC_OP ';'
+              | set_op_elt DEC_OP ';'
               ;
 @}
 
@@ -3235,8 +3264,8 @@ set_op        : SYMB '=' ret_expr ';'
 @d danmakufu.y grammar @{
 arithm_elt    : number
               | symbol
-              | call_func
-              | indexing
+              | call_func_ret
+              | indexing_ret
               ;
 
 arithm_op     : arithm_elt '+' arithm_elt
@@ -3253,6 +3282,8 @@ arithm_op     : arithm_elt '+' arithm_elt
               | arithm_op '<' arithm_elt
               | arithm_elt '>' arithm_elt
               | arithm_op '>' arithm_elt
+              | arithm_elt '^' arithm_elt
+              | arithm_op '^' arithm_elt
               | arithm_elt LOGICAL_OR arithm_elt
               | arithm_op LOGICAL_OR arithm_elt
               | arithm_elt LOGICAL_AND arithm_elt
@@ -3261,6 +3292,7 @@ arithm_op     : arithm_elt '+' arithm_elt
               | arithm_op EQUAL_OP arithm_elt
               | arithm_elt NOT_EQUAL_OP arithm_elt
               | arithm_op NOT_EQUAL_OP arithm_elt
+              | '-' '(' arithm_op ')' %prec NEG
               | '(' arithm_op ')'
               ;
 @}
@@ -3279,8 +3311,8 @@ arithm_elt играет вспомогательную роль и его луч
 @d danmakufu.y grammar @{
 string_elt    : STRING
               | SYMB
-              | call_func
-              | indexing
+              | call_func_ret
+              | indexing_ret
               ;
 
 string_op     : string_elt '~' string_elt
@@ -3334,6 +3366,10 @@ array_args    : ret_expr
 %token TASK
 %token LOOP_TIMES
 %token WHILE
+%token LOCAL
+%token ALTERNATIVE
+%token CASE
+%token OTHER
 %token ASCENT
 %token DESCENT
 %token IN
@@ -3359,28 +3395,28 @@ array_args    : ret_expr
 
 Лексика danmakufu script
 
-@o danmakufu.l @{
+@o danmakufu.lex @{
 %{
-@<danmakufu.l C defines@>
+@<danmakufu.lex C defines@>
 %}
 
-@<danmakufu.l Lex defines@>
+@<danmakufu.lex Lex defines@>
 %%
-@<danmakufu.l vocabulary@>
+@<danmakufu.lex vocabulary@>
 %%
-@<danmakufu.l code@>
+@<danmakufu.lex code@>
 @}
 
 Совместим с Bison:
-@d danmakufu.l Lex defines @{
+@d danmakufu.lex Lex defines @{
 %option bison-bridge bison-locations
 @}
 
-@d danmakufu.l C defines @{
+@d danmakufu.lex C defines @{
 #include "danmakufu.tab.h"
 @}
 
-@d danmakufu.l vocabulary @{
+@d danmakufu.lex vocabulary @{
 let                 return LET;
 function            return FUNCTION;
 sub                 return SUB;
@@ -3392,6 +3428,10 @@ else                return ELSE;
 loop                return LOOP_TIMES;
 times               return LOOP_TIMES;
 while               return WHILE;
+local               return LOCAL;
+alternative         return ALTERNATIVE;
+case                return CASE;
+other               return OTHER;
 ascent              return ASCENT;
 descent             return DESCENT;
 in                  return IN;
@@ -3415,6 +3455,7 @@ script_shot         return SCRIPT_CHILD;
 \*                  return '*';
 \/                  return '/';
 %                   return '%';
+\^                  return '^';
 \<                  return '<';
 \>                  return '>';
 =                   return '=';
@@ -3444,25 +3485,30 @@ script_shot         return SCRIPT_CHILD;
 @}
 
 
-@d danmakufu.l vocabulary @{
+@d danmakufu.lex vocabulary @{
 {DIGIT}+            return NUM;
 {DIGIT}+"."{DIGIT}+ return NUM;
 @}
 
-@d danmakufu.l Lex defines @{
+@d danmakufu.lex Lex defines @{
 DIGIT               [0-9]
 @}
 
-@d danmakufu.l vocabulary @{
-\"[^\"]*\"          return STRING;
+@d danmakufu.lex vocabulary @{
+{STRING}            return STRING;
 @}
 
-@d danmakufu.l vocabulary @{
+@d danmakufu.lex Lex defines @{
+STRING              \"[^\"]*\"
+@}
+
+
+@d danmakufu.lex vocabulary @{
 [[:alpha:]][[:alnum:]]*    { yylval->str=strdup(yytext); return SYMB; }
 @}
 
 Макросы:
-@d danmakufu.l vocabulary @{
+@d danmakufu.lex vocabulary @{
 #TouhouDanmakufu              return M_TOUHOUDANMAKUFU;
 #Title{IN_BRACKETS}           return M_TITLE;
 #Text{IN_BRACKETS}            return M_TEXT;
@@ -3472,20 +3518,82 @@ DIGIT               [0-9]
 #PlayLevel{IN_BRACKETS}       return M_PLAYLEVEL;
 #Player{IN_BRACKETS}          return M_PLAYER;
 #ScriptVersion{IN_BRACKETS}   return M_SCRIPTVERSION;
+@<danmakufu.lex vocabulary include_file@>
 @}
 
 Текст в квадратных скобках:
-@d danmakufu.l Lex defines @{
+@d danmakufu.lex Lex defines @{
 IN_BRACKETS         \[[^\]]*\]
 @}
 
-Удаление комментариев:
-@d danmakufu.l vocabulary @{
+Поддержка #include_function:
+@d danmakufu.lex vocabulary include_file @{
+#include_function             BEGIN(include);
+<include>[ \t]*               /* empty */;
+<include>{STRING}             { @<danmakufu.lex include_function start@>
+                              }
+<<EOF>>                       { @<danmakufu.lex include_function stop@>
+                              }
+@}
+Закрывающие фигурные скобки расположены так забавно из-за ошибки в myweb(а как я её сейчас найду?-_-)
+
+@d danmakufu.lex include_function start @{
+int i;
+
+yytext[yyleng-1] = '\0';
+
+for(i = 1; i < yyleng-1; i++)
+	if(yytext[i] == '\\')
+		yytext[i] = '/';
+
+printf("#include %s\n", &yytext[1]);
+
+yyin = fopen(&yytext[1], "r");
+
+if(yyin == NULL)
+	error("error with open file");
+
+yypush_buffer_state(yy_create_buffer(yyin, YY_BUF_SIZE));
+
+BEGIN(INITIAL);
+@}
+unix-specific костыль.
+
+@d danmakufu.lex include_function stop @{
+yypop_buffer_state();
+
+printf("#close\n");
+
+if(!YY_CURRENT_BUFFER)
+	yyterminate();
+@}
+
+@d danmakufu.lex Lex defines @{
+%x include
+@}
+
+
+Удаление комментариев, однострочных:
+@d danmakufu.lex vocabulary @{
 \/\/[^\r\n]*                  /* empty */;
+@}
+и многострочных:
+@d danmakufu.lex vocabulary @{
+"/*"                          BEGIN(comment);
+<comment>{
+	"*/"                      BEGIN(0);
+	[^*\n]+                   ;
+    "*"[^/]                   ;
+    \n                        ;
+}
+@}
+
+@d danmakufu.lex Lex defines @{
+%x comment
 @}
 
 Пропускаем пробелы и символы конца строки:
-@d danmakufu.l vocabulary @{
+@d danmakufu.lex vocabulary @{
 [ \t\r\n]+                    /* empty */;
 @}
 
