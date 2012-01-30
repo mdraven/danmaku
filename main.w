@@ -3129,7 +3129,7 @@ exprs         : /* empty */
 expr          : deffunc_block
               | defsub_block
               | let
-              | call_func_expr ';'
+              | call_func ';'
               | call_keyword
               | set_op
               ;
@@ -3184,53 +3184,19 @@ else_if       : /* empty */
               ;
 @}
 
-Типы, которые возвращают значание:
 @d danmakufu.y grammar @{
-ret_expr      : call_func_ret
-              | symbol
-              | number
-              | STRING
-              | arithm_op
-              | string_op
-              | array
-              | indexing_ret
-              ;
-@}
-
-Более высокоуровневые элементы для чисел, символов, индексирования и вызова
-функции:
-@d danmakufu.y grammar @{
-number           : NUM
-                 | '-' NUM %prec NEG
-                 | '(' NUM ')'
+indexing         : array '[' ret_expr ']'                         { printf("INDEXING\n"); }
+                 | array '[' ret_expr DOUBLE_DOT ret_expr ']'     { printf("INDEXING\n"); }
+                 | SYMB '[' ret_expr ']'                          { printf("INDEXING %s\n", $1); }
+                 | SYMB '[' ret_expr DOUBLE_DOT ret_expr ']'      { printf("INDEXING %s\n", $1); }
+                 | indexing '[' ret_expr ']'                      { printf("INDEXING\n"); }
+                 | indexing '[' ret_expr DOUBLE_DOT ret_expr ']'  { printf("INDEXING\n"); }
                  ;
 
-symbol           : SYMB
-                 | '-' SYMB %prec NEG
-                 | '(' SYMB ')'
-                 ;
-
-indexing_expr    : array '[' ret_expr ']'
-                 | SYMB '[' ret_expr ']'
-                 | indexing_expr '[' ret_expr ']'
-                 ;
-
-indexing_ret     : indexing_expr
-                 | '-' indexing_expr %prec NEG
-                 | '(' indexing_expr ')'
-                 ;
-
-call_func_expr   : SYMB '(' ')'                       { printf("CALL %s\n", $1); }
+call_func        : SYMB '(' ')'                       { printf("CALL %s\n", $1); }
                  | SYMB '(' args ')'                  { printf("CALL %s\n", $1); }
                  ;
-
-call_func_ret    : call_func_expr
-                 | '-' call_func_expr %prec NEG
-                 | '(' call_func_expr ')'
-                 ;
 @}
-Эти конструкции с унарным минусом и скобками дублируются из-за того, что
-   эти разные типы нельзя слить в один, так как это нарушит typecheck.
 
 @d danmakufu.y grammar @{
 args          : ret_expr
@@ -3247,7 +3213,7 @@ lets          : let_expr
 
 @d danmakufu.y grammar @{
 set_op_elt    : SYMB
-              | indexing_expr
+              | indexing
               ;
 
 set_op        : set_op_elt '=' ret_expr ';'
@@ -3260,68 +3226,38 @@ set_op        : set_op_elt '=' ret_expr ';'
               ;
 @}
 
-Добавим арифметические операции:
+Типы, которые возвращают значание:
 @d danmakufu.y grammar @{
-arithm_elt    : number
-              | symbol
-              | call_func_ret
-              | indexing_ret
-              ;
-
-arithm_op     : arithm_elt '+' arithm_elt
-              | arithm_op '+' arithm_elt
-              | arithm_elt '-' arithm_elt
-              | arithm_op '-' arithm_elt
-              | arithm_elt '*' arithm_elt
-              | arithm_op '*' arithm_elt
-              | arithm_elt '/' arithm_elt
-              | arithm_op '/' arithm_elt
-              | arithm_elt '%' arithm_elt
-              | arithm_op '%' arithm_elt
-              | arithm_elt '<' arithm_elt
-              | arithm_op '<' arithm_elt
-              | arithm_elt '>' arithm_elt
-              | arithm_op '>' arithm_elt
-              | arithm_elt '^' arithm_elt
-              | arithm_op '^' arithm_elt
-              | arithm_elt LOGICAL_OR arithm_elt
-              | arithm_op LOGICAL_OR arithm_elt
-              | arithm_elt LOGICAL_AND arithm_elt
-              | arithm_op LOGICAL_AND arithm_elt
-              | arithm_elt EQUAL_OP arithm_elt
-              | arithm_op EQUAL_OP arithm_elt
-              | arithm_elt NOT_EQUAL_OP arithm_elt
-              | arithm_op NOT_EQUAL_OP arithm_elt
-              | '-' '(' arithm_op ')' %prec NEG
-              | '(' arithm_op ')'
-              ;
-@}
-Именно операции, а не числа.
-arithm_elt играет вспомогательную роль и его лучше никуда кроме arithm_op не включать.
-  Ниже определёны операции над строками и у них тоже есть VAR и call_func как и у операций
-  над числами. А это значит, что будет конфликт shift/reduce, если использовать два типа
-  операций в одном месте, например так:
-    ret_expr    : arithm_op
-                | string_op
-                ;
-  Поэтому используются костыли arithm_elt и string_elt. И такой дурацкий дубляж строк.
-  Наверное есть более красивое решение проблемы, но стоит ли его искать, если всё
-  работает и так?
-
-@d danmakufu.y grammar @{
-string_elt    : STRING
+ret_expr      : NUM
               | SYMB
-              | call_func_ret
-              | indexing_ret
-              ;
-
-string_op     : string_elt '~' string_elt
-              | string_op '~' string_elt
+              | STRING
+              | CHARACTER
+              | call_func
+              | indexing
+              | array
+              | ret_expr '+' ret_expr
+              | ret_expr '-' ret_expr
+              | ret_expr '*' ret_expr
+              | ret_expr '/' ret_expr
+              | ret_expr '%' ret_expr
+              | ret_expr '<' ret_expr
+              | ret_expr LE_OP ret_expr
+              | ret_expr '>' ret_expr
+              | ret_expr GE_OP ret_expr
+              | ret_expr '^' ret_expr
+              | ret_expr '~' ret_expr
+              | ret_expr LOGICAL_OR ret_expr
+              | ret_expr LOGICAL_AND ret_expr
+              | ret_expr EQUAL_OP ret_expr
+              | ret_expr NOT_EQUAL_OP ret_expr
+              | NOT ret_expr
+              | '-' ret_expr %prec NEG
+              | '(' ret_expr ')'
               ;
 @}
 
 @d danmakufu.y grammar @{
-array         : '[' array_args ']'
+array         : '[' array_args ']'          { printf("ARRAY\n"); }
               ;
 
 array_args    : ret_expr
@@ -3344,13 +3280,17 @@ array_args    : ret_expr
 %token INC_OP
 %token DEC_OP
 
-%left '-' '+'
-%left '*' '/'
-%left NEG
+%left LOGICAL_OR LOGICAL_AND
+%left EQUAL_OP NOT_EQUAL_OP '<' LE_OP '>' GE_OP
+%left '-' '+' '~'
+%left '*' '/' '%'
+%left NEG NOT
 %right '^'
+
 
 %token <num> NUM
 %token <str> STRING
+%token <str> CHARACTER
 
 %token <str> SYMB
 
@@ -3457,11 +3397,15 @@ script_shot         return SCRIPT_CHILD;
 %                   return '%';
 \^                  return '^';
 \<                  return '<';
+"<="                return LE_OP;
 \>                  return '>';
+">="                return GE_OP;
 =                   return '=';
 ;                   return ';';
 ~                   return '~';
 ,                   return ',';
+
+\!                  return NOT;
 
 \(                  return '(';
 \)                  return ')';
@@ -3496,15 +3440,17 @@ DIGIT               [0-9]
 
 @d danmakufu.lex vocabulary @{
 {STRING}            return STRING;
+{CHARACTER}         return CHARACTER;
 @}
 
 @d danmakufu.lex Lex defines @{
 STRING              \"[^\"]*\"
+CHARACTER           \'[^\']*\'
 @}
 
 
 @d danmakufu.lex vocabulary @{
-[[:alpha:]][[:alnum:]]*    { yylval->str=strdup(yytext); return SYMB; }
+[[:alpha:]][[:alnum:]_]*    { yylval->str=strdup(yytext); return SYMB; }
 @}
 
 Макросы:
