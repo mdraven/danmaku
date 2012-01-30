@@ -3110,16 +3110,16 @@ dog_block     : DOG_NAME '{' exprs '}'             { printf("%s\n", $1); }
 defsub_block  : SUB SYMB '{' exprs '}'
               ;
 
-deffunc_block : FUNCTION SYMB '(' ')' '{' exprs '}'
-              | FUNCTION SYMB '(' lets ')' '{' exprs '}'
-			  | FUNCTION SYMB '(' args ')' '{' exprs '}'
-			  | FUNCTION SYMB '{' exprs '}'
+deffunc_block : FUNCTION SYMB '(' ')' '{' exprs '}'          { printf("FUNTION: %s\n", $2); }
+              | FUNCTION SYMB '(' lets ')' '{' exprs '}'     { printf("FUNTION: %s\n", $2); }
+              | FUNCTION SYMB '(' args ')' '{' exprs '}'     { printf("FUNTION: %s\n", $2); }
+              | FUNCTION SYMB '{' exprs '}'                  { printf("FUNTION: %s\n", $2); }
               ;
 
 deftask_block : TASK SYMB '(' ')' '{' exprs '}'              { printf("TASK %s\n", $2); }
               | TASK SYMB '(' lets ')' '{' exprs '}'         { printf("TASK %s\n", $2); }
-			  | TASK SYMB '(' args ')' '{' exprs '}'         { printf("TASK %s\n", $2); }
-			  | TASK SYMB '{' exprs '}'                      { printf("TASK %s\n", $2); }
+              | TASK SYMB '(' args ')' '{' exprs '}'         { printf("TASK %s\n", $2); }
+              | TASK SYMB '{' exprs '}'                      { printf("TASK %s\n", $2); }
               ;
 
 exprs         : /* empty */
