@@ -3037,6 +3037,8 @@ case character_wriggle_nightbug:
 //#define YYPARSE_PARAM scanner
 //#define YYLEX_PARAM   scanner
 
+extern int yylex ();
+
 void yyerror(const char *str) {
 	fprintf(stderr, "error: %s\n", str);
 }
@@ -3044,9 +3046,13 @@ void yyerror(const char *str) {
 int yywrap() {
 	return 1;
 } 
-  
-main() {
+@}
+
+@d danmakufu.y code @{
+int main() {
 	yyparse();
+
+	return 0;
 }
 @}
 
@@ -3065,7 +3071,7 @@ main() {
 script        : /* empty */
               | script toplevel
               ;
-		       
+
 toplevel      : SCRIPT_MAIN '{' lines '}'          { printf("SCRIPT_MAIN\n"); }
               | SCRIPT_CHILD SYMB '{' lines '}'
               | macros
@@ -3085,7 +3091,7 @@ macros        : M_TOUHOUDANMAKUFU
 lines         : /* empty */
               | lines line
               ;
-		       
+
 line          : ';'
               | let
               | dog_block
