@@ -3049,23 +3049,28 @@ case character_wriggle_nightbug:
 
 extern int yylex ();
 extern FILE *yyin;
-char *filename;
+static char *filename;
+@}
+в filename хранится имя файла, который обрабатывается в данный момент
 
+@d danmakufu.y C defines @{
 void yyerror(const char *str) {
 	fprintf(stderr, "error: %s\n", str);
 }
  
-int yywrap() {
+/*int yywrap() {
 	return 1;
-}
+}*/
 @}
 
+Инициализируем таблицу символов, задаём имя первого файла,
+начинаем синтаксический анализ:
 @d danmakufu.y code @{
 int main() {
 
 	init_symbols_tbl();
 
-	filename = "/dev/shm/thA_TR/China1.dnh";
+	filename = "/dev/shm/thA_TR/thA.dnh";
 	yyin = fopen(filename, "r");
 
 	yyparse();
@@ -3077,7 +3082,7 @@ int main() {
 
 #include "lex.yy.c"
 @}
-
+подключаем лексер.
 
 @d danmakufu.y Bison defines @{
 %locations
@@ -3138,7 +3143,7 @@ line          : ';'
               | defsub_block
               | deffunc_block
               | deftask_block
-              | error ';'                  { printf("line %s %d\n", @2.filename, @2.first_line); YYABORT; }
+              | error ';'                  { printf("file %s, line %d\n", @2.filename, @2.first_line); YYABORT; }
               ;
 
 let           : LET SYMB '=' ret_expr ';'          { printf("LET %s\n", $2->name); }
@@ -3167,6 +3172,7 @@ exprs         : /* empty */
 
 expr          : deffunc_block
               | defsub_block
+              | deftask_block
               | let
               | call_func ';'
               | call_keyword
@@ -3191,7 +3197,7 @@ call_keyword  : YIELD ';'
 
 Danmakufu script'ный switch:
 @d danmakufu.y grammar @{
-alternative   : ALTERNATIVE '(' ret_expr ')' case other      { printf("ALTERNATIVE\n"); }
+alternative   : ALTERNATIVE '(' ret_expr ')' case others     { printf("ALTERNATIVE\n"); }
               | ALTERNATIVE '(' ret_expr ')' case            { printf("ALTERNATIVE\n"); }
               ;
 
@@ -3199,7 +3205,7 @@ case          : CASE '(' args ')' '{' exprs '}'              { printf("CASE\n");
               | case CASE '(' args ')' '{' exprs '}'         { printf("CASE\n"); }
               ;
 
-other         : OTHER '{' exprs '}'                          { printf("OTHER\n"); }
+others        : OTHERS '{' exprs '}'                         { printf("OTHERS\n"); }
               ;
 @}
 Выглядит как говно, зато без конфликта shift/reduce.
@@ -3215,12 +3221,12 @@ descent       : DESCENT '(' LET SYMB IN ret_expr DOUBLE_DOT ret_expr ')' '{' exp
 @}
 
 @d danmakufu.y grammar @{
-if            : IF '(' ret_expr ')' '{' exprs '}' else_if
+if            : IF '(' ret_expr ')' '{' exprs '}' else_if    { printf("IF %d\n", @1.first_line); }
               ;
 
 else_if       : /* empty */
-              | ELSE if
-              | ELSE '{' exprs '}'
+              | ELSE if                                      { printf("ELSE "); }
+              | ELSE '{' exprs '}'                           { printf("ELSE\n"); }
               ;
 @}
 
@@ -3298,7 +3304,8 @@ ret_expr      : NUM
 @}
 
 @d danmakufu.y grammar @{
-array         : '[' array_args ']'              { printf("ARRAY\n"); }
+array         : '[' ']'                         { printf("ARRAY\n"); }
+              | '[' array_args ']'              { printf("ARRAY\n"); }
               | '[' array_args ',' ']'          { printf("ARRAY\n"); }
               ;
 
@@ -3352,7 +3359,7 @@ array_args    : ret_expr
 %token LOCAL
 %token ALTERNATIVE
 %token CASE
-%token OTHER
+%token OTHERS
 %token ASCENT
 %token DESCENT
 %token IN
@@ -3391,6 +3398,10 @@ array_args    : ret_expr
 @}
 
 
+@d danmakufu.lex Lex defines @{
+%option noyywrap
+@}
+
 @d danmakufu.lex vocabulary @{
 let                 return LET;
 function            return FUNCTION;
@@ -3406,7 +3417,7 @@ while               return WHILE;
 local               return LOCAL;
 alternative         return ALTERNATIVE;
 case                return CASE;
-other               return OTHER;
+others              return OTHERS;
 ascent              return ASCENT;
 descent             return DESCENT;
 in                  return IN;
@@ -3486,7 +3497,7 @@ STRING              \"[^\"]*\"
 CHARACTER           \'[^\']*\'
 @}
 
-
+Добавляем найденный символ в таблицу и возвращаем токен синтаксическому анализатору:
 @d danmakufu.lex vocabulary @{
 [[:alpha:]_][[:alnum:]_]*    { yylval.symb=add_symbol_to_tbl(yytext); return SYMB; }
 @}
@@ -3622,6 +3633,7 @@ IN_BRACKETS         \[[^\]]*\]
 @}
 Закрывающие фигурные скобки расположены так забавно из-за ошибки в myweb(а как я её сейчас найду?-_-)
 
+Этот блок выполняется, когда открывается include файл:
 @d danmakufu.lex include_function start @{
 int i;
 
@@ -3643,6 +3655,9 @@ yypush_buffer_state(yy_create_buffer(yyin, YY_BUF_SIZE));
 BEGIN(INITIAL);
 @}
 
+Этот блок выполняется, include файл заканчивается.
+Закрываем файловый поток, и вызываем yypop_buffer_state, который
+заменит yyin значением предыдущего файлового потока:
 @d danmakufu.lex include_function stop @{
 fclose(yyin);
 
@@ -3667,7 +3682,7 @@ for(i = 1; i < yyleng-1; i++)
 почему-то fopen в linux не хочет воспринимать '\'.
 
 Определяем стек, где будем хранить
-номера строк и имя файла, при открытии следующего файла с
+номер текущей строки и имя текущего файла, при открытии следующего файла с
 помощью #include_function:
 @d danmakufu.lex C defines @{
 #define MAX_INCLUDE_DEPTH 20
@@ -3683,8 +3698,10 @@ typedef struct IncludeStack IncludeStack;
 
 static IncludeStack include_stack[MAX_INCLUDE_DEPTH];
 static int pos_num_line;
-extern char *filename;
+@}
 
+Функция которая помещает в стек текущее имя файла и номер текущей строки:
+@d danmakufu.lex C defines @{
 static void push_include(void) {
 	strncpy(include_stack[pos_num_line].filename, filename, INCLUDE_FILENAME_LEN);
 	include_stack[pos_num_line].filename[INCLUDE_FILENAME_LEN-1] = '\0';
@@ -3697,25 +3714,32 @@ static void push_include(void) {
 		exit(1);
 	}
 }
+@}
+filename определён в bison
 
+@d danmakufu.lex C defines @{
 static IncludeStack *pop_include(void) {
 	pos_num_line--;
 
 	return &include_stack[pos_num_line];
 }
 @}
+
 эта опция определяет переменную yylineno, которая содержит номер строки:
 @d danmakufu.lex Lex defines @{
 %option yylineno
 @}
 она работает как-то не так и обнулять приходится самому.
 
+Сохраняем старые filename и yylineno, начинаем отсчёт с первой строки,
+задаём имя файла полученое от лексера:
 @d danmakufu.lex include_function add numline to stack @{
 push_include();
 yylineno = 1;
 filename = &yytext[1];
 @}
 
+Возвращаем старые значения yylineno и filename:
 @d danmakufu.lex include_function pop numline from stack @{
 {
 	printf("#close %s\n", filename);
