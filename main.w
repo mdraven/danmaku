@@ -3021,6 +3021,8 @@ case character_wriggle_nightbug:
 @o danmakufu.y @{
 
 %code top {
+@<License@>
+
 @<danmakufu.y %code provides@>
 }
 
@@ -3607,6 +3609,9 @@ INIT_ELEMENTS -- число элементов при инициализации
 Макросы:
 @d danmakufu.lex vocabulary @{
 #TouhouDanmakufu              return M_TOUHOUDANMAKUFU;
+#TouhouDanmakufu{IN_BRACKETS} return M_TOUHOUDANMAKUFU;
+#\x93\x8c\x95\xfb\x92\x65\x96\x8b\x95\x97              return M_TOUHOUDANMAKUFU;
+#\x93\x8c\x95\xfb\x92\x65\x96\x8b\x95\x97{IN_BRACKETS} return M_TOUHOUDANMAKUFU;
 #Title{IN_BRACKETS}           return M_TITLE;
 #Text{IN_BRACKETS}            return M_TEXT;
 #Image{IN_BRACKETS}           return M_IMAGE;
