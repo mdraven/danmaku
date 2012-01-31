@@ -3019,6 +3019,15 @@ case character_wriggle_nightbug:
 Грамматика danmakufu script
 
 @o danmakufu.y @{
+
+%code top {
+@<danmakufu.y %code provides@>
+}
+
+%code requires {
+@<danmakufu.y %code requires@>
+}
+
 %{
 @<danmakufu.y C defines@>
 %}
@@ -3033,11 +3042,14 @@ case character_wriggle_nightbug:
 @d danmakufu.y C defines @{
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 
 //#define YYPARSE_PARAM scanner
 //#define YYLEX_PARAM   scanner
 
 extern int yylex ();
+extern FILE *yyin;
+char *filename;
 
 void yyerror(const char *str) {
 	fprintf(stderr, "error: %s\n", str);
@@ -3045,26 +3057,54 @@ void yyerror(const char *str) {
  
 int yywrap() {
 	return 1;
-} 
+}
 @}
 
 @d danmakufu.y code @{
 int main() {
+
+	init_symbols_tbl();
+
+	filename = "/dev/shm/thA_TR/China1.dnh";
+	yyin = fopen(filename, "r");
+
 	yyparse();
+
+	clear_symbols_tbl();
 
 	return 0;
 }
+
+#include "lex.yy.c"
 @}
+
 
 @d danmakufu.y Bison defines @{
 %locations
-%pure_parser
+%error-verbose
 
 %union {
 	char *str;
 	int num;
+	SymbolsTbl *symb;
 }
 
+%start script
+@}
+
+@d danmakufu.y %code requires @{
+#ifndef YYLTYPE_IS_DECLARED
+
+typedef struct YYLTYPE {
+	int first_line;
+	int first_column;
+	int last_line;
+	int last_column;
+	char *filename;
+} YYLTYPE;
+
+#define YYLTYPE_IS_DECLARED 1
+#endif
 @}
 
 @d danmakufu.y grammar @{
@@ -3098,10 +3138,11 @@ line          : ';'
               | defsub_block
               | deffunc_block
               | deftask_block
+              | error ';'                  { printf("line %s %d\n", @2.filename, @2.first_line); YYABORT; }
               ;
 
-let           : LET SYMB '=' ret_expr ';'          { printf("LET %s\n", $2); }
-              | LET SYMB ';'                       { printf("LET %s\n", $2); }
+let           : LET SYMB '=' ret_expr ';'          { printf("LET %s\n", $2->name); }
+              | LET SYMB ';'                       { printf("LET %s\n", $2->name); }
               ;
 
 dog_block     : DOG_NAME '{' exprs '}'             { printf("%s\n", $1); }
@@ -3110,16 +3151,14 @@ dog_block     : DOG_NAME '{' exprs '}'             { printf("%s\n", $1); }
 defsub_block  : SUB SYMB '{' exprs '}'
               ;
 
-deffunc_block : FUNCTION SYMB '(' ')' '{' exprs '}'          { printf("FUNTION: %s\n", $2); }
-              | FUNCTION SYMB '(' lets ')' '{' exprs '}'     { printf("FUNTION: %s\n", $2); }
-              | FUNCTION SYMB '(' args ')' '{' exprs '}'     { printf("FUNTION: %s\n", $2); }
-              | FUNCTION SYMB '{' exprs '}'                  { printf("FUNTION: %s\n", $2); }
+deffunc_block : FUNCTION SYMB '(' ')' '{' exprs '}'          { printf("FUNCTION: %s\n", $2->name); }
+              | FUNCTION SYMB '(' lets ')' '{' exprs '}'     { printf("FUNCTION: %s\n", $2->name); }
+              | FUNCTION SYMB '{' exprs '}'                  { printf("FUNCTION: %s\n", $2->name); }
               ;
 
-deftask_block : TASK SYMB '(' ')' '{' exprs '}'              { printf("TASK %s\n", $2); }
-              | TASK SYMB '(' lets ')' '{' exprs '}'         { printf("TASK %s\n", $2); }
-              | TASK SYMB '(' args ')' '{' exprs '}'         { printf("TASK %s\n", $2); }
-              | TASK SYMB '{' exprs '}'                      { printf("TASK %s\n", $2); }
+deftask_block : TASK SYMB '(' ')' '{' exprs '}'              { printf("TASK %s\n", $2->name); }
+              | TASK SYMB '(' lets ')' '{' exprs '}'         { printf("TASK %s\n", $2->name); }
+              | TASK SYMB '{' exprs '}'                      { printf("TASK %s\n", $2->name); }
               ;
 
 exprs         : /* empty */
@@ -3138,6 +3177,7 @@ expr          : deffunc_block
 call_keyword  : YIELD ';'
               | BREAK ';'
               | RETURN ret_expr ';'
+              | RETURN ';'
               | LOOP_TIMES '(' ret_expr ')' '{' exprs '}'    { printf("LOOP\n"); }
               | LOOP_TIMES '{' exprs '}'                     { printf("LOOP\n"); }
               | WHILE '(' ret_expr ')' '{' exprs '}'         { printf("WHILE\n"); }
@@ -3187,14 +3227,14 @@ else_if       : /* empty */
 @d danmakufu.y grammar @{
 indexing         : array '[' ret_expr ']'                         { printf("INDEXING\n"); }
                  | array '[' ret_expr DOUBLE_DOT ret_expr ']'     { printf("INDEXING\n"); }
-                 | SYMB '[' ret_expr ']'                          { printf("INDEXING %s\n", $1); }
-                 | SYMB '[' ret_expr DOUBLE_DOT ret_expr ']'      { printf("INDEXING %s\n", $1); }
+                 | SYMB '[' ret_expr ']'                          { printf("INDEXING %s\n", $1->name); }
+                 | SYMB '[' ret_expr DOUBLE_DOT ret_expr ']'      { printf("INDEXING %s\n", $1->name); }
                  | indexing '[' ret_expr ']'                      { printf("INDEXING\n"); }
                  | indexing '[' ret_expr DOUBLE_DOT ret_expr ']'  { printf("INDEXING\n"); }
                  ;
 
-call_func        : SYMB '(' ')'                       { printf("CALL %s\n", $1); }
-                 | SYMB '(' args ')'                  { printf("CALL %s\n", $1); }
+call_func        : SYMB '(' ')'                       { printf("CALL %s\n", $1->name); }
+                 | SYMB '(' args ')'                  { printf("CALL %s\n", $1->name); }
                  ;
 @}
 
@@ -3203,7 +3243,8 @@ args          : ret_expr
               | args ',' ret_expr
               ;
 
-let_expr      : LET SYMB
+let_expr      : ret_expr
+              | LET SYMB
               ;
 
 lets          : let_expr
@@ -3257,7 +3298,8 @@ ret_expr      : NUM
 @}
 
 @d danmakufu.y grammar @{
-array         : '[' array_args ']'          { printf("ARRAY\n"); }
+array         : '[' array_args ']'              { printf("ARRAY\n"); }
+              | '[' array_args ',' ']'          { printf("ARRAY\n"); }
               ;
 
 array_args    : ret_expr
@@ -3292,9 +3334,10 @@ array_args    : ret_expr
 %token <str> STRING
 %token <str> CHARACTER
 
-%token <str> SYMB
+%token <symb> SYMB
 
 %token <str> DOG_NAME
+
 %token <str> SCRIPT_MAIN
 %token <str> SCRIPT_CHILD
 
@@ -3347,14 +3390,6 @@ array_args    : ret_expr
 @<danmakufu.lex code@>
 @}
 
-Совместим с Bison:
-@d danmakufu.lex Lex defines @{
-%option bison-bridge bison-locations
-@}
-
-@d danmakufu.lex C defines @{
-#include "danmakufu.tab.h"
-@}
 
 @d danmakufu.lex vocabulary @{
 let                 return LET;
@@ -3384,11 +3419,11 @@ script_stage_main   return SCRIPT_MAIN;
 script_enemy        return SCRIPT_CHILD;
 script_shot         return SCRIPT_CHILD;
 
-@Initialize         { yylval->str=strdup(yytext); return DOG_NAME;}
-@MainLoop           { yylval->str=strdup(yytext); return DOG_NAME;}
-@DrawLoop           { yylval->str=strdup(yytext); return DOG_NAME;}
-@Finalize           { yylval->str=strdup(yytext); return DOG_NAME;}
-@BackGround         { yylval->str=strdup(yytext); return DOG_NAME;}
+@Initialize         { yylval.str="@Initialize"; return DOG_NAME;}
+@MainLoop           { yylval.str="@MainLoop"; return DOG_NAME;}
+@DrawLoop           { yylval.str="@DrawLoop"; return DOG_NAME;}
+@Finalize           { yylval.str="@Finalize"; return DOG_NAME;}
+@BackGround         { yylval.str="@BackGround"; return DOG_NAME;}
 
 \+                  return '+';
 -                   return '-';
@@ -3426,6 +3461,9 @@ script_shot         return SCRIPT_CHILD;
 
 ==                  return EQUAL_OP;
 !=                  return NOT_EQUAL_OP;
+
+false               return NUM;
+true                return NUM;
 @}
 
 
@@ -3450,8 +3488,102 @@ CHARACTER           \'[^\']*\'
 
 
 @d danmakufu.lex vocabulary @{
-[[:alpha:]][[:alnum:]_]*    { yylval->str=strdup(yytext); return SYMB; }
+[[:alpha:]_][[:alnum:]_]*    { yylval.symb=add_symbol_to_tbl(yytext); return SYMB; }
 @}
+
+Создадим таблицу символов:
+@d danmakufu.y %code provides @{
+#define SYMBOL_MAX_LEN 40
+struct SymbolsTbl {
+	char name[SYMBOL_MAX_LEN];
+};
+
+typedef struct SymbolsTbl SymbolsTbl;
+
+SymbolsTbl *add_symbol_to_tbl(const char *name);
+@}
+add_symbol_to_tbl будет использоваться лексером, для
+добавления символов в таблицу.
+
+Таблица символов и указатель, число элементов в таблице в данный момент и
+размер таблицы:
+@d danmakufu.y C defines @{
+static SymbolsTbl *symbols_tbl;
+static int num_symbols_tbl;
+static int size_symbols_tbl;
+@}
+
+Функция поиска символа в таблице:
+@d danmakufu.y C defines @{
+static int find_symbol(const char *name, int *ret) {
+	int i;
+
+	for(i = 0; i < num_symbols_tbl; i++)
+		if(strcmp(symbols_tbl[i].name, name) == 0) {
+			*ret = i;
+			return 0;
+		}
+
+	return -1;
+}
+@}
+возвращает номер элемента в ret.
+
+Добавить элемент в таблицу:
+@d danmakufu.y C defines @{
+#define ADD_ELEMENTS 50
+
+SymbolsTbl *add_symbol_to_tbl(const char *name) {
+	int ret;
+
+	if(find_symbol(name, &ret) == -1) {
+		ret = num_symbols_tbl;
+
+		if(num_symbols_tbl == size_symbols_tbl) {
+			size_symbols_tbl += ADD_ELEMENTS;
+			symbols_tbl = realloc(symbols_tbl, sizeof(SymbolsTbl)*size_symbols_tbl);
+			if(symbols_tbl == NULL) {
+				fprintf(stderr, "\nCannot allocate memory\n");
+				exit(1);
+			}
+		}
+
+		num_symbols_tbl++;
+	}
+
+	strncpy(symbols_tbl[ret].name, name, SYMBOL_MAX_LEN);
+	symbols_tbl[ret].name[SYMBOL_MAX_LEN-1] = '\0';
+
+	return &symbols_tbl[ret];
+}
+@}
+возвращает адрес ячейки куда был добавлен элемент.
+ADD_ELEMENTS -- добавляется к size_symbols_tbl когда нехватает элементов.
+
+Функции инициализации и очистки:
+@d danmakufu.y C defines @{
+#define INIT_ELEMENTS 100
+
+static void init_symbols_tbl(void) {
+	num_symbols_tbl = 0;
+	size_symbols_tbl = INIT_ELEMENTS;
+
+	symbols_tbl = malloc(sizeof(SymbolsTbl)*size_symbols_tbl);
+	if(symbols_tbl == NULL) {
+		fprintf(stderr, "\nCannot allocate memory\n");
+		exit(1);
+	}
+}
+
+static void clear_symbols_tbl(void) {
+	num_symbols_tbl = 0;
+	size_symbols_tbl = 0;
+
+	free(symbols_tbl);
+	symbols_tbl = NULL;
+}
+@}
+INIT_ELEMENTS -- число элементов при инициализации.
 
 Макросы:
 @d danmakufu.lex vocabulary @{
@@ -3472,6 +3604,13 @@ CHARACTER           \'[^\']*\'
 IN_BRACKETS         \[[^\]]*\]
 @}
 
+Пропускаем пробелы и символы конца строки:
+@d danmakufu.lex vocabulary @{
+[ \t\r\n]+                    { yylloc.first_line = yylineno; yylloc.filename = filename; }
+@}
+устанавливаем номер строки и имя файла.
+
+
 Поддержка #include_function:
 @d danmakufu.lex vocabulary include_file @{
 #include_function             BEGIN(include);
@@ -3488,11 +3627,11 @@ int i;
 
 yytext[yyleng-1] = '\0';
 
-for(i = 1; i < yyleng-1; i++)
-	if(yytext[i] == '\\')
-		yytext[i] = '/';
+@<danmakufu.lex include_function replace backslash to slash@>
 
 printf("#include %s\n", &yytext[1]);
+
+@<danmakufu.lex include_function add numline to stack@>
 
 yyin = fopen(&yytext[1], "r");
 
@@ -3503,19 +3642,88 @@ yypush_buffer_state(yy_create_buffer(yyin, YY_BUF_SIZE));
 
 BEGIN(INITIAL);
 @}
-unix-specific костыль.
 
 @d danmakufu.lex include_function stop @{
-yypop_buffer_state();
+fclose(yyin);
 
-printf("#close\n");
+yypop_buffer_state();
 
 if(!YY_CURRENT_BUFFER)
 	yyterminate();
+
+@<danmakufu.lex include_function pop numline from stack@>
 @}
 
 @d danmakufu.lex Lex defines @{
 %x include
+@}
+
+unix-specific костыль:
+@d danmakufu.lex include_function replace backslash to slash @{
+for(i = 1; i < yyleng-1; i++)
+	if(yytext[i] == '\\')
+		yytext[i] = '/';
+@}
+почему-то fopen в linux не хочет воспринимать '\'.
+
+Определяем стек, где будем хранить
+номера строк и имя файла, при открытии следующего файла с
+помощью #include_function:
+@d danmakufu.lex C defines @{
+#define MAX_INCLUDE_DEPTH 20
+
+#define INCLUDE_FILENAME_LEN 50
+
+struct IncludeStack {
+	int num_line;
+	char filename[INCLUDE_FILENAME_LEN];
+};
+
+typedef struct IncludeStack IncludeStack;
+
+static IncludeStack include_stack[MAX_INCLUDE_DEPTH];
+static int pos_num_line;
+extern char *filename;
+
+static void push_include(void) {
+	strncpy(include_stack[pos_num_line].filename, filename, INCLUDE_FILENAME_LEN);
+	include_stack[pos_num_line].filename[INCLUDE_FILENAME_LEN-1] = '\0';
+
+	include_stack[pos_num_line].num_line = yylineno;
+
+	pos_num_line++;
+	if(pos_num_line == MAX_INCLUDE_DEPTH) {
+		printf("MAX_INCLUDE_DEPTH\n");
+		exit(1);
+	}
+}
+
+static IncludeStack *pop_include(void) {
+	pos_num_line--;
+
+	return &include_stack[pos_num_line];
+}
+@}
+эта опция определяет переменную yylineno, которая содержит номер строки:
+@d danmakufu.lex Lex defines @{
+%option yylineno
+@}
+она работает как-то не так и обнулять приходится самому.
+
+@d danmakufu.lex include_function add numline to stack @{
+push_include();
+yylineno = 1;
+filename = &yytext[1];
+@}
+
+@d danmakufu.lex include_function pop numline from stack @{
+{
+	printf("#close %s\n", filename);
+
+	IncludeStack *is = pop_include();
+	yylineno = is->num_line;
+	filename = is->filename;
+}
 @}
 
 
@@ -3538,10 +3746,6 @@ if(!YY_CURRENT_BUFFER)
 %x comment
 @}
 
-Пропускаем пробелы и символы конца строки:
-@d danmakufu.lex vocabulary @{
-[ \t\r\n]+                    /* empty */;
-@}
 
 ===========================================================
 
