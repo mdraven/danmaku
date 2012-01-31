@@ -3165,6 +3165,9 @@ deftask_block : TASK SYMB '(' ')' '{' exprs '}'              { printf("TASK %s\n
               | TASK SYMB '(' lets ')' '{' exprs '}'         { printf("TASK %s\n", $2->name); }
               | TASK SYMB '{' exprs '}'                      { printf("TASK %s\n", $2->name); }
               ;
+@}
+
+@d danmakufu.y grammar @{
 
 exprs         : /* empty */
               | exprs expr
@@ -3175,13 +3178,17 @@ expr          : deffunc_block
               | deftask_block
               | let
               | call_func ';'
+              | call_func
               | call_keyword
               | set_op
               ;
+@}
 
-
+@d danmakufu.y grammar @{
 call_keyword  : YIELD ';'
+              | YIELD
               | BREAK ';'
+              | BREAK
               | RETURN ret_expr ';'
               | RETURN ';'
               | LOOP_TIMES '(' ret_expr ')' '{' exprs '}'    { printf("LOOP\n"); }
@@ -3435,6 +3442,7 @@ script_shot         return SCRIPT_CHILD;
 @DrawLoop           { yylval.str="@DrawLoop"; return DOG_NAME;}
 @Finalize           { yylval.str="@Finalize"; return DOG_NAME;}
 @BackGround         { yylval.str="@BackGround"; return DOG_NAME;}
+@DrawTopObject      { yylval.str="@DrawTopObject"; return DOG_NAME;}
 
 \+                  return '+';
 -                   return '-';
