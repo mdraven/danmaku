@@ -3143,12 +3143,8 @@ lines         : /* empty */
               | lines line
               ;
 
-line          : ';'
-              | let
+line          : expr
               | dog_block
-              | defsub_block
-              | deffunc_block
-              | deftask_block
               | error ';'                  { printf("file %s, line %d\n", @2.filename, @2.first_line); YYABORT; }
               ;
 
@@ -3179,12 +3175,12 @@ exprs         : /* empty */
               | exprs expr
               ;
 
-expr          : deffunc_block
+expr          : ';'
+              | deffunc_block
               | defsub_block
               | deftask_block
               | let
               | call_func ';'
-              | call_func
               | call_task ';'
               | call_keyword
               | set_op
@@ -3193,9 +3189,7 @@ expr          : deffunc_block
 
 @d danmakufu.y grammar @{
 call_keyword  : YIELD ';'
-              | YIELD
               | BREAK ';'
-              | BREAK
               | RETURN ret_expr ';'
               | RETURN ';'
               | LOOP_TIMES '(' ret_expr ')' '{' exprs '}'    { printf("LOOP\n"); }
@@ -3474,7 +3468,8 @@ script_shot         return SCRIPT_CHILD;
 \(                  return '(';
 \)                  return ')';
 \{                  return '{';
-\}                  return '}';
+\}                  {@<danmakufu.lex closed curly bracket@>
+                    }
 \[                  return '[';
 \]                  return ']';
 
@@ -3493,6 +3488,22 @@ script_shot         return SCRIPT_CHILD;
 
 false               return NUM;
 true                return NUM;
+@}
+
+Будем возвращаеть перед каждым '}' ещё и ';':
+@d danmakufu.lex closed curly bracket @{
+if(lexer_curly_bracket == 0) {
+	lexer_curly_bracket = 1;
+	unput('}');
+	return ';';
+} else {
+	lexer_curly_bracket = 0;
+	return '}';
+}
+@}
+
+@d danmakufu.lex C defines @{
+static int lexer_curly_bracket;
 @}
 
 
