@@ -3497,6 +3497,8 @@ if(lexer_curly_bracket == 0) {
 	return '}';
 }
 @}
+Для '\n' не делать(!), так как можно запороть объявления функций на
+  несколько строк. Пока не встретишь пример, что так делают не делать!
 
 @d danmakufu.lex C defines @{
 static int lexer_curly_bracket;
