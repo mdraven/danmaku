@@ -3052,14 +3052,12 @@ case character_wriggle_nightbug:
 #include <string.h>
 #include <stdlib.h>
 
-//#define YYPARSE_PARAM scanner
-//#define YYLEX_PARAM   scanner
-
-extern int yylex ();
+static int yylex (void);
 extern FILE *yyin;
 static char *filename;
 @}
 в filename хранится имя файла, который обрабатывается в данный момент
+yyin - внутренняя переменная flex, из этого потока считываются лексемы.
 
 @d danmakufu.y C defines @{
 void yyerror(const char *str) {
@@ -3187,6 +3185,7 @@ expr          : deffunc_block
               | let
               | call_func ';'
               | call_func
+              | call_task ';'
               | call_keyword
               | set_op
               ;
@@ -3256,6 +3255,9 @@ indexing         : array '[' ret_expr ']'                         { printf("INDE
 
 call_func        : SYMB '(' ')'                       { printf("CALL %s\n", $1->name); }
                  | SYMB '(' args ')'                  { printf("CALL %s\n", $1->name); }
+                 ;
+
+call_task        : SYMB                               { printf("CALL TASK %s\n", $1->name); }
                  ;
 @}
 
@@ -3526,11 +3528,7 @@ struct SymbolsTbl {
 };
 
 typedef struct SymbolsTbl SymbolsTbl;
-
-SymbolsTbl *add_symbol_to_tbl(const char *name);
 @}
-add_symbol_to_tbl будет использоваться лексером, для
-добавления символов в таблицу.
 
 Таблица символов и указатель, число элементов в таблице в данный момент и
 размер таблицы:
@@ -3560,7 +3558,7 @@ static int find_symbol(const char *name, int *ret) {
 @d danmakufu.y C defines @{
 #define ADD_ELEMENTS 50
 
-SymbolsTbl *add_symbol_to_tbl(const char *name) {
+static SymbolsTbl *add_symbol_to_tbl(const char *name) {
 	int ret;
 
 	if(find_symbol(name, &ret) == -1) {
@@ -3636,7 +3634,8 @@ IN_BRACKETS         \[[^\]]*\]
 
 Пропускаем пробелы и символы конца строки:
 @d danmakufu.lex vocabulary @{
-[ \t\r\n]+                    { yylloc.first_line = yylineno; yylloc.filename = filename; }
+[ \t]+                     /* empty */
+[\r\n]+                    { yylloc.first_line = yylineno; yylloc.filename = filename; }
 @}
 устанавливаем номер строки и имя файла.
 
