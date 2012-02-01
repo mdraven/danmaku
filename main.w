@@ -3777,12 +3777,14 @@ filename = &yytext[1];
 @d danmakufu.lex vocabulary @{
 "/*"                          BEGIN(comment);
 <comment>{
-	"*/"                      BEGIN(0);
+	"*"+"/"                   BEGIN(0);
 	[^*\n]+                   ;
-    "*"[^/]                   ;
-    \n                        ;
+	"*"[^/]                   ;
+	\n                        ;
 }
 @}
+без плюса в первом правиле валился на ****/, так как звёздочки съедались
+  по 2 и на */ нехватало.
 
 @d danmakufu.lex Lex defines @{
 %x comment
