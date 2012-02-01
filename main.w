@@ -3060,13 +3060,9 @@ static char *filename;
 yyin - внутренняя переменная flex, из этого потока считываются лексемы.
 
 @d danmakufu.y C defines @{
-void yyerror(const char *str) {
+static void yyerror(const char *str) {
 	fprintf(stderr, "error: %s\n", str);
 }
- 
-/*int yywrap() {
-	return 1;
-}*/
 @}
 
 Инициализируем таблицу символов, задаём имя первого файла,
