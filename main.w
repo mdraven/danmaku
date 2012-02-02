@@ -3239,6 +3239,8 @@ indexing         : array '[' ret_expr ']'                         { printf("INDE
                  | array '[' ret_expr DOUBLE_DOT ret_expr ']'     { printf("INDEXING\n"); }
                  | SYMB '[' ret_expr ']'                          { printf("INDEXING %s\n", $1->name); }
                  | SYMB '[' ret_expr DOUBLE_DOT ret_expr ']'      { printf("INDEXING %s\n", $1->name); }
+                 | call_func '[' ret_expr ']'                     { printf("INDEXING\n"); }
+                 | call_func '[' ret_expr DOUBLE_DOT ret_expr ']' { printf("INDEXING\n"); }
                  | indexing '[' ret_expr ']'                      { printf("INDEXING\n"); }
                  | indexing '[' ret_expr DOUBLE_DOT ret_expr ']'  { printf("INDEXING\n"); }
                  ;
