@@ -3714,7 +3714,7 @@ for(i = 1; i < yyleng-1; i++)
 @d danmakufu.lex C defines @{
 #define MAX_INCLUDE_DEPTH 20
 
-#define INCLUDE_FILENAME_LEN 50
+#define INCLUDE_FILENAME_LEN 200
 
 struct IncludeStack {
 	int num_line;
