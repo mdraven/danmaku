@@ -3052,6 +3052,8 @@ case character_wriggle_nightbug:
 #include <string.h>
 #include <stdlib.h>
 
+#include "danmakufu_ast.h"
+
 static int yylex (void);
 extern FILE *yyin;
 static char *filename;
@@ -3099,7 +3101,7 @@ TODO: - сделать вместо main -- функцию которая при
 %union {
 	char *str;
 	int num;
-	SymbolsTbl *symb;
+	DanmakufuSymbol *symb;
 }
 
 %start script
@@ -3534,98 +3536,9 @@ CHARACTER           \'[^\']*\'
 
 Добавляем найденный символ в таблицу и возвращаем токен синтаксическому анализатору:
 @d danmakufu.lex vocabulary @{
-[[:alpha:]_][[:alnum:]_]*    { yylval.symb=add_symbol_to_tbl(yytext); return SYMB; }
+[[:alpha:]_][[:alnum:]_]*    { yylval.symb=danmakufu_ast_add_symbol_to_tbl(yytext); return SYMB; }
 @}
 
-Создадим таблицу символов:
-@d danmakufu.y %code provides @{
-#define SYMBOL_MAX_LEN 40
-struct SymbolsTbl {
-	char name[SYMBOL_MAX_LEN];
-};
-
-typedef struct SymbolsTbl SymbolsTbl;
-@}
-
-Таблица символов и указатель, число элементов в таблице в данный момент и
-размер таблицы:
-@d danmakufu.y C defines @{
-static SymbolsTbl *symbols_tbl;
-static int num_symbols_tbl;
-static int size_symbols_tbl;
-@}
-
-Функция поиска символа в таблице:
-@d danmakufu.y C defines @{
-static int find_symbol(const char *name, int *ret) {
-	int i;
-
-	for(i = 0; i < num_symbols_tbl; i++)
-		if(strcmp(symbols_tbl[i].name, name) == 0) {
-			*ret = i;
-			return 0;
-		}
-
-	return -1;
-}
-@}
-возвращает номер элемента в ret.
-
-Добавить элемент в таблицу:
-@d danmakufu.y C defines @{
-#define ADD_ELEMENTS 50
-
-static SymbolsTbl *add_symbol_to_tbl(const char *name) {
-	int ret;
-
-	if(find_symbol(name, &ret) == -1) {
-		ret = num_symbols_tbl;
-
-		if(num_symbols_tbl == size_symbols_tbl) {
-			size_symbols_tbl += ADD_ELEMENTS;
-			symbols_tbl = realloc(symbols_tbl, sizeof(SymbolsTbl)*size_symbols_tbl);
-			if(symbols_tbl == NULL) {
-				fprintf(stderr, "\nCannot allocate memory\n");
-				exit(1);
-			}
-		}
-
-		num_symbols_tbl++;
-	}
-
-	strncpy(symbols_tbl[ret].name, name, SYMBOL_MAX_LEN);
-	symbols_tbl[ret].name[SYMBOL_MAX_LEN-1] = '\0';
-
-	return &symbols_tbl[ret];
-}
-@}
-возвращает адрес ячейки куда был добавлен элемент.
-ADD_ELEMENTS -- добавляется к size_symbols_tbl когда нехватает элементов.
-
-Функции инициализации и очистки:
-@d danmakufu.y C defines @{
-#define INIT_ELEMENTS 100
-
-static void init_symbols_tbl(void) {
-	num_symbols_tbl = 0;
-	size_symbols_tbl = INIT_ELEMENTS;
-
-	symbols_tbl = malloc(sizeof(SymbolsTbl)*size_symbols_tbl);
-	if(symbols_tbl == NULL) {
-		fprintf(stderr, "\nCannot allocate memory\n");
-		exit(1);
-	}
-}
-
-static void clear_symbols_tbl(void) {
-	num_symbols_tbl = 0;
-	size_symbols_tbl = 0;
-
-	free(symbols_tbl);
-	symbols_tbl = NULL;
-}
-@}
-INIT_ELEMENTS -- число элементов при инициализации.
 
 Макросы:
 @d danmakufu.lex vocabulary @{
@@ -3807,6 +3720,237 @@ filename = &yytext[1];
 %x comment
 @}
 
+
+===========================================================
+
+Таблица символов и cons'ы
+
+@o danmakufu_ast.h @{
+@<License@>
+
+@<danmakufu_ast.h structs@>
+@<danmakufu_ast.h prototypes@>
+@}
+
+
+@o danmakufu_ast.c @{
+@<License@>
+
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+
+#include "danmakufu_ast.h"
+
+@<danmakufu_ast.c structs@>
+@<danmakufu_ast.c prototypes@>
+@<danmakufu_ast.c functions@>
+@}
+
+Типы элементов:
+@d danmakufu_ast.h structs @{
+enum {
+	danmakufu_ast_symbol,
+	danmakufu_ast_cons,
+};
+@}
+
+Символ danmakufu:
+@d danmakufu_ast.h structs @{
+#define SYMBOL_MAX_LEN 40
+struct DanmakufuSymbol {
+	int type;
+	char name[SYMBOL_MAX_LEN];
+};
+
+typedef struct DanmakufuSymbol DanmakufuSymbol;
+@}
+type - указывает тип, всегда равен danmakufu_ast_symbol.
+  Он нужен чтобы отличать в cons'ах атомы и другие cons'ы.
+
+Таблица символов и указатель, число элементов в таблице в данный момент и
+размер таблицы:
+@d danmakufu_ast.c structs @{
+static DanmakufuSymbol *symbols_tbl;
+static int num_symbols_tbl;
+static int size_symbols_tbl;
+@}
+
+Функция поиска символа в таблице:
+@d danmakufu_ast.c functions @{
+static int find_symbol(const char *name, int *ret) {
+	int i;
+
+	for(i = 0; i < num_symbols_tbl; i++)
+		if(strcmp(symbols_tbl[i].name, name) == 0) {
+			*ret = i;
+			return 0;
+		}
+
+	return -1;
+}
+@}
+возвращает номер элемента в ret.
+
+Добавить элемент в таблицу:
+@d danmakufu_ast.c functions @{
+#define ADD_ELEMENTS_TO_TBL 50
+
+DanmakufuSymbol *danmakufu_ast_add_symbol_to_tbl(const char *name) {
+	int ret;
+
+	if(find_symbol(name, &ret) == -1) {
+		ret = num_symbols_tbl;
+
+		if(num_symbols_tbl == size_symbols_tbl) {
+			size_symbols_tbl += ADD_ELEMENTS_TO_TBL;
+			symbols_tbl = realloc(symbols_tbl, sizeof(DanmakufuSymbol)*size_symbols_tbl);
+			if(symbols_tbl == NULL) {
+				fprintf(stderr, "\nCannot allocate memory\n");
+				exit(1);
+			}
+		}
+
+		num_symbols_tbl++;
+	}
+
+	symbols_tbl[ret].type = danmakufu_ast_symbol;
+
+	strncpy(symbols_tbl[ret].name, name, SYMBOL_MAX_LEN);
+	symbols_tbl[ret].name[SYMBOL_MAX_LEN-1] = '\0';
+
+	return &symbols_tbl[ret];
+}
+@}
+возвращает адрес ячейки куда был добавлен элемент.
+ADD_ELEMENTS_TO_TBL -- добавляется к size_symbols_tbl когда нехватает элементов.
+
+@d danmakufu_ast.h prototypes @{
+DanmakufuSymbol *danmakufu_ast_add_symbol_to_tbl(const char *name);
+@}
+
+Функции инициализации и очистки:
+@d danmakufu_ast.c functions @{
+#define INIT_ELEMENTS_TBL 200
+
+static void init_symbols_tbl(void) {
+	num_symbols_tbl = 0;
+	size_symbols_tbl = INIT_ELEMENTS_TBL;
+
+	symbols_tbl = malloc(sizeof(DanmakufuSymbol)*size_symbols_tbl);
+	if(symbols_tbl == NULL) {
+		fprintf(stderr, "\nCannot allocate memory\n");
+		exit(1);
+	}
+}
+
+static void clear_symbols_tbl(void) {
+	num_symbols_tbl = 0;
+	size_symbols_tbl = 0;
+
+	free(symbols_tbl);
+	symbols_tbl = NULL;
+}
+@}
+INIT_ELEMENTS_TBL -- число элементов при инициализации.
+
+Cons-пара danmakufu:
+@d danmakufu_ast.h structs @{
+struct DanmakufuCons {
+	int type;
+	void *car;
+	void *cdr;
+};
+
+typedef struct DanmakufuCons DanmakufuCons;
+@}
+type - указывает тип, всегда равен danmakufu_ast_cons.
+
+Массив cons'ов, их число и максимальное число:
+@d danmakufu_ast.c structs @{
+static DanmakufuCons *cons;
+static int num_cons;
+static int max_num_cons;
+@}
+
+Добавить cons в массив:
+@d danmakufu_ast.c functions @{
+DanmakufuCons *danmakufu_ast_add_cons(void *car, void *cdr) {
+	if(num_cons == max_num_cons) {
+		max_num_cons += ADD_CONS;
+		cons = realloc(cons, sizeof(DanmakufuCons)*max_num_cons);
+		if(cons == NULL) {
+			fprintf(stderr, "\nCannot allocate memory\n");
+			exit(1);
+		}
+	}
+
+	DanmakufuCons *c = &cons[num_cons];
+	num_cons++;
+
+	c->type = danmakufu_ast_cons;
+	c->car = car;
+	c->cdr = cdr;
+
+	return c;
+}
+@}
+ADD_CONS - если cons'ы в массиве кончились, то добавляем:
+@d danmakufu_ast.c structs @{
+#define ADD_CONS 100
+@}
+
+@d danmakufu_ast.h prototypes @{
+DanmakufuCons *danmakufu_ast_add_cons(void *car, void *cdr);
+@}
+возвращает указатель на cons который добавили.
+
+Функция инициализации cons'ов:
+@d danmakufu_ast.c functions @{
+static void init_cons_array(void) {
+	num_cons = 0;
+	max_num_cons = INIT_CONS;
+
+	cons = malloc(sizeof(DanmakufuCons)*max_num_cons);
+	if(cons == NULL) {
+		fprintf(stderr, "\nCannot allocate memory\n");
+		exit(1);
+	}
+}
+@}
+INIT_CONS - число элементов при инициализации:
+@d danmakufu_ast.c structs @{
+#define INIT_CONS 500
+@}
+
+Функция очистки массива cons'ов:
+@d danmakufu_ast.c functions @{
+static void clear_cons_array(void) {
+	num_cons = 0;
+	max_num_cons = 0;
+
+	free(cons);
+	cons = NULL;
+}
+@}
+
+Инициализация и очистка ast:
+@d danmakufu_ast.c functions @{
+void danmakufu_ast_init(void) {
+	init_symbols_tbl();
+	init_cons_array();
+}
+
+void danmakufu_ast_clear(void) {
+	clear_symbols_tbl();
+	clear_cons_array();
+}
+@}
+
+@d danmakufu_ast.h prototypes @{
+void danmakufu_ast_init(void);
+void danmakufu_ast_clear(void);
+@}
 
 ===========================================================
 
