@@ -3958,6 +3958,17 @@ void ast_init(void);
 void ast_clear(void);
 @}
 
+На часть символов будем хранить указатели. Это ускорит сравнение:
+@d ast.c structs @{
+AstSymbol *ast_defun;
+AstSymbol *ast_let;
+@}
+
+@d ast.h structs @{
+extern AstSymbol *ast_defun;
+extern AstSymbol *ast_let;
+@}
+
 ===========================================================
 
 Игровой персонаж.
