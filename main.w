@@ -3637,6 +3637,7 @@ yypush_buffer_state(yy_create_buffer(yyin, YY_BUF_SIZE));
 
 BEGIN(INITIAL);
 @}
+FIXME: когда файл не найден error("") иногда вызывает segfault
 
 Этот блок выполняется, include файл заканчивается.
 Закрываем файловый поток, и вызываем yypop_buffer_state, который
