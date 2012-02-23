@@ -3728,59 +3728,59 @@ filename = &yytext[1];
 
 Таблица символов и cons'ы
 
-@o danmakufu_ast.h @{
+@o ast.h @{
 @<License@>
 
-@<danmakufu_ast.h structs@>
-@<danmakufu_ast.h prototypes@>
+@<ast.h structs@>
+@<ast.h prototypes@>
 @}
 
 
-@o danmakufu_ast.c @{
+@o ast.c @{
 @<License@>
 
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 
-#include "danmakufu_ast.h"
+#include "ast.h"
 
-@<danmakufu_ast.c structs@>
-@<danmakufu_ast.c prototypes@>
-@<danmakufu_ast.c functions@>
+@<ast.c structs@>
+@<ast.c prototypes@>
+@<ast.c functions@>
 @}
 
 Типы элементов:
-@d danmakufu_ast.h structs @{
+@d ast.h structs @{
 enum {
-	danmakufu_ast_symbol,
-	danmakufu_ast_cons,
+	ast_symbol,
+	ast_cons,
 };
 @}
 
 Символ danmakufu:
-@d danmakufu_ast.h structs @{
+@d ast.h structs @{
 #define SYMBOL_MAX_LEN 40
-struct DanmakufuSymbol {
+struct AstSymbol {
 	int type;
 	char name[SYMBOL_MAX_LEN];
 };
 
-typedef struct DanmakufuSymbol DanmakufuSymbol;
+typedef struct AstSymbol AstSymbol;
 @}
-type - указывает тип, всегда равен danmakufu_ast_symbol.
+type - указывает тип, всегда равен ast_symbol.
   Он нужен чтобы отличать в cons'ах атомы и другие cons'ы.
 
 Таблица символов и указатель, число элементов в таблице в данный момент и
 размер таблицы:
-@d danmakufu_ast.c structs @{
-static DanmakufuSymbol *symbols_tbl;
+@d ast.c structs @{
+static AstSymbol *symbols_tbl;
 static int num_symbols_tbl;
 static int size_symbols_tbl;
 @}
 
 Функция поиска символа в таблице:
-@d danmakufu_ast.c functions @{
+@d ast.c functions @{
 static int find_symbol(const char *name, int *ret) {
 	int i;
 
@@ -3796,10 +3796,10 @@ static int find_symbol(const char *name, int *ret) {
 возвращает номер элемента в ret.
 
 Добавить элемент в таблицу:
-@d danmakufu_ast.c functions @{
+@d ast.c functions @{
 #define ADD_ELEMENTS_TO_TBL 50
 
-DanmakufuSymbol *danmakufu_ast_add_symbol_to_tbl(const char *name) {
+AstSymbol *ast_add_symbol_to_tbl(const char *name) {
 	int ret;
 
 	if(find_symbol(name, &ret) == -1) {
@@ -3807,7 +3807,7 @@ DanmakufuSymbol *danmakufu_ast_add_symbol_to_tbl(const char *name) {
 
 		if(num_symbols_tbl == size_symbols_tbl) {
 			size_symbols_tbl += ADD_ELEMENTS_TO_TBL;
-			symbols_tbl = realloc(symbols_tbl, sizeof(DanmakufuSymbol)*size_symbols_tbl);
+			symbols_tbl = realloc(symbols_tbl, sizeof(AstSymbol)*size_symbols_tbl);
 			if(symbols_tbl == NULL) {
 				fprintf(stderr, "\nCannot allocate memory\n");
 				exit(1);
@@ -3817,7 +3817,7 @@ DanmakufuSymbol *danmakufu_ast_add_symbol_to_tbl(const char *name) {
 		num_symbols_tbl++;
 	}
 
-	symbols_tbl[ret].type = danmakufu_ast_symbol;
+	symbols_tbl[ret].type = ast_symbol;
 
 	strncpy(symbols_tbl[ret].name, name, SYMBOL_MAX_LEN);
 	symbols_tbl[ret].name[SYMBOL_MAX_LEN-1] = '\0';
@@ -3828,19 +3828,19 @@ DanmakufuSymbol *danmakufu_ast_add_symbol_to_tbl(const char *name) {
 возвращает адрес ячейки куда был добавлен элемент.
 ADD_ELEMENTS_TO_TBL -- добавляется к size_symbols_tbl когда нехватает элементов.
 
-@d danmakufu_ast.h prototypes @{
-DanmakufuSymbol *danmakufu_ast_add_symbol_to_tbl(const char *name);
+@d ast.h prototypes @{
+AstSymbol *ast_add_symbol_to_tbl(const char *name);
 @}
 
 Функции инициализации и очистки:
-@d danmakufu_ast.c functions @{
+@d ast.c functions @{
 #define INIT_ELEMENTS_TBL 200
 
 static void init_symbols_tbl(void) {
 	num_symbols_tbl = 0;
 	size_symbols_tbl = INIT_ELEMENTS_TBL;
 
-	symbols_tbl = malloc(sizeof(DanmakufuSymbol)*size_symbols_tbl);
+	symbols_tbl = malloc(sizeof(AstSymbol)*size_symbols_tbl);
 	if(symbols_tbl == NULL) {
 		fprintf(stderr, "\nCannot allocate memory\n");
 		exit(1);
@@ -3858,40 +3858,40 @@ static void clear_symbols_tbl(void) {
 INIT_ELEMENTS_TBL -- число элементов при инициализации.
 
 Cons-пара danmakufu:
-@d danmakufu_ast.h structs @{
-struct DanmakufuCons {
+@d ast.h structs @{
+struct AstCons {
 	int type;
 	void *car;
 	void *cdr;
 };
 
-typedef struct DanmakufuCons DanmakufuCons;
+typedef struct AstCons AstCons;
 @}
 type - указывает тип, всегда равен danmakufu_ast_cons.
 
 Массив cons'ов, их число и максимальное число:
-@d danmakufu_ast.c structs @{
-static DanmakufuCons *cons;
+@d ast.c structs @{
+static AstCons *cons;
 static int num_cons;
 static int max_num_cons;
 @}
 
 Добавить cons в массив:
-@d danmakufu_ast.c functions @{
-DanmakufuCons *danmakufu_ast_add_cons(void *car, void *cdr) {
+@d ast.c functions @{
+AstCons *ast_add_cons(void *car, void *cdr) {
 	if(num_cons == max_num_cons) {
 		max_num_cons += ADD_CONS;
-		cons = realloc(cons, sizeof(DanmakufuCons)*max_num_cons);
+		cons = realloc(cons, sizeof(AstCons)*max_num_cons);
 		if(cons == NULL) {
 			fprintf(stderr, "\nCannot allocate memory\n");
 			exit(1);
 		}
 	}
 
-	DanmakufuCons *c = &cons[num_cons];
+	AstCons *c = &cons[num_cons];
 	num_cons++;
 
-	c->type = danmakufu_ast_cons;
+	c->type = ast_cons;
 	c->car = car;
 	c->cdr = cdr;
 
@@ -3899,22 +3899,22 @@ DanmakufuCons *danmakufu_ast_add_cons(void *car, void *cdr) {
 }
 @}
 ADD_CONS - если cons'ы в массиве кончились, то добавляем:
-@d danmakufu_ast.c structs @{
+@d ast.c structs @{
 #define ADD_CONS 100
 @}
 
-@d danmakufu_ast.h prototypes @{
-DanmakufuCons *danmakufu_ast_add_cons(void *car, void *cdr);
+@d ast.h prototypes @{
+AstCons *ast_add_cons(void *car, void *cdr);
 @}
 возвращает указатель на cons который добавили.
 
 Функция инициализации cons'ов:
-@d danmakufu_ast.c functions @{
+@d ast.c functions @{
 static void init_cons_array(void) {
 	num_cons = 0;
 	max_num_cons = INIT_CONS;
 
-	cons = malloc(sizeof(DanmakufuCons)*max_num_cons);
+	cons = malloc(sizeof(AstCons)*max_num_cons);
 	if(cons == NULL) {
 		fprintf(stderr, "\nCannot allocate memory\n");
 		exit(1);
@@ -3922,12 +3922,12 @@ static void init_cons_array(void) {
 }
 @}
 INIT_CONS - число элементов при инициализации:
-@d danmakufu_ast.c structs @{
+@d ast.c structs @{
 #define INIT_CONS 500
 @}
 
 Функция очистки массива cons'ов:
-@d danmakufu_ast.c functions @{
+@d ast.c functions @{
 static void clear_cons_array(void) {
 	num_cons = 0;
 	max_num_cons = 0;
@@ -3938,21 +3938,24 @@ static void clear_cons_array(void) {
 @}
 
 Инициализация и очистка ast:
-@d danmakufu_ast.c functions @{
-void danmakufu_ast_init(void) {
+@d ast.c functions @{
+void ast_init(void) {
+	ast_defun = ast_add_symbol_to_tbl("defun");
+	ast_let = ast_add_symbol_to_tbl("let");
+
 	init_symbols_tbl();
 	init_cons_array();
 }
 
-void danmakufu_ast_clear(void) {
+void ast_clear(void) {
 	clear_symbols_tbl();
 	clear_cons_array();
 }
 @}
 
-@d danmakufu_ast.h prototypes @{
-void danmakufu_ast_init(void);
-void danmakufu_ast_clear(void);
+@d ast.h prototypes @{
+void ast_init(void);
+void ast_clear(void);
 @}
 
 ===========================================================
