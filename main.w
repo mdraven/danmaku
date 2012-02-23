@@ -3157,12 +3157,26 @@ line          : expr
               | dog_block
               | error ';'                  { printf("file %s, line %d\n", @2.filename, @2.first_line); YYABORT; }
               ;
+@}
 
-let           : LET SYMB '=' ret_expr ';'          { printf("LET %s\n", $2->name); }
-              | LET SYMB ';'                       { printf("LET %s\n", $2->name); }
+@d danmakufu.y grammar @{
+let           : LET SYMB '=' ret_expr ';'          { @<danmakufu.y grammar let with set@>
+                                                   }
+              | LET SYMB ';'                       { @<danmakufu.y grammar let without set@>
+                                                   }
               ;
+@}
 
 dog_block     : DOG_NAME '{' exprs '}'             { printf("%s\n", $1); }
+@d danmakufu.y grammar let with set @{
+$$ = ast_add_cons(ast_implet, ast_add_cons($2, $4));
+printf("LET %s\n", ((AstSymbol*)$2)->name);
+@}
+
+@d danmakufu.y grammar let without set @{
+$$ = ast_add_cons(ast_implet, ast_add_cons($2, NULL));
+printf("LET %s\n", ((AstSymbol*)$2)->name);
+@}
               ;
 
 defsub_block  : SUB SYMB '{' exprs '}'
