@@ -3070,21 +3070,40 @@ static void yyerror(const char *str);
 @d danmakufu.y code @{
 int main() {
 
-	init_symbols_tbl();
+	ast_init();
 
-	filename = "/dev/shm/thA_TR/thA.dnh";
-	yyin = fopen(filename, "r");
+	danmakufu_parse("/dev/shm/Juuni Jumon - Summer Interlude/script/Juuni Jumon - Full Game.txt");
 
-	yyparse();
-
-	clear_symbols_tbl();
+	ast_clear();
 
 	return 0;
+}
+@}
+
+@d danmakufu.y code @{
+AstCons *danmakufu_parse(char *filename) {
+	global_filename = filename;
+
+	yyin = fopen(filename, "r");
+
+	if(yyparse() == 0)
+		return toplevel_cons;
+
+	return NULL;
 }
 
 #include "lex.yy.c"
 @}
 подключаем лексер.
+
+@d danmakufu.y C defines @{
+AstCons *danmakufu_parse(char *filename);
+@}
+
+@d danmakufu.y C defines @{
+static AstCons *toplevel_cons;
+@}
+
 TODO: - сделать вместо main -- функцию которая принимает путь до скриптового файла
         Вместо init_x и clear_x выше используется ast_init, ast_clear, но(!)
         их надо вызывать ни в самой функции, которая принимает путь до файла(funcX), а в функции
