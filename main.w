@@ -3028,12 +3028,6 @@ case character_wriggle_nightbug:
 
 %code top {
 @<License@>
-
-@<danmakufu.y %code provides@>
-}
-
-%code requires {
-@<danmakufu.y %code requires@>
 }
 
 %{
@@ -3061,10 +3055,14 @@ static char *filename;
 в filename хранится имя файла, который обрабатывается в данный момент
 yyin - внутренняя переменная flex, из этого потока считываются лексемы.
 
-@d danmakufu.y C defines @{
+@d danmakufu.y code @{
 static void yyerror(const char *str) {
 	fprintf(stderr, "error: %s\n", str);
 }
+@}
+
+@d danmakufu.y C defines @{
+static void yyerror(const char *str);
 @}
 
 Инициализируем таблицу символов, задаём имя первого файла,
@@ -3110,7 +3108,12 @@ TODO: - сделать вместо main -- функцию которая при
 %start script
 @}
 
-@d danmakufu.y %code requires @{
+
+@d danmakufu.y C defines @{
+#define YYSTYPE void *
+@}
+
+@d danmakufu.y C defines @{
 #ifndef YYLTYPE_IS_DECLARED
 
 typedef struct YYLTYPE {
