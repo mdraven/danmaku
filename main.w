@@ -3050,7 +3050,7 @@ case character_wriggle_nightbug:
 
 static int yylex (void);
 extern FILE *yyin;
-static char *filename;
+static char *global_filename;
 @}
 в filename хранится имя файла, который обрабатывается в данный момент
 yyin - внутренняя переменная flex, из этого потока считываются лексемы.
@@ -3571,7 +3571,7 @@ IN_BRACKETS         \[[^\]]*\]
 Пропускаем пробелы и символы конца строки:
 @d danmakufu.lex vocabulary @{
 [ \t]+                     /* empty */
-[\r\n]+                    { yylloc.first_line = yylineno; yylloc.filename = filename; }
+[\r\n]+                    { yylloc.first_line = yylineno; yylloc.filename = global_filename; }
 @}
 устанавливаем номер строки и имя файла.
 
@@ -3657,7 +3657,7 @@ static int pos_num_line;
 Функция которая помещает в стек текущее имя файла и номер текущей строки:
 @d danmakufu.lex C defines @{
 static void push_include(void) {
-	strncpy(include_stack[pos_num_line].filename, filename, INCLUDE_FILENAME_LEN);
+	strncpy(include_stack[pos_num_line].filename, global_filename, INCLUDE_FILENAME_LEN);
 	include_stack[pos_num_line].filename[INCLUDE_FILENAME_LEN-1] = '\0';
 
 	include_stack[pos_num_line].num_line = yylineno;
@@ -3669,7 +3669,7 @@ static void push_include(void) {
 	}
 }
 @}
-filename определён в bison
+global_filename определён в bison
 
 @d danmakufu.lex C defines @{
 static IncludeStack *pop_include(void) {
@@ -3685,22 +3685,22 @@ static IncludeStack *pop_include(void) {
 @}
 она работает как-то не так и обнулять приходится самому.
 
-Сохраняем старые filename и yylineno, начинаем отсчёт с первой строки,
+Сохраняем старые global_filename и yylineno, начинаем отсчёт с первой строки,
 задаём имя файла полученое от лексера:
 @d danmakufu.lex include_function add numline to stack @{
 push_include();
 yylineno = 1;
-filename = &yytext[1];
+global_filename = &yytext[1];
 @}
 
-Возвращаем старые значения yylineno и filename:
+Возвращаем старые значения yylineno и global_filename:
 @d danmakufu.lex include_function pop numline from stack @{
 {
-	printf("#close %s\n", filename);
+	printf("#close %s\n", global_filename);
 
 	IncludeStack *is = pop_include();
 	yylineno = is->num_line;
-	filename = is->filename;
+	global_filename = is->filename;
 }
 @}
 
