@@ -3958,7 +3958,7 @@ static void clear_cons_array(void) {
 @d ast.c functions @{
 void ast_init(void) {
 	ast_defun = ast_add_symbol_to_tbl("defun");
-	ast_let = ast_add_symbol_to_tbl("let");
+	ast_implet = ast_add_symbol_to_tbl("implet");
 
 	init_symbols_tbl();
 	init_cons_array();
@@ -3978,13 +3978,14 @@ void ast_clear(void);
 На часть символов будем хранить указатели. Это ускорит сравнение:
 @d ast.c structs @{
 AstSymbol *ast_defun;
-AstSymbol *ast_let;
+AstSymbol *ast_implet;
 @}
 
 @d ast.h structs @{
 extern AstSymbol *ast_defun;
-extern AstSymbol *ast_let;
+extern AstSymbol *ast_implet;
 @}
+implet - императивная версия let(не как в лиспе)
 
 ===========================================================
 
