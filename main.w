@@ -3052,7 +3052,7 @@ case character_wriggle_nightbug:
 #include <string.h>
 #include <stdlib.h>
 
-#include "danmakufu_ast.h"
+#include "ast.h"
 
 static int yylex (void);
 extern FILE *yyin;
@@ -3088,9 +3088,9 @@ int main() {
 @}
 подключаем лексер.
 TODO: - сделать вместо main -- функцию которая принимает путь до скриптового файла
-        Вместо init_x и clear_x выше используется danmakufu_ast_init, danmakufu_ast_clear, но(!)
+        Вместо init_x и clear_x выше используется ast_init, ast_clear, но(!)
         их надо вызывать ни в самой функции, которая принимает путь до файла(funcX), а в функции
-        которая вызывает funcX, потом выполняет ast, а уже потом вызывает danmakufu_ast_clear.
+        которая вызывает funcX, потом выполняет ast, а уже потом вызывает ast_clear.
       - лучше чистить мусор
       - почистить пространство имён
       - сделать оператор индекса [], оператором, а не костылём.
@@ -3104,7 +3104,7 @@ TODO: - сделать вместо main -- функцию которая при
 %union {
 	char *str;
 	int num;
-	DanmakufuSymbol *symb;
+	AstSymbol *symb;
 }
 
 %start script
@@ -3539,7 +3539,7 @@ CHARACTER           \'[^\']*\'
 
 Добавляем найденный символ в таблицу и возвращаем токен синтаксическому анализатору:
 @d danmakufu.lex vocabulary @{
-[[:alpha:]_][[:alnum:]_]*    { yylval.symb=danmakufu_ast_add_symbol_to_tbl(yytext); return SYMB; }
+[[:alpha:]_][[:alnum:]_]*    { yylval.symb=ast_add_symbol_to_tbl(yytext); return SYMB; }
 @}
 
 
