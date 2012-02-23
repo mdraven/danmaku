@@ -3118,12 +3118,6 @@ TODO: - сделать вместо main -- функцию которая при
 %locations
 %error-verbose
 
-%union {
-	char *str;
-	int num;
-	AstSymbol *symb;
-}
-
 %start script
 @}
 
@@ -3186,7 +3180,6 @@ let           : LET SYMB '=' ret_expr ';'          { @<danmakufu.y grammar let w
               ;
 @}
 
-dog_block     : DOG_NAME '{' exprs '}'             { printf("%s\n", $1); }
 @d danmakufu.y grammar let with set @{
 $$ = ast_add_cons(ast_implet, ast_add_cons($2, $4));
 printf("LET %s\n", ((AstSymbol*)$2)->name);
@@ -3196,19 +3189,22 @@ printf("LET %s\n", ((AstSymbol*)$2)->name);
 $$ = ast_add_cons(ast_implet, ast_add_cons($2, NULL));
 printf("LET %s\n", ((AstSymbol*)$2)->name);
 @}
+
+@d danmakufu.y grammar @{
+dog_block     : DOG_NAME '{' exprs '}'             { printf("%s\n", ((char*)$1)); }
               ;
 
 defsub_block  : SUB SYMB '{' exprs '}'
               ;
 
-deffunc_block : FUNCTION SYMB '(' ')' '{' exprs '}'          { printf("FUNCTION: %s\n", $2->name); }
-              | FUNCTION SYMB '(' lets ')' '{' exprs '}'     { printf("FUNCTION: %s\n", $2->name); }
-              | FUNCTION SYMB '{' exprs '}'                  { printf("FUNCTION: %s\n", $2->name); }
+deffunc_block : FUNCTION SYMB '(' ')' '{' exprs '}'          { printf("FUNCTION: %s\n", ((AstSymbol*)$2)->name); }
+              | FUNCTION SYMB '(' lets ')' '{' exprs '}'     { printf("FUNCTION: %s\n", ((AstSymbol*)$2)->name); }
+              | FUNCTION SYMB '{' exprs '}'                  { printf("FUNCTION: %s\n", ((AstSymbol*)$2)->name); }
               ;
 
-deftask_block : TASK SYMB '(' ')' '{' exprs '}'              { printf("TASK %s\n", $2->name); }
-              | TASK SYMB '(' lets ')' '{' exprs '}'         { printf("TASK %s\n", $2->name); }
-              | TASK SYMB '{' exprs '}'                      { printf("TASK %s\n", $2->name); }
+deftask_block : TASK SYMB '(' ')' '{' exprs '}'              { printf("TASK %s\n", ((AstSymbol*)$2)->name); }
+              | TASK SYMB '(' lets ')' '{' exprs '}'         { printf("TASK %s\n", ((AstSymbol*)$2)->name); }
+              | TASK SYMB '{' exprs '}'                      { printf("TASK %s\n", ((AstSymbol*)$2)->name); }
               ;
 @}
 
@@ -3284,19 +3280,19 @@ else_if       : /* empty */
 @d danmakufu.y grammar @{
 indexing         : array '[' ret_expr ']'                         { printf("INDEXING\n"); }
                  | array '[' ret_expr DOUBLE_DOT ret_expr ']'     { printf("INDEXING\n"); }
-                 | SYMB '[' ret_expr ']'                          { printf("INDEXING %s\n", $1->name); }
-                 | SYMB '[' ret_expr DOUBLE_DOT ret_expr ']'      { printf("INDEXING %s\n", $1->name); }
+                 | SYMB '[' ret_expr ']'                          { printf("INDEXING %s\n", ((AstSymbol*)$1)->name); }
+                 | SYMB '[' ret_expr DOUBLE_DOT ret_expr ']'      { printf("INDEXING %s\n", ((AstSymbol*)$1)->name); }
                  | call_func '[' ret_expr ']'                     { printf("INDEXING\n"); }
                  | call_func '[' ret_expr DOUBLE_DOT ret_expr ']' { printf("INDEXING\n"); }
                  | indexing '[' ret_expr ']'                      { printf("INDEXING\n"); }
                  | indexing '[' ret_expr DOUBLE_DOT ret_expr ']'  { printf("INDEXING\n"); }
                  ;
 
-call_func        : SYMB '(' ')'                       { printf("CALL %s\n", $1->name); }
-                 | SYMB '(' args ')'                  { printf("CALL %s\n", $1->name); }
+call_func        : SYMB '(' ')'                       { printf("CALL %s\n", ((AstSymbol*)$1)->name); }
+                 | SYMB '(' args ')'                  { printf("CALL %s\n", ((AstSymbol*)$1)->name); }
                  ;
 
-call_task        : SYMB                               { printf("CALL TASK %s\n", $1->name); }
+call_task        : SYMB                               { printf("CALL TASK %s\n", ((AstSymbol*)$1)->name); }
                  ;
 @}
 
@@ -3393,16 +3389,16 @@ array_args    : ret_expr
 %right '^'
 
 
-%token <num> NUM
-%token <str> STRING
-%token <str> CHARACTER
+%token NUM
+%token STRING
+%token CHARACTER
 
-%token <symb> SYMB
+%token SYMB
 
-%token <str> DOG_NAME
+%token DOG_NAME
 
-%token <str> SCRIPT_MAIN
-%token <str> SCRIPT_CHILD
+%token SCRIPT_MAIN
+%token SCRIPT_CHILD
 
 %token LET
 %token RETURN
@@ -3428,15 +3424,15 @@ array_args    : ret_expr
 
 Макросы:
 @d danmakufu.y Bison defines @{
-%token <str> M_TOUHOUDANMAKUFU
-%token <str> M_TITLE
-%token <str> M_TEXT
-%token <str> M_IMAGE
-%token <str> M_BACKGROUND
-%token <str> M_BGM
-%token <str> M_PLAYLEVEL
-%token <str> M_PLAYER
-%token <str> M_SCRIPTVERSION
+%token M_TOUHOUDANMAKUFU
+%token M_TITLE
+%token M_TEXT
+%token M_IMAGE
+%token M_BACKGROUND
+%token M_BGM
+%token M_PLAYLEVEL
+%token M_PLAYER
+%token M_SCRIPTVERSION
 @}
 
 Лексика danmakufu script
@@ -3486,12 +3482,12 @@ script_stage_main   return SCRIPT_MAIN;
 script_enemy        return SCRIPT_CHILD;
 script_shot         return SCRIPT_CHILD;
 
-@Initialize         { yylval.str="@Initialize"; return DOG_NAME;}
-@MainLoop           { yylval.str="@MainLoop"; return DOG_NAME;}
-@DrawLoop           { yylval.str="@DrawLoop"; return DOG_NAME;}
-@Finalize           { yylval.str="@Finalize"; return DOG_NAME;}
-@BackGround         { yylval.str="@BackGround"; return DOG_NAME;}
-@DrawTopObject      { yylval.str="@DrawTopObject"; return DOG_NAME;}
+@Initialize         { yylval="@Initialize"; return DOG_NAME;}
+@MainLoop           { yylval="@MainLoop"; return DOG_NAME;}
+@DrawLoop           { yylval="@DrawLoop"; return DOG_NAME;}
+@Finalize           { yylval="@Finalize"; return DOG_NAME;}
+@BackGround         { yylval="@BackGround"; return DOG_NAME;}
+@DrawTopObject      { yylval="@DrawTopObject"; return DOG_NAME;}
 
 \+                  return '+';
 -                   return '-';
@@ -3575,7 +3571,7 @@ CHARACTER           \'[^\']*\'
 
 Добавляем найденный символ в таблицу и возвращаем токен синтаксическому анализатору:
 @d danmakufu.lex vocabulary @{
-[[:alpha:]_][[:alnum:]_]*    { yylval.symb=ast_add_symbol_to_tbl(yytext); return SYMB; }
+[[:alpha:]_][[:alnum:]_]*    { yylval=ast_add_symbol_to_tbl(yytext); return SYMB; }
 @}
 
 
