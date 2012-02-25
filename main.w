@@ -3540,24 +3540,19 @@ printf("CALL TASK %s\n", ((AstSymbol*)$1)->name);
 
 Список аргументов при вызове функций и, возможно, чего-то ещё:
 @d danmakufu.y grammar @{
-args          : ret_expr              { @<danmakufu.y grammar args list@>
+args          : ret_expr              { @<danmakufu.y grammar args create list@>
                                       }
-              | args ',' ret_expr
+              | args ',' ret_expr     { @<danmakufu.y grammar args concatenate@>
+                                      }
               ;
 @}
 
-@d danmakufu.y C defines @{
-void *ast_dargs(void *ret_expr);
+@d danmakufu.y grammar args create list @{
+$$ = ast_add_cons($1, NULL);
 @}
 
-Вернуть объект args:
-@d danmakufu.y code @{
-void *ast_dargs(void *ret_expr) {
-
-}
-@}
-
-@d danmakufu.y grammar args list @{
+@d danmakufu.y grammar args concatenate @{
+$$ = ast_append($1, $3);
 @}
 
 Список параметров при объявлении функции и
