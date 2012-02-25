@@ -3200,8 +3200,26 @@ printf("LET %s\n", ((AstSymbol*)$2)->name);
 @}
 
 @d danmakufu.y grammar @{
-dog_block     : DOG_NAME '{' exprs '}'   { printf("%s\n", ((char*)$1)); }
+dog_block     : DOG_NAME '{' exprs '}'   { @<danmakufu.y grammar dogs@>
+                                         }
               ;
+@}
+
+@d danmakufu.y C defines @{
+void *ast_ddog_name(void *name, void *exprs);
+@}
+
+Вернуть объект dog_name:
+@d danmakufu.y code @{
+void *ast_ddog_name(void *name, void *exprs) {
+	return ast_add_cons(ast_dog_name,
+			ast_add_cons(name, exprs));
+}
+@}
+
+@d danmakufu.y grammar dogs @{
+$$ = ast_ddog_name($1, $3);
+printf("%s\n", ((AstSymbol*)$1)->name);
 @}
 
 Процедура:
@@ -4195,6 +4213,7 @@ void ast_init(void) {
 	ast_alternative = ast_add_symbol_to_tbl("alternative");
 	ast_case = ast_add_symbol_to_tbl("case");
 	ast_funcall = ast_add_symbol_to_tbl("funcall");
+	ast_dog_name = ast_add_symbol_to_tbl("dog_name");
 
 	init_symbols_tbl();
 	init_cons_array();
@@ -4224,6 +4243,7 @@ AstSymbol *ast_if;
 AstSymbol *ast_alternative;
 AstSymbol *ast_case;
 AstSymbol *ast_funcall;
+AstSymbol *ast_dog_name;
 @}
 
 @d ast.h structs @{
@@ -4234,6 +4254,7 @@ extern AstSymbol *ast_if;
 extern AstSymbol *ast_alternative;
 extern AstSymbol *ast_case;
 extern AstSymbol *ast_funcall;
+extern AstSymbol *ast_dog_name;
 @}
 implet - императивная версия let(не как в лиспе)
 
