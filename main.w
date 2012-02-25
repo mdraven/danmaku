@@ -3553,14 +3553,60 @@ printf("CALL TASK %s\n", ((AstSymbol*)$1)->name);
 args          : ret_expr
               | args ',' ret_expr
               ;
+@}
 
-let_expr      : ret_expr
-              | LET SYMB
+Список параметров при объявлении функции и
+  прочих подобных штук:
+@d danmakufu.y grammar @{
+let_expr      : ret_expr              { @<danmakufu.y grammar let_expr without let@>
+                                      }
+              | LET SYMB              { @<danmakufu.y grammar let_expr with let@>
+                                      }
               ;
 
 lets          : let_expr
-              | lets ',' let_expr
+              | lets ',' let_expr     { @<danmakufu.y grammar lets concatenate@>
+                                      }
               ;
+@}
+
+@d danmakufu.y C defines @{
+void *ast_dlet_expr(void *obj);
+@}
+obj -- неопределён, это или ret_expr или LET SYMB.
+
+Вернуть объект letlist:
+@d danmakufu.y code @{
+void *ast_dlet_expr(void *obj) {
+	return ast_add_cons(ast_let_expr,
+			ast_add_cons(obj, NULL));
+}
+@}
+
+@d danmakufu.y C defines @{
+void *ast_dlet_expr_set_next_let_expr(void *let_expr1, void *let_expr2);
+@}
+
+Добавить к let_expr следующий let_expr постироив цепочку, как
+  и в случае с case:
+@d danmakufu.y code @{
+void *ast_dlet_expr_set_next_let_expr(void *let_expr1, void *let_expr2) {
+	cdr(let_expr1)->cdr = let_expr2;
+	return let_expr1;
+}
+@}
+
+@d danmakufu.y grammar let_expr without let @{
+$$ = ast_dlet_expr($1);
+@}
+
+@d danmakufu.y grammar let_expr with let @{
+$$ = ast_dlet_expr(ast_dimplet($2, NULL));
+@}
+
+Соединим два определения параметра в список:
+@d danmakufu.y grammar lets concatenate @{
+$$ = ast_dlet_expr_set_next_let_expr($1, $3);
 @}
 
 @d danmakufu.y grammar @{
@@ -4248,6 +4294,7 @@ void ast_init(void) {
 	ast_funcall = ast_add_symbol_to_tbl("funcall");
 	ast_taskcall = ast_add_symbol_to_tbl("taskcall");
 	ast_dog_name = ast_add_symbol_to_tbl("dog_name");
+	ast_let_expr = ast_add_symbol_to_tbl("let_expr");
 
 	init_symbols_tbl();
 	init_cons_array();
@@ -4279,6 +4326,7 @@ AstSymbol *ast_case;
 AstSymbol *ast_funcall;
 AstSymbol *ast_taskcall;
 AstSymbol *ast_dog_name;
+AstSymbol *ast_let_expr;
 @}
 
 @d ast.h structs @{
@@ -4291,6 +4339,7 @@ extern AstSymbol *ast_case;
 extern AstSymbol *ast_funcall;
 extern AstSymbol *ast_taskcall;
 extern AstSymbol *ast_dog_name;
+extern AstSymbol *ast_let_expr;
 @}
 implet - императивная версия let(не как в лиспе)
 
