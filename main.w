@@ -3324,18 +3324,76 @@ call_keyword  : YIELD ';'
 
 Danmakufu script'ный switch:
 @d danmakufu.y grammar @{
-alternative   : ALTERNATIVE '(' ret_expr ')' case others     { printf("ALTERNATIVE\n"); }
-              | ALTERNATIVE '(' ret_expr ')' case            { printf("ALTERNATIVE\n"); }
+alternative   : ALTERNATIVE '(' ret_expr ')' case others     { @<danmakufu.y grammar alternative with others@>
+                                                             }
+              | ALTERNATIVE '(' ret_expr ')' case            { @<danmakufu.y grammar alternative without others@>
+                                                             }
               ;
 
-case          : CASE '(' args ')' '{' exprs '}'              { printf("CASE\n"); }
-              | case CASE '(' args ')' '{' exprs '}'         { printf("CASE\n"); }
+case          : CASE '(' args ')' '{' exprs '}'              { @<danmakufu.y grammar case1@>
+                                                             }
+              | case CASE '(' args ')' '{' exprs '}'         { @<danmakufu.y grammar case2@>
+                                                             }
               ;
 
 others        : OTHERS '{' exprs '}'                         { printf("OTHERS\n"); }
               ;
 @}
 Выглядит как говно, зато без конфликта shift/reduce.
+
+@d danmakufu.y C defines @{
+void *ast_dalternative(void *cond, void *case_, void *others_);
+void *ast_dcase(void *args, void *exprs);
+void *ast_dcase_set_next_case(void *case1, void *case2);
+@}
+
+Вернуть объект alternative:
+@d danmakufu.y code @{
+void *ast_dalternative(void *cond, void *case_, void *others_) {
+	return ast_add_cons(ast_alternative,
+			ast_add_cons(cond,
+				ast_add_cons(case_, others_)));
+}
+@}
+
+Вернуть объект case:
+@d danmakufu.y code @{
+void *ast_dcase(void *args, void *exprs) {
+	return ast_add_cons(ast_case,
+			ast_add_cons(args,
+				ast_add_cons(exprs, NULL)));
+}
+@}
+при этом ссылка на следующий case равна NULL,
+  чтобы прикрепить следующий case определим функцию:
+@d danmakufu.y code @{
+void *ast_dcase_set_next_case(void *case1, void *case2) {
+	cdr(cdr(case1))->cdr = case2;
+	return case1;
+}
+@}
+
+
+@d danmakufu.y grammar alternative with others @{
+$$ = ast_dalternative($3, $5, $6);
+printf("ALTERNATIVE\n");
+@}
+
+@d danmakufu.y grammar alternative without others @{
+$$ = ast_dalternative($3, $5, NULL);
+printf("ALTERNATIVE\n");
+@}
+
+@d danmakufu.y grammar case1 @{
+$$ = ast_dcase($3, $6);
+printf("CASE\n");
+@}
+
+Если не первый case:
+@d danmakufu.y grammar case2 @{
+$$ = ast_dcase_set_next_case($1, ast_dcase($4, $7));
+printf("CASE\n");
+@}
 
 @d danmakufu.y grammar @{
 ascent        : ASCENT '(' LET SYMB IN ret_expr DOUBLE_DOT ret_expr ')' '{' exprs '}'
@@ -4100,6 +4158,8 @@ void ast_init(void) {
 	ast_implet = ast_add_symbol_to_tbl("implet");
 	ast_task = ast_add_symbol_to_tbl("task");
 	ast_if = ast_add_symbol_to_tbl("if");
+	ast_alternative = ast_add_symbol_to_tbl("alternative");
+	ast_case = ast_add_symbol_to_tbl("case");
 
 	init_symbols_tbl();
 	init_cons_array();
@@ -4126,6 +4186,8 @@ AstSymbol *ast_defun;
 AstSymbol *ast_implet;
 AstSymbol *ast_task;
 AstSymbol *ast_if;
+AstSymbol *ast_alternative;
+AstSymbol *ast_case;
 @}
 
 @d ast.h structs @{
@@ -4133,6 +4195,8 @@ extern AstSymbol *ast_defun;
 extern AstSymbol *ast_implet;
 extern AstSymbol *ast_task;
 extern AstSymbol *ast_if;
+extern AstSymbol *ast_alternative;
+extern AstSymbol *ast_case;
 @}
 implet - императивная версия let(не как в лиспе)
 
