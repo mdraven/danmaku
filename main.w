@@ -3205,12 +3205,40 @@ dog_block     : DOG_NAME '{' exprs '}'             { printf("%s\n", ((char*)$1))
 
 defsub_block  : SUB SYMB '{' exprs '}'
               ;
+@}
 
-deffunc_block : FUNCTION SYMB '(' ')' '{' exprs '}'          { printf("FUNCTION: %s\n", ((AstSymbol*)$2)->name); }
-              | FUNCTION SYMB '(' lets ')' '{' exprs '}'     { printf("FUNCTION: %s\n", ((AstSymbol*)$2)->name); }
-              | FUNCTION SYMB '{' exprs '}'                  { printf("FUNCTION: %s\n", ((AstSymbol*)$2)->name); }
+@d danmakufu.y grammar @{
+deffunc_block : FUNCTION SYMB '(' ')' '{' exprs '}'        { @<danmakufu.y grammar function without lets@>
+                                                           }
+              | FUNCTION SYMB '(' lets ')' '{' exprs '}'   { @<danmakufu.y grammar function with lets@>
+                                                           }
+              | FUNCTION SYMB '{' exprs '}'                { @<danmakufu.y grammar function without parenthesis@>
+                                                           }
               ;
+@}
 
+@d danmakufu.y grammar function without lets @{
+$$ = ast_add_cons(ast_defun,
+		ast_add_cons($2,
+			ast_add_cons(NULL, $6)));
+printf("FUNCTION: %s\n", ((AstSymbol*)$2)->name);
+@}
+
+@d danmakufu.y grammar function with lets @{
+$$ = ast_add_cons(ast_defun,
+		ast_add_cons($2,
+			ast_add_cons($4, $7)));
+printf("FUNCTION: %s\n", ((AstSymbol*)$2)->name);
+@}
+
+@d danmakufu.y grammar function without parenthesis @{
+$$ = ast_add_cons(ast_defun,
+		ast_add_cons($2,
+			ast_add_cons(NULL, $4)));
+printf("FUNCTION: %s\n", ((AstSymbol*)$2)->name);
+@}
+
+@d danmakufu.y grammar @{
 deftask_block : TASK SYMB '(' ')' '{' exprs '}'              { printf("TASK %s\n", ((AstSymbol*)$2)->name); }
               | TASK SYMB '(' lets ')' '{' exprs '}'         { printf("TASK %s\n", ((AstSymbol*)$2)->name); }
               | TASK SYMB '{' exprs '}'                      { printf("TASK %s\n", ((AstSymbol*)$2)->name); }
