@@ -3200,12 +3200,17 @@ printf("LET %s\n", ((AstSymbol*)$2)->name);
 @}
 
 @d danmakufu.y grammar @{
-dog_block     : DOG_NAME '{' exprs '}'             { printf("%s\n", ((char*)$1)); }
-              ;
-
-defsub_block  : SUB SYMB '{' exprs '}'
+dog_block     : DOG_NAME '{' exprs '}'   { printf("%s\n", ((char*)$1)); }
               ;
 @}
+
+Процедура:
+@d danmakufu.y grammar @{
+defsub_block  : SUB SYMB '{' exprs '}'   { @<danmakufu.y grammar function without parenthesis@>
+                                         }
+              ;
+@}
+имеет тот же обработчик, что и функция без параметров.
 
 @d danmakufu.y grammar @{
 deffunc_block : FUNCTION SYMB '(' ')' '{' exprs '}'        { @<danmakufu.y grammar function without lets@>
@@ -3217,24 +3222,31 @@ deffunc_block : FUNCTION SYMB '(' ')' '{' exprs '}'        { @<danmakufu.y gramm
               ;
 @}
 
+@d danmakufu.y C defines @{
+void *ast_dfunction(void *name, void *lets, void *exprs);
+@}
+
+Вернуть объект function:
+@d danmakufu.y code @{
+void *ast_dfunction(void *name, void *lets, void *exprs) {
+	return ast_add_cons(ast_defun,
+			ast_add_cons(name,
+				ast_add_cons(lets, exprs)));
+}
+@}
+
 @d danmakufu.y grammar function without lets @{
-$$ = ast_add_cons(ast_defun,
-		ast_add_cons($2,
-			ast_add_cons(NULL, $6)));
+$$ = ast_dfunction($2, NULL, $6);
 printf("FUNCTION: %s\n", ((AstSymbol*)$2)->name);
 @}
 
 @d danmakufu.y grammar function with lets @{
-$$ = ast_add_cons(ast_defun,
-		ast_add_cons($2,
-			ast_add_cons($4, $7)));
+$$ = ast_dfunction($2, $4, $6);
 printf("FUNCTION: %s\n", ((AstSymbol*)$2)->name);
 @}
 
 @d danmakufu.y grammar function without parenthesis @{
-$$ = ast_add_cons(ast_defun,
-		ast_add_cons($2,
-			ast_add_cons(NULL, $4)));
+$$ = ast_dfunction($2, NULL, $4);
 printf("FUNCTION: %s\n", ((AstSymbol*)$2)->name);
 @}
 
