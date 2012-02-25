@@ -4136,6 +4136,24 @@ extern AstSymbol *ast_if;
 @}
 implet - императивная версия let(не как в лиспе)
 
+Добавим поддержку операций car и cdr для удобства доступа:
+@d ast.h prototypes @{
+AstCons *car(AstCons *cons);
+AstCons *cdr(AstCons *cons);
+@}
+
+@d ast.c functions @{
+AstCons *car(AstCons *cons) {
+	return cons->car;
+}
+
+AstCons *cdr(AstCons *cons) {
+	return cons->cdr;
+}
+@}
+функции приметивны: казалось бы, зачем они? Но они позволяют уменьшить
+  количество приведений типа(значит и размер кода), что есть хорошо.
+
 ===========================================================
 
 Игровой персонаж.
