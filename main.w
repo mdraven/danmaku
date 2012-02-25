@@ -4363,11 +4363,11 @@ AstCons *cdr(AstCons *cons) {
 
 Функция append:
 @d ast.h prototypes @{
-AstCons *cons_append(AstCons *cons, AstCons *to_back);
+AstCons *ast_append(AstCons *cons, AstCons *to_back);
 @}
 
 @d ast.c functions @{
-AstCons *cons_append(AstCons *cons, AstCons *to_back) {
+AstCons *ast_append(AstCons *cons, AstCons *to_back) {
 	cons->cdr = to_back;
 	return cons;
 }
