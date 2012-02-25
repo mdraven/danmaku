@@ -3248,24 +3248,31 @@ deftask_block : TASK SYMB '(' ')' '{' exprs '}'       { @<danmakufu.y grammar ta
               ;
 @}
 
+@d danmakufu.y C defines @{
+void *ast_dtask(void *name, void *lets, void *exprs);
+@}
+
+Вернуть объект task:
+@d danmakufu.y code @{
+void *ast_dtask(void *name, void *lets, void *exprs) {
+	return ast_add_cons(ast_task,
+				ast_add_cons(name,
+					ast_add_cons(lets, exprs)));
+}
+@}
+
 @d danmakufu.y grammar task without lets @{
-$$ = ast_add_cons(ast_task,
-		ast_add_cons($2,
-			ast_add_cons(NULL, $6)));
+$$ = ast_dtask($2, NULL, $6);
 printf("TASK %s\n", ((AstSymbol*)$2)->name);
 @}
 
 @d danmakufu.y grammar task with lets @{
-$$ = ast_add_cons(ast_task,
-		ast_add_cons($2,
-			ast_add_cons($4, $7)));
+$$ = ast_dtask($2, $4, $7);
 printf("FUNCTION: %s\n", ((AstSymbol*)$2)->name);
 @}
 
 @d danmakufu.y grammar task without parenthesis @{
-$$ = ast_add_cons(ast_task,
-		ast_add_cons($2,
-			ast_add_cons(NULL, $4)));
+$$ = ast_dtask($2, NULL, $4);
 printf("FUNCTION: %s\n", ((AstSymbol*)$2)->name);
 @}
 
