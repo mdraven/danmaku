@@ -3189,12 +3189,25 @@ let           : LET SYMB '=' ret_expr ';'          { @<danmakufu.y grammar let w
               ;
 @}
 
+@d danmakufu.y C defines @{
+void *ast_dimplet(void *name, void *exprs);
+@}
+
+Вернуть объект implet:
+@d danmakufu.y code @{
+void *ast_dimplet(void *name, void *exprs) {
+	return ast_add_cons(ast_implet,
+			ast_add_cons(name, exprs));
+}
+@}
+
 @d danmakufu.y grammar let with set @{
-$$ = ast_add_cons(ast_implet, ast_add_cons($2, $4));
+$$ = ast_dimplet($2, $4);
 printf("LET %s\n", ((AstSymbol*)$2)->name);
 @}
 
 @d danmakufu.y grammar let without set @{
+$$ = ast_dimplet($2, NULL);
 $$ = ast_add_cons(ast_implet, ast_add_cons($2, NULL));
 printf("LET %s\n", ((AstSymbol*)$2)->name);
 @}
