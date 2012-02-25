@@ -3475,7 +3475,7 @@ call_func        : SYMB '(' ')'                       { @<danmakufu.y grammar ca
 void *ast_dfuncall(void *name, void *args);
 @}
 
-Вернуть объект if:
+Вернуть объект funcall:
 @d danmakufu.y code @{
 void *ast_dfuncall(void *name, void *args) {
 	return ast_add_cons(ast_funcall,
