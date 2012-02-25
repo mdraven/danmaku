@@ -3684,12 +3684,12 @@ script_stage_main   return SCRIPT_MAIN;
 script_enemy        return SCRIPT_CHILD;
 script_shot         return SCRIPT_CHILD;
 
-@Initialize         { yylval="@Initialize"; return DOG_NAME;}
-@MainLoop           { yylval="@MainLoop"; return DOG_NAME;}
-@DrawLoop           { yylval="@DrawLoop"; return DOG_NAME;}
-@Finalize           { yylval="@Finalize"; return DOG_NAME;}
-@BackGround         { yylval="@BackGround"; return DOG_NAME;}
-@DrawTopObject      { yylval="@DrawTopObject"; return DOG_NAME;}
+@Initialize         { yylval=ast_add_symbol_to_tbl("@Initialize"); return DOG_NAME;}
+@MainLoop           { yylval=ast_add_symbol_to_tbl("@MainLoop"); return DOG_NAME;}
+@DrawLoop           { yylval=ast_add_symbol_to_tbl("@DrawLoop"); return DOG_NAME;}
+@Finalize           { yylval=ast_add_symbol_to_tbl("@Finalize"); return DOG_NAME;}
+@BackGround         { yylval=ast_add_symbol_to_tbl("@BackGround"); return DOG_NAME;}
+@DrawTopObject      { yylval=ast_add_symbol_to_tbl("@DrawTopObject"); return DOG_NAME;}
 
 \+                  return '+';
 -                   return '-';
