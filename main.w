@@ -3239,10 +3239,34 @@ printf("FUNCTION: %s\n", ((AstSymbol*)$2)->name);
 @}
 
 @d danmakufu.y grammar @{
-deftask_block : TASK SYMB '(' ')' '{' exprs '}'              { printf("TASK %s\n", ((AstSymbol*)$2)->name); }
-              | TASK SYMB '(' lets ')' '{' exprs '}'         { printf("TASK %s\n", ((AstSymbol*)$2)->name); }
-              | TASK SYMB '{' exprs '}'                      { printf("TASK %s\n", ((AstSymbol*)$2)->name); }
+deftask_block : TASK SYMB '(' ')' '{' exprs '}'       { @<danmakufu.y grammar task without lets@>
+                                                      }
+              | TASK SYMB '(' lets ')' '{' exprs '}'  { @<danmakufu.y grammar task with lets@>
+                                                      }
+              | TASK SYMB '{' exprs '}'               { @<danmakufu.y grammar task without parenthesis@>
+                                                      }
               ;
+@}
+
+@d danmakufu.y grammar task without lets @{
+$$ = ast_add_cons(ast_task,
+		ast_add_cons($2,
+			ast_add_cons(NULL, $6)));
+printf("TASK %s\n", ((AstSymbol*)$2)->name);
+@}
+
+@d danmakufu.y grammar task with lets @{
+$$ = ast_add_cons(ast_task,
+		ast_add_cons($2,
+			ast_add_cons($4, $7)));
+printf("FUNCTION: %s\n", ((AstSymbol*)$2)->name);
+@}
+
+@d danmakufu.y grammar task without parenthesis @{
+$$ = ast_add_cons(ast_task,
+		ast_add_cons($2,
+			ast_add_cons(NULL, $4)));
+printf("FUNCTION: %s\n", ((AstSymbol*)$2)->name);
 @}
 
 @d danmakufu.y grammar @{
@@ -4025,6 +4049,7 @@ static void clear_cons_array(void) {
 void ast_init(void) {
 	ast_defun = ast_add_symbol_to_tbl("defun");
 	ast_implet = ast_add_symbol_to_tbl("implet");
+	ast_task = ast_add_symbol_to_tbl("task");
 
 	init_symbols_tbl();
 	init_cons_array();
@@ -4049,11 +4074,13 @@ void ast_clear(void);
 @d ast.c structs @{
 AstSymbol *ast_defun;
 AstSymbol *ast_implet;
+AstSymbol *ast_task;
 @}
 
 @d ast.h structs @{
 extern AstSymbol *ast_defun;
 extern AstSymbol *ast_implet;
+extern AstSymbol *ast_task;
 @}
 implet - императивная версия let(не как в лиспе)
 
