@@ -4358,8 +4358,21 @@ AstCons *cdr(AstCons *cons) {
 	return cons->cdr;
 }
 @}
-функции приметивны: казалось бы, зачем они? Но они позволяют уменьшить
+функции примитивны: казалось бы, зачем они? Но они позволяют уменьшить
   количество приведений типа(значит и размер кода), что есть хорошо.
+
+Функция append:
+@d ast.h prototypes @{
+AstCons *cons_append(AstCons *cons, AstCons *to_back);
+@}
+
+@d ast.c functions @{
+AstCons *cons_append(AstCons *cons, AstCons *to_back) {
+	cons->cdr = to_back;
+	return cons;
+}
+@}
+с той же целью, что и cdr() и car().
 
 ===========================================================
 
