@@ -3364,7 +3364,7 @@ else_if       : /* empty */
 void *ast_dif(void *cond, void *then, void *else_);
 @}
 
-Вернуть объект task:
+Вернуть объект if:
 @d danmakufu.y code @{
 void *ast_dif(void *cond, void *then, void *else_) {
 	return ast_add_cons(ast_if,
