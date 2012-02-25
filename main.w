@@ -3074,7 +3074,7 @@ int main() {
 
 	danmakufu_parse("/dev/shm/Juuni Jumon - Summer Interlude/script/Juuni Jumon - Full Game.txt");
 
-	ast_clear();
+	// ast_clear();
 
 	return 0;
 }
@@ -3874,21 +3874,29 @@ ADD_ELEMENTS_TO_TBL -- добавляется к size_symbols_tbl когда н�
 AstSymbol *ast_add_symbol_to_tbl(const char *name);
 @}
 
-Функции инициализации и очистки:
+Функция инициализации:
 @d ast.c functions @{
 #define INIT_ELEMENTS_TBL 200
 
 static void init_symbols_tbl(void) {
 	num_symbols_tbl = 0;
-	size_symbols_tbl = INIT_ELEMENTS_TBL;
 
-	symbols_tbl = malloc(sizeof(AstSymbol)*size_symbols_tbl);
-	if(symbols_tbl == NULL) {
-		fprintf(stderr, "\nCannot allocate memory\n");
-		exit(1);
+	if(symbols_tbl != NULL) {
+		size_symbols_tbl = INIT_ELEMENTS_TBL;
+
+		symbols_tbl = malloc(sizeof(AstSymbol)*size_symbols_tbl);
+		if(symbols_tbl == NULL) {
+			fprintf(stderr, "\nCannot allocate memory\n");
+			exit(1);
+		}
 	}
 }
+@}
+INIT_ELEMENTS_TBL -- число элементов при инициализации.
+Если инициализация уже была, то не очищать, а использовать сколько есть.
 
+Функция очистки:
+@d ast.c functions @{
 static void clear_symbols_tbl(void) {
 	num_symbols_tbl = 0;
 	size_symbols_tbl = 0;
@@ -3897,7 +3905,8 @@ static void clear_symbols_tbl(void) {
 	symbols_tbl = NULL;
 }
 @}
-INIT_ELEMENTS_TBL -- число элементов при инициализации.
+вызывать при выходе из игры. Хотя можно и после завершения скрипта,
+  но зачем фрагментировать память?
 
 Cons-пара danmakufu:
 @d ast.h structs @{
@@ -3954,12 +3963,15 @@ AstCons *ast_add_cons(void *car, void *cdr);
 @d ast.c functions @{
 static void init_cons_array(void) {
 	num_cons = 0;
-	max_num_cons = INIT_CONS;
 
-	cons = malloc(sizeof(AstCons)*max_num_cons);
-	if(cons == NULL) {
-		fprintf(stderr, "\nCannot allocate memory\n");
-		exit(1);
+	if(cons != NULL) {
+		max_num_cons = INIT_CONS;
+
+		cons = malloc(sizeof(AstCons)*max_num_cons);
+		if(cons == NULL) {
+			fprintf(stderr, "\nCannot allocate memory\n");
+			exit(1);
+		}
 	}
 }
 @}
@@ -3978,8 +3990,9 @@ static void clear_cons_array(void) {
 	cons = NULL;
 }
 @}
+вызвать при выходе из игры(см. clear_symbols_tbl)
 
-Инициализация и очистка ast:
+Инициализация ast:
 @d ast.c functions @{
 void ast_init(void) {
 	ast_defun = ast_add_symbol_to_tbl("defun");
@@ -3988,12 +4001,16 @@ void ast_init(void) {
 	init_symbols_tbl();
 	init_cons_array();
 }
+@}
 
+Очистка ast:
+@d ast.c functions @{
 void ast_clear(void) {
 	clear_symbols_tbl();
 	clear_cons_array();
 }
 @}
+вызвать при выходе из игры(см. clear_symbols_tbl и clear_cons_array)
 
 @d ast.h prototypes @{
 void ast_init(void);
