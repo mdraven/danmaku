@@ -3455,11 +3455,39 @@ indexing         : array '[' ret_expr ']'                         { printf("INDE
                  | indexing '[' ret_expr ']'                      { printf("INDEXING\n"); }
                  | indexing '[' ret_expr DOUBLE_DOT ret_expr ']'  { printf("INDEXING\n"); }
                  ;
+@}
 
-call_func        : SYMB '(' ')'                       { printf("CALL %s\n", ((AstSymbol*)$1)->name); }
-                 | SYMB '(' args ')'                  { printf("CALL %s\n", ((AstSymbol*)$1)->name); }
+@d danmakufu.y grammar @{
+call_func        : SYMB '(' ')'                       { @<danmakufu.y grammar call without args@>
+                                                      }
+                 | SYMB '(' args ')'                  { @<danmakufu.y grammar call without args@>
+                                                      }
                  ;
+@}
 
+@d danmakufu.y C defines @{
+void *ast_dfuncall(void *name, void *args);
+@}
+
+Вернуть объект if:
+@d danmakufu.y code @{
+void *ast_dfuncall(void *name, void *args) {
+	return ast_add_cons(ast_funcall,
+			ast_add_cons(name, args));
+}
+@}
+
+@d danmakufu.y grammar call without args @{
+$$ = ast_dfuncall($1, NULL);
+printf("CALL %s\n", ((AstSymbol*)$1)->name);
+@}
+
+@d danmakufu.y grammar call with args @{
+$$ = ast_dfuncall($1, $3);
+printf("CALL %s\n", ((AstSymbol*)$1)->name);
+@}
+
+@d danmakufu.y grammar @{
 call_task        : SYMB                               { printf("CALL TASK %s\n", ((AstSymbol*)$1)->name); }
                  ;
 @}
@@ -4160,6 +4188,7 @@ void ast_init(void) {
 	ast_if = ast_add_symbol_to_tbl("if");
 	ast_alternative = ast_add_symbol_to_tbl("alternative");
 	ast_case = ast_add_symbol_to_tbl("case");
+	ast_funcall = ast_add_symbol_to_tbl("funcall");
 
 	init_symbols_tbl();
 	init_cons_array();
@@ -4188,6 +4217,7 @@ AstSymbol *ast_task;
 AstSymbol *ast_if;
 AstSymbol *ast_alternative;
 AstSymbol *ast_case;
+AstSymbol *ast_funcall;
 @}
 
 @d ast.h structs @{
@@ -4197,6 +4227,7 @@ extern AstSymbol *ast_task;
 extern AstSymbol *ast_if;
 extern AstSymbol *ast_alternative;
 extern AstSymbol *ast_case;
+extern AstSymbol *ast_funcall;
 @}
 implet - императивная версия let(не как в лиспе)
 
