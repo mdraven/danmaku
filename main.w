@@ -3376,7 +3376,6 @@ others        : OTHERS '{' exprs '}'                         { @<danmakufu.y gra
 @d danmakufu.y C defines @{
 void *ast_dalternative(void *cond, void *case_, void *others_);
 void *ast_dcase(void *args, void *exprs);
-void *ast_dcase_set_next_case(void *case1, void *case2);
 @}
 
 Вернуть объект alternative:
@@ -3392,19 +3391,9 @@ void *ast_dalternative(void *cond, void *case_, void *others_) {
 @d danmakufu.y code @{
 void *ast_dcase(void *args, void *exprs) {
 	return ast_add_cons(ast_case,
-			ast_add_cons(args,
-				ast_add_cons(exprs, NULL)));
+			ast_add_cons(args, exprs));
 }
 @}
-при этом ссылка на следующий case равна NULL,
-  чтобы прикрепить следующий case определим функцию:
-@d danmakufu.y code @{
-void *ast_dcase_set_next_case(void *case1, void *case2) {
-	cdr(cdr(case1))->cdr = case2;
-	return case1;
-}
-@}
-
 
 @d danmakufu.y grammar alternative with others @{
 $$ = ast_dalternative($3, $5, $6);
@@ -3417,13 +3406,13 @@ printf("ALTERNATIVE\n");
 @}
 
 @d danmakufu.y grammar case1 @{
-$$ = ast_dcase($3, $6);
+$$ = ast_add_cons(ast_dcase($3, $6), NULL);
 printf("CASE\n");
 @}
 
 Если не первый case:
 @d danmakufu.y grammar case2 @{
-$$ = ast_dcase_set_next_case($1, ast_dcase($4, $7));
+$$ = ast_append($1, ast_dcase($4, $7));
 printf("CASE\n");
 @}
 
@@ -3549,64 +3538,54 @@ $$ = ast_dtaskcall($1);
 printf("CALL TASK %s\n", ((AstSymbol*)$1)->name);
 @}
 
+Список аргументов при вызове функций и, возможно, чего-то ещё:
 @d danmakufu.y grammar @{
-args          : ret_expr
+args          : ret_expr              { @<danmakufu.y grammar args list@>
+                                      }
               | args ',' ret_expr
               ;
+@}
+
+@d danmakufu.y C defines @{
+void *ast_dargs(void *ret_expr);
+@}
+
+Вернуть объект args:
+@d danmakufu.y code @{
+void *ast_dargs(void *ret_expr) {
+
+}
+@}
+
+@d danmakufu.y grammar args list @{
 @}
 
 Список параметров при объявлении функции и
   прочих подобных штук:
 @d danmakufu.y grammar @{
-let_expr      : ret_expr              { @<danmakufu.y grammar let_expr without let@>
-                                      }
+let_expr      : ret_expr
               | LET SYMB              { @<danmakufu.y grammar let_expr with let@>
                                       }
               ;
 
-lets          : let_expr
+lets          : let_expr              { @<danmakufu.y grammar lets create list@>
+                                      }
               | lets ',' let_expr     { @<danmakufu.y grammar lets concatenate@>
                                       }
               ;
 @}
 
-@d danmakufu.y C defines @{
-void *ast_dlets(void *obj);
-@}
-obj -- неопределён, это или ret_expr или LET SYMB.
-
-Вернуть объект lets:
-@d danmakufu.y code @{
-void *ast_dlets(void *obj) {
-	return ast_add_cons(ast_lets,
-			ast_add_cons(obj, NULL));
-}
-@}
-
-@d danmakufu.y C defines @{
-void *ast_dlets_set_next_lets(void *lets1, void *lets2);
-@}
-
-Добавить к lets следующий lets построив цепочку, как
-  и в случае с case:
-@d danmakufu.y code @{
-void *ast_dlets_set_next_lets(void *lets1, void *lets2) {
-	cdr(lets1)->cdr = lets2;
-	return lets1;
-}
-@}
-
-@d danmakufu.y grammar let_expr without let @{
-$$ = ast_dlets($1);
-@}
-
 @d danmakufu.y grammar let_expr with let @{
-$$ = ast_dlets(ast_dimplet($2, NULL));
+$$ = ast_dimplet($2, NULL);
+@}
+
+@d danmakufu.y grammar lets create list @{
+$$ = ast_add_cons($1, NULL);
 @}
 
 Соединим два определения параметра в список:
 @d danmakufu.y grammar lets concatenate @{
-$$ = ast_dlets_set_next_lets($1, $3);
+$$ = ast_append($1, $3);
 @}
 
 @d danmakufu.y grammar @{
@@ -4294,7 +4273,6 @@ void ast_init(void) {
 	ast_funcall = ast_add_symbol_to_tbl("funcall");
 	ast_taskcall = ast_add_symbol_to_tbl("taskcall");
 	ast_dog_name = ast_add_symbol_to_tbl("dog_name");
-	ast_lets = ast_add_symbol_to_tbl("lets");
 
 	init_symbols_tbl();
 	init_cons_array();
@@ -4326,7 +4304,6 @@ AstSymbol *ast_case;
 AstSymbol *ast_funcall;
 AstSymbol *ast_taskcall;
 AstSymbol *ast_dog_name;
-AstSymbol *ast_lets;
 @}
 
 @d ast.h structs @{
@@ -4339,7 +4316,6 @@ extern AstSymbol *ast_case;
 extern AstSymbol *ast_funcall;
 extern AstSymbol *ast_taskcall;
 extern AstSymbol *ast_dog_name;
-extern AstSymbol *ast_lets;
 @}
 implet - императивная версия let(не как в лиспе)
 
