@@ -3348,13 +3348,43 @@ descent       : DESCENT '(' LET SYMB IN ret_expr DOUBLE_DOT ret_expr ')' '{' exp
 @}
 
 @d danmakufu.y grammar @{
-if            : IF '(' ret_expr ')' '{' exprs '}' else_if    { printf("IF %d\n", @1.first_line); }
+if            : IF '(' ret_expr ')' '{' exprs '}' else_if    { @<danmakufu.y grammar if@>
+                                                             }
               ;
 
 else_if       : /* empty */
-              | ELSE if                                      { printf("ELSE "); }
-              | ELSE '{' exprs '}'                           { printf("ELSE\n"); }
+              | ELSE if                                      { @<danmakufu.y grammar else if@>
+                                                             }
+              | ELSE '{' exprs '}'                           { @<danmakufu.y grammar else@>
+                                                             }
               ;
+@}
+
+@d danmakufu.y C defines @{
+void *ast_dif(void *cond, void *then, void *else_);
+@}
+
+Вернуть объект task:
+@d danmakufu.y code @{
+void *ast_dif(void *cond, void *then, void *else_) {
+	return ast_add_cons(ast_if,
+			ast_add_cons(then, else_));
+}
+@}
+
+@d danmakufu.y grammar if @{
+$$ = ast_dif($3, $6, $8);
+printf("IF %d\n", @1.first_line);
+@}
+
+@d danmakufu.y grammar else if @{
+$$ = $2;
+printf("ELSE ");
+@}
+
+@d danmakufu.y grammar else @{
+$$ = $3;
+printf("ELSE\n");
 @}
 
 @d danmakufu.y grammar @{
@@ -4069,6 +4099,7 @@ void ast_init(void) {
 	ast_defun = ast_add_symbol_to_tbl("defun");
 	ast_implet = ast_add_symbol_to_tbl("implet");
 	ast_task = ast_add_symbol_to_tbl("task");
+	ast_if = ast_add_symbol_to_tbl("if");
 
 	init_symbols_tbl();
 	init_cons_array();
@@ -4094,12 +4125,14 @@ void ast_clear(void);
 AstSymbol *ast_defun;
 AstSymbol *ast_implet;
 AstSymbol *ast_task;
+AstSymbol *ast_if;
 @}
 
 @d ast.h structs @{
 extern AstSymbol *ast_defun;
 extern AstSymbol *ast_implet;
 extern AstSymbol *ast_task;
+extern AstSymbol *ast_if;
 @}
 implet - императивная версия let(не как в лиспе)
 
