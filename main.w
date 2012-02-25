@@ -3571,42 +3571,42 @@ lets          : let_expr
 @}
 
 @d danmakufu.y C defines @{
-void *ast_dlet_expr(void *obj);
+void *ast_dlets(void *obj);
 @}
 obj -- неопределён, это или ret_expr или LET SYMB.
 
-Вернуть объект letlist:
+Вернуть объект lets:
 @d danmakufu.y code @{
-void *ast_dlet_expr(void *obj) {
-	return ast_add_cons(ast_let_expr,
+void *ast_dlets(void *obj) {
+	return ast_add_cons(ast_lets,
 			ast_add_cons(obj, NULL));
 }
 @}
 
 @d danmakufu.y C defines @{
-void *ast_dlet_expr_set_next_let_expr(void *let_expr1, void *let_expr2);
+void *ast_dlets_set_next_lets(void *lets1, void *lets2);
 @}
 
-Добавить к let_expr следующий let_expr постироив цепочку, как
+Добавить к lets следующий lets построив цепочку, как
   и в случае с case:
 @d danmakufu.y code @{
-void *ast_dlet_expr_set_next_let_expr(void *let_expr1, void *let_expr2) {
-	cdr(let_expr1)->cdr = let_expr2;
-	return let_expr1;
+void *ast_dlets_set_next_lets(void *lets1, void *lets2) {
+	cdr(lets1)->cdr = lets2;
+	return lets1;
 }
 @}
 
 @d danmakufu.y grammar let_expr without let @{
-$$ = ast_dlet_expr($1);
+$$ = ast_dlets($1);
 @}
 
 @d danmakufu.y grammar let_expr with let @{
-$$ = ast_dlet_expr(ast_dimplet($2, NULL));
+$$ = ast_dlets(ast_dimplet($2, NULL));
 @}
 
 Соединим два определения параметра в список:
 @d danmakufu.y grammar lets concatenate @{
-$$ = ast_dlet_expr_set_next_let_expr($1, $3);
+$$ = ast_dlets_set_next_lets($1, $3);
 @}
 
 @d danmakufu.y grammar @{
@@ -4294,7 +4294,7 @@ void ast_init(void) {
 	ast_funcall = ast_add_symbol_to_tbl("funcall");
 	ast_taskcall = ast_add_symbol_to_tbl("taskcall");
 	ast_dog_name = ast_add_symbol_to_tbl("dog_name");
-	ast_let_expr = ast_add_symbol_to_tbl("let_expr");
+	ast_lets = ast_add_symbol_to_tbl("lets");
 
 	init_symbols_tbl();
 	init_cons_array();
@@ -4326,7 +4326,7 @@ AstSymbol *ast_case;
 AstSymbol *ast_funcall;
 AstSymbol *ast_taskcall;
 AstSymbol *ast_dog_name;
-AstSymbol *ast_let_expr;
+AstSymbol *ast_lets;
 @}
 
 @d ast.h structs @{
@@ -4339,7 +4339,7 @@ extern AstSymbol *ast_case;
 extern AstSymbol *ast_funcall;
 extern AstSymbol *ast_taskcall;
 extern AstSymbol *ast_dog_name;
-extern AstSymbol *ast_let_expr;
+extern AstSymbol *ast_lets;
 @}
 implet - императивная версия let(не как в лиспе)
 
