@@ -3336,7 +3336,8 @@ case          : CASE '(' args ')' '{' exprs '}'              { @<danmakufu.y gra
                                                              }
               ;
 
-others        : OTHERS '{' exprs '}'                         { printf("OTHERS\n"); }
+others        : OTHERS '{' exprs '}'                         { @<danmakufu.y grammar other@>
+                                                             }
               ;
 @}
 Выглядит как говно, зато без конфликта shift/reduce.
@@ -3393,6 +3394,11 @@ printf("CASE\n");
 @d danmakufu.y grammar case2 @{
 $$ = ast_dcase_set_next_case($1, ast_dcase($4, $7));
 printf("CASE\n");
+@}
+
+@d danmakufu.y grammar other @{
+$$ = $3;
+printf("OTHERS\n");
 @}
 
 @d danmakufu.y grammar @{
