@@ -4199,7 +4199,7 @@ AstSymbol *ast_add_symbol_to_tbl(const char *name);
 
 Функция очистки:
 @d ast.c functions @{
-static void clear_symbols_tbl(void) {
+static void clear_symbols(void) {
 	// BLA-BLA
 }
 @}
@@ -4312,7 +4312,7 @@ AstCons *ast_add_cons(void *car, void *cdr);
 
 Функция очистки массива cons'ов:
 @d ast.c functions @{
-static void clear_cons_array(void) {
+static void clear_conses(void) {
 	// XXXYYYZZZ
 }
 @}
@@ -4444,7 +4444,7 @@ AstNumber *ast_add_number(double num);
 
 Функция очистки:
 @d ast.c functions @{
-static void clear_numbers_array(void) {
+static void clear_numbers(void) {
 	// YAHOOO
 }
 @}
@@ -4468,9 +4468,9 @@ void ast_init(void) {
 Очистка ast:
 @d ast.c functions @{
 void ast_clear(void) {
-	clear_symbols_tbl();
-	clear_cons_array();
-	clear_numbers_array();
+	clear_symbols();
+	clear_conses();
+	clear_numbers();
 }
 @}
 вызвать при выходе из игры(см. clear_symbols_tbl и clear_cons_array)
