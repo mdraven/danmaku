@@ -3960,8 +3960,10 @@ static int pos_num_line;
 Функция которая помещает в стек текущее имя файла и номер текущей строки:
 @d danmakufu.lex C defines @{
 static void push_include(void) {
-	strncpy(include_stack[pos_num_line].filename, global_filename, INCLUDE_FILENAME_LEN);
-	include_stack[pos_num_line].filename[INCLUDE_FILENAME_LEN-1] = '\0';
+	if(include_stack[pos_num_line].filename != global_filename) {
+		strncpy(include_stack[pos_num_line].filename, global_filename, INCLUDE_FILENAME_LEN);
+		include_stack[pos_num_line].filename[INCLUDE_FILENAME_LEN-1] = '\0';
+	}
 
 	include_stack[pos_num_line].num_line = yylineno;
 
