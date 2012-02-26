@@ -4089,7 +4089,7 @@ type - указывает тип, всегда равен ast_symbol.
 static AstSymbol *symbols;
 @}
 
-Пулл символов, и удалённых символов:
+Пулл символов и удалённых символов:
 @d ast.c structs @{
 static AstSymbol *symbols_pool;
 
@@ -4101,8 +4101,8 @@ symbols_end_pool_free - ссылка на последний элемент symb
 SYMBOL_ALLOC - аллоцируется слотов для персонажей в самом начале
 SYMBOL_ADD - добавляется при нехватке
 @d ast.c structs @{
-#define SYMBOL_ALLOC 150
-#define SYMBOL_ADD 50
+#define SYMBOL_ALLOC 1000
+#define SYMBOL_ADD 500
 @}
 
 Функция для возвращения выделенных слотов обратно в пул:
@@ -4172,8 +4172,6 @@ NULL - если не найден.
 
 Добавить элемент в таблицу:
 @d ast.c functions @{
-#define ADD_ELEMENTS_TO_TBL 100
-
 AstSymbol *ast_add_symbol_to_tbl(const char *name) {
 	AstSymbol *symbol;
 
@@ -4200,6 +4198,7 @@ AstSymbol *ast_add_symbol_to_tbl(const char *name);
 Функция очистки:
 @d ast.c functions @{
 static void clear_symbols_tbl(void) {
+	// BLA-BLA
 }
 @}
 вызывать при выходе из игры. Хотя можно и после завершения скрипта,
@@ -4208,6 +4207,9 @@ static void clear_symbols_tbl(void) {
 Cons-пара danmakufu:
 @d ast.h structs @{
 struct AstCons {
+	struct AstCons *prev;
+	struct AstCons *next;
+	struct AstCons *pool;
 	int type;
 	void *car;
 	void *cdr;
@@ -4215,29 +4217,84 @@ struct AstCons {
 
 typedef struct AstCons AstCons;
 @}
-type - указывает тип, всегда равен danmakufu_ast_cons.
+type - указывает тип, всегда равен ast_cons.
 
-Массив cons'ов, их число и максимальное число:
+Список cons'ов:
 @d ast.c structs @{
-static AstCons *cons;
-static int num_cons;
-static int max_num_cons;
+static AstCons *conses;
+@}
+
+Пулл cons'ов и удалённых cons'ов:
+@d ast.c structs @{
+static AstCons *conses_pool;
+
+static AstCons *conses_pool_free;
+static AstCons *conses_end_pool_free;
+@}
+conses_end_pool_free - ссылка на последний элемент conses_pool_free
+
+CONS_ALLOC - аллоцируется слотов для персонажей в самом начале
+CONS_ADD - добавляется при нехватке
+@d ast.c structs @{
+#define CONS_ALLOC 10000
+#define CONS_ADD 1000
+@}
+
+Функция для возвращения выделенных слотов обратно в пул:
+@d ast.c functions @{
+static void conses_free(AstCons *cons) {
+	if(cons == conses)
+		conses = conses->next;
+
+	if(conses_pool_free == NULL)
+		conses_end_pool_free = cons;
+
+	dlist_free((DList*)cons, (DList**)(&conses_pool_free));
+}
+@}
+
+Соединить conses_pool_free с conses_pool:
+@d ast.c functions @{
+static void conses_pool_free_to_pool(void) {
+	if(conses_end_pool_free == NULL)
+		return;
+
+	conses_end_pool_free->pool = conses_pool;
+	conses_pool = conses_pool_free;
+
+	conses_pool_free = NULL;
+	conses_end_pool_free = NULL;
+}
+@}
+
+conses_get_free_cell - функция возвращающая свободный дескриптор:
+@d ast.c functions @{
+static AstCons *conses_get_free_cell(void) {
+	if(conses_pool == NULL) {
+		int k = (conses == NULL) ? CONS_ALLOC : CONS_ADD;
+		int i;
+
+		conses_pool = malloc(sizeof(AstCons)*k);
+		if(conses_pool == NULL) {
+			fprintf(stderr, "\nCan't allocate memory for conses' pool\n");
+			exit(1);
+		}
+
+		for(i = 0; i < k-1; i++)
+			conses_pool[i].pool = &(conses_pool[i+1]);
+		conses_pool[k-1].pool = NULL;
+	}
+
+	conses = (AstCons*)dlist_alloc((DList*)conses, (DList**)(&conses_pool));
+
+	return conses;
+}
 @}
 
 Добавить cons в массив:
 @d ast.c functions @{
 AstCons *ast_add_cons(void *car, void *cdr) {
-	if(num_cons == max_num_cons) {
-		max_num_cons += ADD_CONS;
-		cons = realloc(cons, sizeof(AstCons)*max_num_cons);
-		if(cons == NULL) {
-			fprintf(stderr, "\nCannot allocate memory\n");
-			exit(1);
-		}
-	}
-
-	AstCons *c = &cons[num_cons];
-	num_cons++;
+	AstCons *c = conses_get_free_cell();
 
 	c->type = ast_cons;
 	c->car = car;
@@ -4246,48 +4303,149 @@ AstCons *ast_add_cons(void *car, void *cdr) {
 	return c;
 }
 @}
-ADD_CONS - если cons'ы в массиве кончились, то добавляем:
-@d ast.c structs @{
-#define ADD_CONS 100
-@}
 
 @d ast.h prototypes @{
 AstCons *ast_add_cons(void *car, void *cdr);
-@}
-возвращает указатель на cons который добавили.
-
-Функция инициализации cons'ов:
-@d ast.c functions @{
-static void init_cons_array(void) {
-	num_cons = 0;
-
-	if(cons != NULL) {
-		max_num_cons = INIT_CONS;
-
-		cons = malloc(sizeof(AstCons)*max_num_cons);
-		if(cons == NULL) {
-			fprintf(stderr, "\nCannot allocate memory\n");
-			exit(1);
-		}
-	}
-}
-@}
-INIT_CONS - число элементов при инициализации:
-@d ast.c structs @{
-#define INIT_CONS 500
 @}
 
 Функция очистки массива cons'ов:
 @d ast.c functions @{
 static void clear_cons_array(void) {
-	num_cons = 0;
-	max_num_cons = 0;
-
-	free(cons);
-	cons = NULL;
+	// XXXYYYZZZ
 }
 @}
 вызвать при выходе из игры(см. clear_symbols_tbl)
+
+
+Тип число:
+@d ast.h structs @{
+struct AstNumber {
+	struct AstNumber *prev;
+	struct AstNumber *next;
+	struct AstNumber *pool;
+	int type;
+	double number;
+};
+
+typedef struct AstNumber AstNumber;
+@}
+type == ast_number
+
+Список чисел:
+@d ast.c structs @{
+static AstNumber *numbers;
+@}
+
+Пулл чисел и удалённых чисел:
+@d ast.c structs @{
+static AstNumber *numbers_pool;
+
+static AstNumber *numbers_pool_free;
+static AstNumber *numbers_end_pool_free;
+@}
+numbers_end_pool_free - ссылка на последний элемент numbers_pool_free
+
+NUMBER_ALLOC - аллоцируется слотов для персонажей в самом начале
+NUMBER_ADD - добавляется при нехватке
+@d ast.c structs @{
+#define NUMBER_ALLOC 1000
+#define NUMBER_ADD 300
+@}
+
+Функция для возвращения выделенных слотов обратно в пул:
+@d ast.c functions @{
+static void numbers_free(AstNumber *number) {
+	if(number == numbers)
+		numbers = numbers->next;
+
+	if(numbers_pool_free == NULL)
+		numbers_end_pool_free = number;
+
+	dlist_free((DList*)number, (DList**)(&numbers_pool_free));
+}
+@}
+
+Соединить numbers_pool_free с numbers_pool:
+@d ast.c functions @{
+static void numbers_pool_free_to_pool(void) {
+	if(numbers_end_pool_free == NULL)
+		return;
+
+	numbers_end_pool_free->pool = numbers_pool;
+	numbers_pool = numbers_pool_free;
+
+	numbers_pool_free = NULL;
+	numbers_end_pool_free = NULL;
+}
+@}
+
+numbers_get_free_cell - функция возвращающая свободный дескриптор:
+@d ast.c functions @{
+static AstNumber *numbers_get_free_cell(void) {
+	if(numbers_pool == NULL) {
+		int k = (numbers == NULL) ? NUMBER_ALLOC : NUMBER_ADD;
+		int i;
+
+		numbers_pool = malloc(sizeof(AstNumber)*k);
+		if(numbers_pool == NULL) {
+			fprintf(stderr, "\nCan't allocate memory for numbers' pool\n");
+			exit(1);
+		}
+
+		for(i = 0; i < k-1; i++)
+			numbers_pool[i].pool = &(numbers_pool[i+1]);
+		numbers_pool[k-1].pool = NULL;
+	}
+
+	numbers = (AstNumber*)dlist_alloc((DList*)numbers, (DList**)(&numbers_pool));
+
+	return numbers;
+}
+@}
+
+
+Функция поиска числа в таблице:
+@d ast.c functions @{
+static AstNumber *find_number(double num) {
+	AstNumber *number;
+
+	for(number = numbers; number != NULL; number = number->next)
+		if(number->number == num)
+			return number;
+
+	return NULL;
+}
+@}
+NULL - если не найден.
+
+Добавить number в массив:
+@d ast.c functions @{
+AstNumber *ast_add_number(double num) {
+	AstNumber *number;
+
+	number = find_number(num);
+	if(number != NULL)
+		return number;
+
+	number = numbers_get_free_cell();
+
+	number->type = ast_number;
+	number->number = num;
+
+	return number;
+}
+@}
+
+@d ast.h prototypes @{
+AstNumber *ast_add_number(double num);
+@}
+
+Функция очистки:
+@d ast.c functions @{
+static void clear_numbers_array(void) {
+	// YAHOOO
+}
+@}
 
 Инициализация ast:
 @d ast.c functions @{
@@ -4301,9 +4459,7 @@ void ast_init(void) {
 	ast_funcall = ast_add_symbol_to_tbl("funcall");
 	ast_taskcall = ast_add_symbol_to_tbl("taskcall");
 	ast_dog_name = ast_add_symbol_to_tbl("dog_name");
-
-	init_symbols_tbl();
-	init_cons_array();
+	ast_setq = ast_add_symbol_to_tbl("setq");
 }
 @}
 
@@ -4312,6 +4468,7 @@ void ast_init(void) {
 void ast_clear(void) {
 	clear_symbols_tbl();
 	clear_cons_array();
+	clear_numbers_array();
 }
 @}
 вызвать при выходе из игры(см. clear_symbols_tbl и clear_cons_array)
