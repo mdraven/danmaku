@@ -3486,7 +3486,7 @@ indexing         : array '[' ret_expr ']'                         { printf("INDE
 @d danmakufu.y grammar @{
 call_func        : SYMB '(' ')'                       { @<danmakufu.y grammar call without args@>
                                                       }
-                 | SYMB '(' args ')'                  { @<danmakufu.y grammar call without args@>
+                 | SYMB '(' args ')'                  { @<danmakufu.y grammar call with args@>
                                                       }
                  ;
 @}
