@@ -3412,7 +3412,7 @@ printf("CASE\n");
 
 Если не первый case:
 @d danmakufu.y grammar case2 @{
-$$ = ast_append($1, ast_dcase($4, $7));
+$$ = ast_append($1, ast_add_cons(ast_dcase($4, $7), NULL));
 printf("CASE\n");
 @}
 
@@ -3552,7 +3552,7 @@ $$ = ast_add_cons($1, NULL);
 @}
 
 @d danmakufu.y grammar args concatenate @{
-$$ = ast_append($1, $3);
+$$ = ast_append($1, ast_add_cons($3, NULL));
 @}
 
 Список параметров при объявлении функции и
@@ -3580,7 +3580,7 @@ $$ = ast_add_cons($1, NULL);
 
 Соединим два определения параметра в список:
 @d danmakufu.y grammar lets concatenate @{
-$$ = ast_append($1, $3);
+$$ = ast_append($1, ast_add_cons($3, NULL));
 @}
 
 @d danmakufu.y grammar @{
