@@ -3588,15 +3588,81 @@ set_op_elt    : SYMB
               | indexing
               ;
 
-set_op        : set_op_elt '=' ret_expr ';'
-              | set_op_elt ADD_SET_OP ret_expr ';'
-              | set_op_elt SUB_SET_OP ret_expr ';'
-              | set_op_elt MUL_SET_OP ret_expr ';'
-              | set_op_elt DIV_SET_OP ret_expr ';'
-              | set_op_elt INC_OP ';'
-              | set_op_elt DEC_OP ';'
+set_op        : set_op_elt '=' ret_expr ';'        { @<danmakufu.y grammar set operator@>
+                                                   }
+              | set_op_elt ADD_SET_OP ret_expr ';' { @<danmakufu.y grammar add set operator@>
+                                                   }
+              | set_op_elt SUB_SET_OP ret_expr ';' { @<danmakufu.y grammar sub set operator@>
+                                                   }
+              | set_op_elt MUL_SET_OP ret_expr ';' { @<danmakufu.y grammar mul set operator@>
+                                                   }
+              | set_op_elt DIV_SET_OP ret_expr ';' { @<danmakufu.y grammar div set operator@>
+                                                   }
+              | set_op_elt INC_OP ';'              { @<danmakufu.y grammar inc operator@>
+                                                   }
+              | set_op_elt DEC_OP ';'              { @<danmakufu.y grammar dec operator@>
+                                                   }
               ;
 @}
+
+@d danmakufu.y C defines @{
+void *ast_dsetq(void *lval, void *rval);
+@}
+
+Вернуть объект setq:
+@d danmakufu.y code @{
+void *ast_dsetq(void *lval, void *rval) {
+	return ast_add_cons(ast_setq,
+			ast_add_cons(lval, rval));
+}
+@}
+
+@d danmakufu.y grammar set operator @{
+$$ = ast_dsetq($1, $3);
+@}
+
+@d danmakufu.y grammar add set operator @{
+$$ = ast_dsetq($1,
+		ast_dfuncall(ast_add_symbol_to_tbl("+"),
+			ast_add_cons($1,
+				ast_add_cons($3, NULL))));
+@}
+
+@d danmakufu.y grammar sub set operator @{
+$$ = ast_dsetq($1,
+		ast_dfuncall(ast_add_symbol_to_tbl("-"),
+			ast_add_cons($1,
+				ast_add_cons($3, NULL))));
+@}
+
+@d danmakufu.y grammar mul set operator @{
+$$ = ast_dsetq($1,
+		ast_dfuncall(ast_add_symbol_to_tbl("*"),
+			ast_add_cons($1,
+				ast_add_cons($3, NULL))));
+@}
+
+@d danmakufu.y grammar div set operator @{
+$$ = ast_dsetq($1,
+		ast_dfuncall(ast_add_symbol_to_tbl("/"),
+			ast_add_cons($1,
+				ast_add_cons($3, NULL))));
+@}
+
+@d danmakufu.y grammar inc operator @{
+$$ = ast_dsetq($1,
+		ast_dfuncall(ast_add_symbol_to_tbl("+"),
+			ast_add_cons($1,
+				ast_add_cons(ast_add_number(1), NULL))));
+@}
+
+@d danmakufu.y grammar dec operator @{
+$$ = ast_dsetq($1,
+		ast_dfuncall(ast_add_symbol_to_tbl("-"),
+			ast_add_cons($1,
+				ast_add_cons(ast_add_number(1), NULL))));
+@}
+
 
 Типы, которые возвращают значание:
 @d danmakufu.y grammar @{
@@ -4491,6 +4557,7 @@ AstSymbol *ast_case;
 AstSymbol *ast_funcall;
 AstSymbol *ast_taskcall;
 AstSymbol *ast_dog_name;
+AstSymbol *ast_setq;
 @}
 
 @d ast.h structs @{
@@ -4503,6 +4570,7 @@ extern AstSymbol *ast_case;
 extern AstSymbol *ast_funcall;
 extern AstSymbol *ast_taskcall;
 extern AstSymbol *ast_dog_name;
+extern AstSymbol *ast_setq;
 @}
 implet - императивная версия let(не как в лиспе)
 
