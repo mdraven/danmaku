@@ -4599,11 +4599,25 @@ AstCons *ast_append(AstCons *cons, AstCons *to_back);
 
 @d ast.c functions @{
 AstCons *ast_append(AstCons *cons, AstCons *to_back) {
-	cons->cdr = to_back;
+	if(cons == NULL) {
+		fprintf(stderr, "\nast_append: Cons == NULL\n");
+		exit(1);
+	}
+
+	AstCons *c;
+	for(c = cons; c->type == ast_cons && c->cdr != NULL; c = c->cdr);
+
+	if(c->type != ast_cons) {
+		fprintf(stderr, "\nast_append: It isn't cons\n");
+		exit(1);
+	}
+
+	c->cdr = to_back;
 	return cons;
 }
 @}
 с той же целью, что и cdr() и car().
+
 
 ===========================================================
 
