@@ -4050,6 +4050,7 @@ global_filename = &yytext[1];
 #include <string.h>
 
 #include "ast.h"
+#include "dlist.h"
 
 @<ast.c structs@>
 @<ast.c prototypes@>
@@ -4068,8 +4069,12 @@ enum {
 @d ast.h structs @{
 #define SYMBOL_MAX_LEN 40
 struct AstSymbol {
+	struct AstSymbol *prev;
+	struct AstSymbol *next;
+	struct AstSymbol *pool;
 	int type;
 	char name[SYMBOL_MAX_LEN];
+	void *ptr;
 };
 
 typedef struct AstSymbol AstSymbol;
@@ -4077,96 +4082,122 @@ typedef struct AstSymbol AstSymbol;
 type - указывает тип, всегда равен ast_symbol.
   Он нужен чтобы отличать в cons'ах атомы и другие cons'ы.
 
-Таблица символов и указатель, число элементов в таблице в данный момент и
-размер таблицы:
+Список символов:
 @d ast.c structs @{
-static AstSymbol *symbols_tbl;
-static int num_symbols_tbl;
-static int size_symbols_tbl;
+static AstSymbol *symbols;
+@}
+
+Пулл символов, и удалённых символов:
+@d ast.c structs @{
+static AstSymbol *symbols_pool;
+
+static AstSymbol *symbols_pool_free;
+static AstSymbol *symbols_end_pool_free;
+@}
+symbols_end_pool_free - ссылка на последний элемент symbols_pool_free
+
+SYMBOL_ALLOC - аллоцируется слотов для персонажей в самом начале
+SYMBOL_ADD - добавляется при нехватке
+@d ast.c structs @{
+#define SYMBOL_ALLOC 150
+#define SYMBOL_ADD 50
+@}
+
+Функция для возвращения выделенных слотов обратно в пул:
+@d ast.c functions @{
+static void symbols_free(AstSymbol *symbol) {
+	if(symbol == symbols)
+		symbols = symbols->next;
+
+	if(symbols_pool_free == NULL)
+		symbols_end_pool_free = symbol;
+
+	dlist_free((DList*)symbol, (DList**)(&symbols_pool_free));
+}
+@}
+
+Соединить symbols_pool_free с symbols_pool:
+@d ast.c functions @{
+static void symbols_pool_free_to_pool(void) {
+	if(symbols_end_pool_free == NULL)
+		return;
+
+	symbols_end_pool_free->pool = symbols_pool;
+	symbols_pool = symbols_pool_free;
+
+	symbols_pool_free = NULL;
+	symbols_end_pool_free = NULL;
+}
+@}
+
+symbols_get_free_cell - функция возвращающая свободный дескриптор:
+@d ast.c functions @{
+static AstSymbol *symbols_get_free_cell(void) {
+	if(symbols_pool == NULL) {
+		int k = (symbols == NULL) ? SYMBOL_ALLOC : SYMBOL_ADD;
+		int i;
+
+		symbols_pool = malloc(sizeof(AstSymbol)*k);
+		if(symbols_pool == NULL) {
+			fprintf(stderr, "\nCan't allocate memory for symbols' pool\n");
+			exit(1);
+		}
+
+		for(i = 0; i < k-1; i++)
+			symbols_pool[i].pool = &(symbols_pool[i+1]);
+		symbols_pool[k-1].pool = NULL;
+	}
+
+	symbols = (AstSymbol*)dlist_alloc((DList*)symbols, (DList**)(&symbols_pool));
+
+	return symbols;
+}
 @}
 
 Функция поиска символа в таблице:
 @d ast.c functions @{
-static int find_symbol(const char *name, int *ret) {
-	int i;
+static AstSymbol *find_symbol(const char *name) {
+	AstSymbol *symbol;
 
-	for(i = 0; i < num_symbols_tbl; i++)
-		if(strcmp(symbols_tbl[i].name, name) == 0) {
-			*ret = i;
-			return 0;
-		}
+	for(symbol = symbols; symbol != NULL; symbol = symbol->next)
+		if(strcmp(symbol->name, name) == 0)
+			return symbol;
 
-	return -1;
+	return NULL;
 }
 @}
-возвращает номер элемента в ret.
+NULL - если не найден.
 
 Добавить элемент в таблицу:
 @d ast.c functions @{
-#define ADD_ELEMENTS_TO_TBL 50
+#define ADD_ELEMENTS_TO_TBL 100
 
 AstSymbol *ast_add_symbol_to_tbl(const char *name) {
-	int ret;
+	AstSymbol *symbol;
 
-	if(find_symbol(name, &ret) == -1) {
-		ret = num_symbols_tbl;
+	symbol = find_symbol(name);
+	if(symbol != NULL)
+		return symbol;
 
-		if(num_symbols_tbl == size_symbols_tbl) {
-			size_symbols_tbl += ADD_ELEMENTS_TO_TBL;
-			symbols_tbl = realloc(symbols_tbl, sizeof(AstSymbol)*size_symbols_tbl);
-			if(symbols_tbl == NULL) {
-				fprintf(stderr, "\nCannot allocate memory\n");
-				exit(1);
-			}
-		}
+	symbol = symbols_get_free_cell();
 
-		num_symbols_tbl++;
-	}
+	symbol->type = ast_symbol;
 
-	symbols_tbl[ret].type = ast_symbol;
+	strncpy(symbol->name, name, SYMBOL_MAX_LEN);
+	symbol->name[SYMBOL_MAX_LEN-1] = '\0';
 
-	strncpy(symbols_tbl[ret].name, name, SYMBOL_MAX_LEN);
-	symbols_tbl[ret].name[SYMBOL_MAX_LEN-1] = '\0';
-
-	return &symbols_tbl[ret];
+	return symbol;
 }
 @}
-возвращает адрес ячейки куда был добавлен элемент.
-ADD_ELEMENTS_TO_TBL -- добавляется к size_symbols_tbl когда нехватает элементов.
+
 
 @d ast.h prototypes @{
 AstSymbol *ast_add_symbol_to_tbl(const char *name);
 @}
 
-Функция инициализации:
-@d ast.c functions @{
-#define INIT_ELEMENTS_TBL 200
-
-static void init_symbols_tbl(void) {
-	num_symbols_tbl = 0;
-
-	if(symbols_tbl != NULL) {
-		size_symbols_tbl = INIT_ELEMENTS_TBL;
-
-		symbols_tbl = malloc(sizeof(AstSymbol)*size_symbols_tbl);
-		if(symbols_tbl == NULL) {
-			fprintf(stderr, "\nCannot allocate memory\n");
-			exit(1);
-		}
-	}
-}
-@}
-INIT_ELEMENTS_TBL -- число элементов при инициализации.
-Если инициализация уже была, то не очищать, а использовать сколько есть.
-
 Функция очистки:
 @d ast.c functions @{
 static void clear_symbols_tbl(void) {
-	num_symbols_tbl = 0;
-	size_symbols_tbl = 0;
-
-	free(symbols_tbl);
-	symbols_tbl = NULL;
 }
 @}
 вызывать при выходе из игры. Хотя можно и после завершения скрипта,
