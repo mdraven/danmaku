@@ -4064,6 +4064,8 @@ global_filename = &yytext[1];
 enum {
 	ast_symbol,
 	ast_cons,
+	ast_number,
+	ast_string,
 };
 @}
 
