@@ -4537,6 +4537,8 @@ void ast_init(void) {
 	ast_setq = ast_add_symbol_to_tbl("setq");
 }
 @}
+FIXME: усложнённый язык! После того как вычислятор будет написан, стоит упростить
+  язык виртуальной машины. Например вместо ascent, descent, loop, while сделать do.
 
 Очистка ast:
 @d ast.c functions @{
