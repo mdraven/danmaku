@@ -3359,7 +3359,7 @@ call_keyword  : YIELD ';'                                    { $$ = ast_yield; }
 void *ast_dloop(void *times, void *exprs);
 @}
 
-Вернуть объект alternative:
+Вернуть объект loop:
 @d danmakufu.y code @{
 void *ast_dloop(void *times, void *exprs) {
 	return ast_add_cons(ast_loop,
