@@ -3815,25 +3815,145 @@ ret_expr      : NUM
               | call_func
               | indexing
               | array
-              | ret_expr '+' ret_expr
-              | ret_expr '-' ret_expr
-              | ret_expr '*' ret_expr
-              | ret_expr '/' ret_expr
-              | ret_expr '%' ret_expr
-              | ret_expr '<' ret_expr
-              | ret_expr LE_OP ret_expr
-              | ret_expr '>' ret_expr
-              | ret_expr GE_OP ret_expr
-              | ret_expr '^' ret_expr
-              | ret_expr '~' ret_expr
-              | ret_expr LOGICAL_OR ret_expr
-              | ret_expr LOGICAL_AND ret_expr
-              | ret_expr EQUAL_OP ret_expr
-              | ret_expr NOT_EQUAL_OP ret_expr
-              | NOT ret_expr
-              | '-' ret_expr %prec NEG
-              | '(' ret_expr ')'
+              | ret_expr '+' ret_expr          { @<danmakufu.y grammar ret_expr add@>
+                                               }
+              | ret_expr '-' ret_expr          { @<danmakufu.y grammar ret_expr sub@>
+                                               }
+              | ret_expr '*' ret_expr          { @<danmakufu.y grammar ret_expr mul@>
+                                               }
+              | ret_expr '/' ret_expr          { @<danmakufu.y grammar ret_expr div@>
+                                               }
+              | ret_expr '%' ret_expr          { @<danmakufu.y grammar ret_expr mod@>
+                                               }
+              | ret_expr '<' ret_expr          { @<danmakufu.y grammar ret_expr less@>
+                                               }
+              | ret_expr LE_OP ret_expr        { @<danmakufu.y grammar ret_expr less-equal@>
+                                               }
+              | ret_expr '>' ret_expr          { @<danmakufu.y grammar ret_expr greater@>
+                                               }
+              | ret_expr GE_OP ret_expr        { @<danmakufu.y grammar ret_expr greater-equal@>
+                                               }
+              | ret_expr '^' ret_expr          { @<danmakufu.y grammar ret_expr pow@>
+                                               }
+              | ret_expr '~' ret_expr          { @<danmakufu.y grammar ret_expr concatenate@>
+                                               }
+              | ret_expr LOGICAL_OR ret_expr   { @<danmakufu.y grammar ret_expr logical or@>
+                                               }
+              | ret_expr LOGICAL_AND ret_expr  { @<danmakufu.y grammar ret_expr logical and@>
+                                               }
+              | ret_expr EQUAL_OP ret_expr     { @<danmakufu.y grammar ret_expr equal@>
+                                               }
+              | ret_expr NOT_EQUAL_OP ret_expr { @<danmakufu.y grammar ret_expr not equal@>
+                                               }
+              | NOT ret_expr                   { @<danmakufu.y grammar ret_expr not@>
+                                               }
+              | '-' ret_expr %prec NEG         { @<danmakufu.y grammar ret_expr negate@>
+                                               }
+              | '(' ret_expr ')'               { $$ = $2; }
               ;
+@}
+
+@d danmakufu.y grammar ret_expr add @{
+$$ = ast_dfuncall(ast_add_symbol_to_tbl("+"),
+		ast_add_cons($1,
+			ast_add_cons($3, NULL)));
+@}
+
+@d danmakufu.y grammar ret_expr sub @{
+$$ = ast_dfuncall(ast_add_symbol_to_tbl("-"),
+		ast_add_cons($1,
+			ast_add_cons($3, NULL)));
+@}
+
+@d danmakufu.y grammar ret_expr mul @{
+$$ = ast_dfuncall(ast_add_symbol_to_tbl("*"),
+		ast_add_cons($1,
+			ast_add_cons($3, NULL)));
+@}
+
+@d danmakufu.y grammar ret_expr div @{
+$$ = ast_dfuncall(ast_add_symbol_to_tbl("/"),
+		ast_add_cons($1,
+			ast_add_cons($3, NULL)));
+@}
+
+@d danmakufu.y grammar ret_expr mod @{
+$$ = ast_dfuncall(ast_add_symbol_to_tbl("mod"),
+		ast_add_cons($1,
+			ast_add_cons($3, NULL)));
+@}
+
+@d danmakufu.y grammar ret_expr less @{
+$$ = ast_dfuncall(ast_add_symbol_to_tbl("<"),
+		ast_add_cons($1,
+			ast_add_cons($3, NULL)));
+@}
+
+@d danmakufu.y grammar ret_expr less-equal @{
+$$ = ast_dfuncall(ast_add_symbol_to_tbl("<="),
+		ast_add_cons($1,
+			ast_add_cons($3, NULL)));
+@}
+
+@d danmakufu.y grammar ret_expr greater @{
+$$ = ast_dfuncall(ast_add_symbol_to_tbl(">"),
+		ast_add_cons($1,
+			ast_add_cons($3, NULL)));
+@}
+
+@d danmakufu.y grammar ret_expr greater-equal @{
+$$ = ast_dfuncall(ast_add_symbol_to_tbl(">="),
+		ast_add_cons($1,
+			ast_add_cons($3, NULL)));
+@}
+
+@d danmakufu.y grammar ret_expr pow @{
+$$ = ast_dfuncall(ast_add_symbol_to_tbl("expt"),
+		ast_add_cons($1,
+			ast_add_cons($3, NULL)));
+@}
+
+@d danmakufu.y grammar ret_expr concatenate @{
+$$ = ast_dfuncall(ast_add_symbol_to_tbl("concat"),
+		ast_add_cons($1,
+			ast_add_cons($3, NULL)));
+@}
+
+@d danmakufu.y grammar ret_expr logical or @{
+$$ = ast_dfuncall(ast_add_symbol_to_tbl("or"),
+		ast_add_cons($1,
+			ast_add_cons($3, NULL)));
+@}
+
+@d danmakufu.y grammar ret_expr logical and @{
+$$ = ast_dfuncall(ast_add_symbol_to_tbl("and"),
+		ast_add_cons($1,
+			ast_add_cons($3, NULL)));
+@}
+
+@d danmakufu.y grammar ret_expr equal @{
+$$ = ast_dfuncall(ast_add_symbol_to_tbl("equalp"),
+		ast_add_cons($1,
+			ast_add_cons($3, NULL)));
+@}
+
+@d danmakufu.y grammar ret_expr not equal @{
+void *o;
+o = ast_dfuncall(ast_add_symbol_to_tbl("equalp"),
+		ast_add_cons($1,
+			ast_add_cons($3, NULL)));
+$$ = ast_dfuncall(ast_add_symbol_to_tbl("not"),
+		ast_add_cons(o, NULL));
+@}
+
+@d danmakufu.y grammar ret_expr not @{
+$$ = ast_dfuncall(ast_add_symbol_to_tbl("not"),
+		ast_add_cons($2, NULL));
+@}
+
+@d danmakufu.y grammar ret_expr negate @{
+$$ = ast_dfuncall(ast_add_symbol_to_tbl("negate"),
+		ast_add_cons($2, NULL));
 @}
 
 @d danmakufu.y grammar @{
