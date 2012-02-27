@@ -3917,7 +3917,7 @@ CHARACTER           \'[^\']*\'
 
 Добавляем найденный символ в таблицу и возвращаем токен синтаксическому анализатору:
 @d danmakufu.lex vocabulary @{
-[[:alpha:]_][[:alnum:]_]*    { yylval=ast_add_symbol_to_tbl(yytext); return SYMB; }
+[[:alpha:]_][[:alnum:]_]*    { yylval = ast_add_symbol_to_tbl(yytext); return SYMB; }
 @}
 
 
