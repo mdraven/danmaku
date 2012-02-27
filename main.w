@@ -3577,15 +3577,52 @@ printf("ELSE\n");
 @}
 
 @d danmakufu.y grammar @{
-indexing         : array '[' ret_expr ']'                         { printf("INDEXING\n"); }
-                 | array '[' ret_expr DOUBLE_DOT ret_expr ']'     { printf("INDEXING\n"); }
-                 | SYMB '[' ret_expr ']'                          { printf("INDEXING %s\n", ((AstSymbol*)$1)->name); }
-                 | SYMB '[' ret_expr DOUBLE_DOT ret_expr ']'      { printf("INDEXING %s\n", ((AstSymbol*)$1)->name); }
-                 | call_func '[' ret_expr ']'                     { printf("INDEXING\n"); }
-                 | call_func '[' ret_expr DOUBLE_DOT ret_expr ']' { printf("INDEXING\n"); }
-                 | indexing '[' ret_expr ']'                      { printf("INDEXING\n"); }
-                 | indexing '[' ret_expr DOUBLE_DOT ret_expr ']'  { printf("INDEXING\n"); }
+indexing         : array '[' ret_expr ']'                         { @<danmakufu.y grammar elt@>
+                                                                  }
+                 | array '[' ret_expr DOUBLE_DOT ret_expr ']'     { @<danmakufu.y grammar subseq@>
+                                                                  }
+                 | SYMB '[' ret_expr ']'                          { @<danmakufu.y grammar elt@>
+                                                                  }
+                 | SYMB '[' ret_expr DOUBLE_DOT ret_expr ']'      { @<danmakufu.y grammar subseq@>
+                                                                  }
+                 | call_func '[' ret_expr ']'                     { @<danmakufu.y grammar elt@>
+                                                                  }
+                 | call_func '[' ret_expr DOUBLE_DOT ret_expr ']' { @<danmakufu.y grammar subseq@>
+                                                                  }
+                 | indexing '[' ret_expr ']'                      { @<danmakufu.y grammar elt@>
+                                                                  }
+                 | indexing '[' ret_expr DOUBLE_DOT ret_expr ']'  { @<danmakufu.y grammar subseq@>
+                                                                  }
                  ;
+@}
+
+@d danmakufu.y C defines @{
+void *ast_delt(void *seq, void *indx);
+void *ast_dsubseq(void *seq, void *start, void *end);
+@}
+
+Вернуть объект elt и subseq:
+@d danmakufu.y code @{
+void *ast_delt(void *seq, void *indx) {
+	return ast_add_cons(ast_elt,
+			ast_add_cons(seq, indx));
+}
+
+void *ast_dsubseq(void *seq, void *start, void *end) {
+	return ast_add_cons(ast_subseq,
+			ast_add_cons(seq,
+				ast_add_cons(start, end)));
+}
+@}
+
+@d danmakufu.y grammar elt @{
+$$ = ast_delt($1, $3);
+printf("INDEXING\n");
+@}
+
+@d danmakufu.y grammar subseq @{
+$$ = ast_dsubseq($1, $3, $5);
+printf("INDEXING\n");
 @}
 
 @d danmakufu.y grammar @{
@@ -4648,6 +4685,8 @@ void ast_init(void) {
 	ast_loop = ast_add_symbol_to_tbl("loop");
 	ast_while = ast_add_symbol_to_tbl("while");
 	ast_block = ast_add_symbol_to_tbl("block");
+	ast_elt = ast_add_symbol_to_tbl("elt");
+	ast_subseq = ast_add_symbol_to_tbl("subseq");
 }
 @}
 FIXME: усложнённый язык! После того как вычислятор будет написан, стоит упростить
@@ -4688,6 +4727,8 @@ AstSymbol *ast_return;
 AstSymbol *ast_loop;
 AstSymbol *ast_while;
 AstSymbol *ast_block;
+AstSymbol *ast_elt;
+AstSymbol *ast_subseq;
 @}
 
 @d ast.h structs @{
@@ -4709,6 +4750,8 @@ extern AstSymbol *ast_return;
 extern AstSymbol *ast_loop;
 extern AstSymbol *ast_while;
 extern AstSymbol *ast_block;
+extern AstSymbol *ast_elt;
+extern AstSymbol *ast_subseq;
 @}
 implet - императивная версия let(не как в лиспе)
 
