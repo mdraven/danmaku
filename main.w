@@ -3338,12 +3338,14 @@ expr          : ';'
 @}
 
 @d danmakufu.y grammar @{
-call_keyword  : YIELD ';'
-              | BREAK ';'
-              | RETURN ret_expr ';'
-              | RETURN ';'
-              | LOOP_TIMES '(' ret_expr ')' '{' exprs '}'    { printf("LOOP\n"); }
-              | LOOP_TIMES '{' exprs '}'                     { printf("LOOP\n"); }
+call_keyword  : YIELD ';'                                    { $$ = ast_yield; }
+              | BREAK ';'                                    { $$ = ast_break; }
+              | RETURN ret_expr ';'                          { $$ = ast_add_cons(ast_return, $2); }
+              | RETURN ';'                                   { $$ = ast_add_cons(ast_return, NULL); }
+              | LOOP_TIMES '(' ret_expr ')' '{' exprs '}'    { @<danmakufu.y grammar loop with args@>
+                                                             }
+              | LOOP_TIMES '{' exprs '}'                     { @<danmakufu.y grammar loop without args@>
+                                                             }
               | WHILE '(' ret_expr ')' '{' exprs '}'         { printf("WHILE\n"); }
               | LOCAL '{' exprs '}'                          { printf("LOCAL\n"); }
               | ascent                                       { printf("ASCENT\n"); }
@@ -3351,6 +3353,28 @@ call_keyword  : YIELD ';'
               | if
               | alternative
               ;
+@}
+
+@d danmakufu.y C defines @{
+void *ast_dloop(void *times, void *exprs);
+@}
+
+Вернуть объект alternative:
+@d danmakufu.y code @{
+void *ast_dloop(void *times, void *exprs) {
+	return ast_add_cons(ast_loop,
+			ast_add_cons(times, exprs));
+}
+@}
+
+@d danmakufu.y grammar loop with args @{
+$$ = ast_dloop($3, $6);
+printf("LOOP\n");
+@}
+
+@d danmakufu.y grammar loop without args @{
+$$ = ast_dloop(NULL, $3);
+printf("LOOP\n");
 @}
 
 Danmakufu script'ный switch:
@@ -3423,13 +3447,57 @@ printf("OTHERS\n");
 
 @d danmakufu.y grammar @{
 ascent        : ASCENT '(' LET SYMB IN ret_expr DOUBLE_DOT ret_expr ')' '{' exprs '}'
+                                            { @<danmakufu.y grammar ascent with let@>
+                                            }
               | ASCENT '(' SYMB IN ret_expr DOUBLE_DOT ret_expr ')' '{' exprs '}'
-              ;
-
-descent       : DESCENT '(' LET SYMB IN ret_expr DOUBLE_DOT ret_expr ')' '{' exprs '}'
-              | DESCENT '(' SYMB IN ret_expr DOUBLE_DOT ret_expr ')' '{' exprs '}'
+                                            { @<danmakufu.y grammar ascent without let@>
+                                            }
               ;
 @}
+
+@d danmakufu.y C defines @{
+void *ast_dxcent(void *xcent, void *symb, void *from, void *to, void *exprs);
+@}
+
+Вернуть объект ascent или descent:
+@d danmakufu.y code @{
+void *ast_dxcent(void *xcent, void *symb, void *from, void *to, void *exprs) {
+	return ast_add_cons(xcent,
+			ast_add_cons(symb,
+				ast_add_cons(from,
+					ast_add_cons(to, exprs))));
+}
+@}
+ascent и descent -- геморой в будущем, они вводят лишние понятия, которые можно заменить
+  с помощью for(do). Возможно стоит заменить код выше, и делать преобразование в обычный do
+  вместо введения ast_ascent и ast_descent.
+
+@d danmakufu.y grammar ascent with let @{
+$$ = ast_dxcent(ast_ascent, ast_dimplet($4, NULL), $6, $8, $11);
+@}
+
+@d danmakufu.y grammar ascent without let @{
+$$ = ast_dxcent(ast_ascent, $3, $5, $7, $10);
+@}
+
+@d danmakufu.y grammar @{
+descent       : DESCENT '(' LET SYMB IN ret_expr DOUBLE_DOT ret_expr ')' '{' exprs '}'
+                                            { @<danmakufu.y grammar descent with let@>
+                                            }
+              | DESCENT '(' SYMB IN ret_expr DOUBLE_DOT ret_expr ')' '{' exprs '}'
+                                            { @<danmakufu.y grammar descent without let@>
+                                            }
+              ;
+@}
+
+@d danmakufu.y grammar descent with let @{
+$$ = ast_dxcent(ast_descent, ast_dimplet($4, NULL), $6, $8, $11);
+@}
+
+@d danmakufu.y grammar descent without let @{
+$$ = ast_dxcent(ast_descent, $3, $5, $7, $10);
+@}
+
 
 @d danmakufu.y grammar @{
 if            : IF '(' ret_expr ')' '{' exprs '}' else_if    { @<danmakufu.y grammar if@>
@@ -4535,6 +4603,12 @@ void ast_init(void) {
 	ast_taskcall = ast_add_symbol_to_tbl("taskcall");
 	ast_dog_name = ast_add_symbol_to_tbl("dog_name");
 	ast_setq = ast_add_symbol_to_tbl("setq");
+	ast_ascent = ast_add_symbol_to_tbl("ascent");
+	ast_descent = ast_add_symbol_to_tbl("descent");
+	ast_yield = ast_add_symbol_to_tbl("yield");
+	ast_break = ast_add_symbol_to_tbl("break");
+	ast_return = ast_add_symbol_to_tbl("return");
+	ast_loop = ast_add_symbol_to_tbl("loop");
 }
 @}
 FIXME: усложнённый язык! После того как вычислятор будет написан, стоит упростить
@@ -4567,6 +4641,12 @@ AstSymbol *ast_funcall;
 AstSymbol *ast_taskcall;
 AstSymbol *ast_dog_name;
 AstSymbol *ast_setq;
+AstSymbol *ast_ascent;
+AstSymbol *ast_descent;
+AstSymbol *ast_yield;
+AstSymbol *ast_break;
+AstSymbol *ast_return;
+AstSymbol *ast_loop;
 @}
 
 @d ast.h structs @{
@@ -4580,6 +4660,12 @@ extern AstSymbol *ast_funcall;
 extern AstSymbol *ast_taskcall;
 extern AstSymbol *ast_dog_name;
 extern AstSymbol *ast_setq;
+extern AstSymbol *ast_ascent;
+extern AstSymbol *ast_descent;
+extern AstSymbol *ast_yield;
+extern AstSymbol *ast_break;
+extern AstSymbol *ast_return;
+extern AstSymbol *ast_loop;
 @}
 implet - императивная версия let(не как в лиспе)
 
