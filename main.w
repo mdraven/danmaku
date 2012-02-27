@@ -3866,8 +3866,8 @@ script_shot         return SCRIPT_CHILD;
 ==                  return EQUAL_OP;
 !=                  return NOT_EQUAL_OP;
 
-false               return NUM;
-true                return NUM;
+false               { yylval = ast_add_number(0.0); return NUM; }
+true                { yylval = ast_add_number(1.0); return NUM; }
 @}
 
 Будем возвращаеть перед каждым '}' ещё и ';':
@@ -3890,8 +3890,15 @@ static int lexer_curly_bracket;
 
 
 @d danmakufu.lex vocabulary @{
-{DIGIT}+            return NUM;
-{DIGIT}+"."{DIGIT}+ return NUM;
+{DIGIT}+                        { @<danmakufu.lex digits@>
+                                }
+{DIGIT}+"."{DIGIT}+             { @<danmakufu.lex digits@>
+                                }
+@}
+
+@d danmakufu.lex digits @{
+yylval = ast_add_number(atof(yytext));
+return NUM;
 @}
 
 @d danmakufu.lex Lex defines @{
