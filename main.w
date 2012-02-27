@@ -3346,8 +3346,10 @@ call_keyword  : YIELD ';'                                    { $$ = ast_yield; }
                                                              }
               | LOOP_TIMES '{' exprs '}'                     { @<danmakufu.y grammar loop without args@>
                                                              }
-              | WHILE '(' ret_expr ')' '{' exprs '}'         { printf("WHILE\n"); }
-              | LOCAL '{' exprs '}'                          { printf("LOCAL\n"); }
+              | WHILE '(' ret_expr ')' '{' exprs '}'         { @<danmakufu.y grammar while@>
+                                                             }
+              | LOCAL '{' exprs '}'                          { @<danmakufu.y grammar local@>
+                                                             }
               | ascent                                       { printf("ASCENT\n"); }
               | descent                                      { printf("DESCENT\n"); }
               | if
@@ -3375,6 +3377,41 @@ printf("LOOP\n");
 @d danmakufu.y grammar loop without args @{
 $$ = ast_dloop(NULL, $3);
 printf("LOOP\n");
+@}
+
+
+@d danmakufu.y C defines @{
+void *ast_dwhile(void *cond, void *exprs);
+@}
+
+Вернуть объект while:
+@d danmakufu.y code @{
+void *ast_dwhile(void *cond, void *exprs) {
+	return ast_add_cons(ast_while,
+			ast_add_cons(cond, exprs));
+}
+@}
+
+@d danmakufu.y grammar while @{
+$$ = ast_dwhile($3, $6);
+printf("WHILE\n");
+@}
+
+
+@d danmakufu.y C defines @{
+void *ast_dblock(void *exprs);
+@}
+
+Вернуть объект block:
+@d danmakufu.y code @{
+void *ast_dblock(void *exprs) {
+	return ast_add_cons(ast_block, exprs);
+}
+@}
+
+@d danmakufu.y grammar local @{
+$$ = ast_dblock($3);
+printf("LOCAL\n");
 @}
 
 Danmakufu script'ный switch:
@@ -4609,6 +4646,8 @@ void ast_init(void) {
 	ast_break = ast_add_symbol_to_tbl("break");
 	ast_return = ast_add_symbol_to_tbl("return");
 	ast_loop = ast_add_symbol_to_tbl("loop");
+	ast_while = ast_add_symbol_to_tbl("while");
+	ast_block = ast_add_symbol_to_tbl("block");
 }
 @}
 FIXME: усложнённый язык! После того как вычислятор будет написан, стоит упростить
@@ -4647,6 +4686,8 @@ AstSymbol *ast_yield;
 AstSymbol *ast_break;
 AstSymbol *ast_return;
 AstSymbol *ast_loop;
+AstSymbol *ast_while;
+AstSymbol *ast_block;
 @}
 
 @d ast.h structs @{
@@ -4666,6 +4707,8 @@ extern AstSymbol *ast_yield;
 extern AstSymbol *ast_break;
 extern AstSymbol *ast_return;
 extern AstSymbol *ast_loop;
+extern AstSymbol *ast_while;
+extern AstSymbol *ast_block;
 @}
 implet - императивная версия let(не как в лиспе)
 
