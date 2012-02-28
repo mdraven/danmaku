@@ -4423,7 +4423,7 @@ static char *find_and_remove_quotes_in_macros(char *str, int len) {
 		if(str[j] == ']')
 			break;
 
-	for(; j > i; j--)
+	for(j = j-1 ; j > i; j--)
 		if(str[j] != '\"' && str[j] != ' ') {
 			j++;
 			break;
