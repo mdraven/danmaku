@@ -4321,7 +4321,7 @@ DIGIT               [0-9]
 
 @d danmakufu.lex vocabulary @{
 {STRING}            { yylval = ast_add_string(remove_quotes(yytext, yyleng)); return STRING; }
-{CHARACTER}         return CHARACTER;
+{CHARACTER}         { yylval = ast_add_string(remove_quotes(yytext, yyleng)); return CHARACTER; }
 @}
 
 @d danmakufu.lex Lex defines @{
@@ -4653,6 +4653,7 @@ enum {
 	ast_cons,
 	ast_number,
 	ast_string,
+	ast_character,
 };
 @}
 
@@ -5048,7 +5049,8 @@ struct AstString {
 
 typedef struct AstString AstString;
 @}
-type == ast_string.
+type == ast_string или ast_character
+len - число байтов
 
 Список строк:
 @d ast.c structs @{
@@ -5126,7 +5128,7 @@ static AstString *strings_get_free_cell(void) {
 @}
 
 
-Добавить элемент в таблицу:
+Добавить строку в таблицу:
 @d ast.c functions @{
 AstString *ast_add_string(const char *str) {
 	AstString *string = strings_get_free_cell();
@@ -5147,9 +5149,22 @@ AstString *ast_add_string(const char *str) {
 }
 @}
 
-
 @d ast.h prototypes @{
 AstString *ast_add_string(const char *str);
+@}
+
+Добавить символ в таблицу:
+@d ast.c functions @{
+AstString *ast_add_character(const char *str) {
+	AstString *string = ast_add_string(str);
+	string->type = ast_character;
+
+	return string;
+}
+@}
+
+@d ast.h prototypes @{
+AstString *ast_add_character(const char *str);
 @}
 
 Функция очистки:
