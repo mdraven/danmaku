@@ -4663,7 +4663,7 @@ static AstSymbol *symbols_end_pool_free;
 @}
 symbols_end_pool_free - ссылка на последний элемент symbols_pool_free
 
-SYMBOL_ALLOC - аллоцируется слотов для персонажей в самом начале
+SYMBOL_ALLOC - аллоцируется слотов в самом начале
 SYMBOL_ADD - добавляется при нехватке
 @d ast.c structs @{
 #define SYMBOL_ALLOC 1000
@@ -4798,7 +4798,7 @@ static AstCons *conses_end_pool_free;
 @}
 conses_end_pool_free - ссылка на последний элемент conses_pool_free
 
-CONS_ALLOC - аллоцируется слотов для персонажей в самом начале
+CONS_ALLOC - аллоцируется слотов в самом начале
 CONS_ADD - добавляется при нехватке
 @d ast.c structs @{
 #define CONS_ALLOC 10000
@@ -4910,7 +4910,7 @@ static AstNumber *numbers_end_pool_free;
 @}
 numbers_end_pool_free - ссылка на последний элемент numbers_pool_free
 
-NUMBER_ALLOC - аллоцируется слотов для персонажей в самом начале
+NUMBER_ALLOC - аллоцируется слотов в самом начале
 NUMBER_ADD - добавляется при нехватке
 @d ast.c structs @{
 #define NUMBER_ALLOC 1000
