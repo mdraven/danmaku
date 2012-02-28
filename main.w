@@ -4340,11 +4340,11 @@ CHARACTER           \'[^\']*\'
 
 Разрушающая функция, которая удаляет кавычки:
 @d danmakufu.lex C defines @{
-char *remove_quotes(char *str, int len);
+static char *remove_quotes(char *str, int len);
 @}
 
 @d danmakufu.lex code @{
-char *remove_quotes(char *str, int len) {
+static char *remove_quotes(char *str, int len) {
 	int i, j;
 
 	for(i = 0; i < len-1; i++)
@@ -4402,11 +4402,11 @@ return M_TOUHOUDANMAKUFU;
   содержащийся в квадратных скобках, удаляет кавычки(при необходимости) и возвращает
   этот текст:
 @d danmakufu.lex C defines @{
-char *find_and_remove_quotes_in_macros(char *str, int len);
+static char *find_and_remove_quotes_in_macros(char *str, int len);
 @}
 
 @d danmakufu.lex code @{
-char *find_and_remove_quotes_in_macros(char *str, int len) {
+static char *find_and_remove_quotes_in_macros(char *str, int len) {
 	int i, j;
 
 	for(i = 0; i < len-1; i++)
