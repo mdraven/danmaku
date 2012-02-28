@@ -4401,10 +4401,11 @@ static char *remove_quotes(char *str, int len) {
 IN_BRACKETS         \[[^\]]*\]
 @}
 
-@d danmakufu.lex vocabulary touhoudanmakufu @{
+Достанем текст из квадратных скобок и вернём объект "строка":
+@d danmakufu.lex vocabulary to-string @{
 yylval = ast_add_string(find_and_remove_quotes_in_macros(yytext, yyleng));
-return M_TOUHOUDANMAKUFU;
 @}
+
 
 Разрушающая функция, используемая в макросах(#), которая ищет текст
   содержащийся в квадратных скобках, удаляет кавычки(при необходимости) и возвращает
