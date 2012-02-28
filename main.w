@@ -3704,52 +3704,38 @@ printf("ELSE\n");
 @}
 
 @d danmakufu.y grammar @{
-indexing         : array '[' ret_expr ']'                         { @<danmakufu.y grammar elt@>
+indexing         : array '[' ret_expr ']'                         { @<danmakufu.y grammar index@>
                                                                   }
-                 | array '[' ret_expr DOUBLE_DOT ret_expr ']'     { @<danmakufu.y grammar subseq@>
+                 | array '[' ret_expr DOUBLE_DOT ret_expr ']'     { @<danmakufu.y grammar slice@>
                                                                   }
-                 | SYMB '[' ret_expr ']'                          { @<danmakufu.y grammar elt@>
+                 | SYMB '[' ret_expr ']'                          { @<danmakufu.y grammar index@>
                                                                   }
-                 | SYMB '[' ret_expr DOUBLE_DOT ret_expr ']'      { @<danmakufu.y grammar subseq@>
+                 | SYMB '[' ret_expr DOUBLE_DOT ret_expr ']'      { @<danmakufu.y grammar slice@>
                                                                   }
-                 | call_func '[' ret_expr ']'                     { @<danmakufu.y grammar elt@>
+                 | call_func '[' ret_expr ']'                     { @<danmakufu.y grammar index@>
                                                                   }
-                 | call_func '[' ret_expr DOUBLE_DOT ret_expr ']' { @<danmakufu.y grammar subseq@>
+                 | call_func '[' ret_expr DOUBLE_DOT ret_expr ']' { @<danmakufu.y grammar slice@>
                                                                   }
-                 | indexing '[' ret_expr ']'                      { @<danmakufu.y grammar elt@>
+                 | indexing '[' ret_expr ']'                      { @<danmakufu.y grammar index@>
                                                                   }
-                 | indexing '[' ret_expr DOUBLE_DOT ret_expr ']'  { @<danmakufu.y grammar subseq@>
+                 | indexing '[' ret_expr DOUBLE_DOT ret_expr ']'  { @<danmakufu.y grammar slice@>
                                                                   }
                  ;
 @}
 
-@d danmakufu.y C defines @{
-void *ast_delt(void *seq, void *indx);
-void *ast_dsubseq(void *seq, void *start, void *end);
+@d danmakufu.y grammar index @{
+$$ = ast_dfuncall(ast_add_symbol_to_tbl("index"),
+		ast_add_cons($1,
+			ast_add_cons($3, NULL)));
+printf("INDEX\n");
 @}
 
-Вернуть объект elt и subseq:
-@d danmakufu.y code @{
-void *ast_delt(void *seq, void *indx) {
-	return ast_add_cons(ast_elt,
-			ast_add_cons(seq, indx));
-}
-
-void *ast_dsubseq(void *seq, void *start, void *end) {
-	return ast_add_cons(ast_subseq,
-			ast_add_cons(seq,
-				ast_add_cons(start, end)));
-}
-@}
-
-@d danmakufu.y grammar elt @{
-$$ = ast_delt($1, $3);
-printf("INDEXING\n");
-@}
-
-@d danmakufu.y grammar subseq @{
-$$ = ast_dsubseq($1, $3, $5);
-printf("INDEXING\n");
+@d danmakufu.y grammar slice @{
+$$ = ast_dfuncall(ast_add_symbol_to_tbl("slice"),
+		ast_add_cons($1,
+			ast_add_cons($3,
+				ast_add_cons($5, NULL))));
+printf("SLICE\n");
 @}
 
 @d danmakufu.y grammar @{
@@ -5194,8 +5180,6 @@ void ast_init(void) {
 	ast_loop = ast_add_symbol_to_tbl("loop");
 	ast_while = ast_add_symbol_to_tbl("while");
 	ast_block = ast_add_symbol_to_tbl("block");
-	ast_elt = ast_add_symbol_to_tbl("elt");
-	ast_subseq = ast_add_symbol_to_tbl("subseq");
 	ast_make_array = ast_add_symbol_to_tbl("make-array");
 	ast_defscriptmain = ast_add_symbol_to_tbl("defscriptmain");
 	ast_defscriptchild = ast_add_symbol_to_tbl("defscriptchild");
@@ -5241,8 +5225,6 @@ AstSymbol *ast_return;
 AstSymbol *ast_loop;
 AstSymbol *ast_while;
 AstSymbol *ast_block;
-AstSymbol *ast_elt;
-AstSymbol *ast_subseq;
 AstSymbol *ast_make_array;
 AstSymbol *ast_defscriptmain;
 AstSymbol *ast_defscriptchild;
@@ -5268,8 +5250,6 @@ extern AstSymbol *ast_return;
 extern AstSymbol *ast_loop;
 extern AstSymbol *ast_while;
 extern AstSymbol *ast_block;
-extern AstSymbol *ast_elt;
-extern AstSymbol *ast_subseq;
 extern AstSymbol *ast_make_array;
 extern AstSymbol *ast_defscriptmain;
 extern AstSymbol *ast_defscriptchild;
