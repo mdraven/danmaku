@@ -3170,15 +3170,27 @@ macros        : M_TOUHOUDANMAKUFU
               | M_PLAYER
               | M_SCRIPTVERSION
               ;
+@}
 
-lines         : /* empty */
-              | lines line
+@d danmakufu.y grammar @{
+lines         : line          { @<danmakufu.y grammar create lines@>
+                              }
+              | lines line    { @<danmakufu.y grammar concat lines@>
+                              }
               ;
 
 line          : expr
               | dog_block
               | error ';'                  { printf("file %s, line %d\n", @2.filename, @2.first_line); YYABORT; }
               ;
+@}
+
+@d danmakufu.y grammar create lines @{
+$$ = ast_add_cons($1, NULL);
+@}
+
+@d danmakufu.y grammar concat lines @{
+$$ = ast_append($1, ast_add_cons($2, NULL));
 @}
 
 @d danmakufu.y grammar @{
