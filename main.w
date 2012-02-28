@@ -3337,16 +3337,25 @@ expr          : ';'
               ;
 @}
 
+Выражение после times, while, ascent и descent:
+@d danmakufu.y grammar @{
+exprs_after_cycle : '{' exprs '}'              { $$ = $2; }
+                  | LOOP '{' exprs '}'         { $$ = $3; }
+                  ;
+@}
+
 @d danmakufu.y grammar @{
 call_keyword  : YIELD ';'                                    { $$ = ast_yield; }
               | BREAK ';'                                    { $$ = ast_break; }
               | RETURN ret_expr ';'                          { $$ = ast_add_cons(ast_return, $2); }
               | RETURN ';'                                   { $$ = ast_add_cons(ast_return, NULL); }
-              | LOOP_TIMES '(' ret_expr ')' '{' exprs '}'    { @<danmakufu.y grammar loop with args@>
+              | LOOP '(' ret_expr ')' '{' exprs '}'          { @<danmakufu.y grammar loop with args@>
                                                              }
-              | LOOP_TIMES '{' exprs '}'                     { @<danmakufu.y grammar loop without args@>
+              | LOOP '{' exprs '}'                           { @<danmakufu.y grammar loop without args@>
                                                              }
-              | WHILE '(' ret_expr ')' '{' exprs '}'         { @<danmakufu.y grammar while@>
+              | TIMES '(' ret_expr ')' exprs_after_cycle     { @<danmakufu.y grammar times@>
+                                                             }
+              | WHILE '(' ret_expr ')' exprs_after_cycle     { @<danmakufu.y grammar while@>
                                                              }
               | LOCAL '{' exprs '}'                          { @<danmakufu.y grammar local@>
                                                              }
@@ -3379,6 +3388,10 @@ $$ = ast_dloop(NULL, $3);
 printf("LOOP\n");
 @}
 
+@d danmakufu.y grammar times @{
+$$ = ast_dloop($3, $5);
+printf("TIMES\n");
+@}
 
 @d danmakufu.y C defines @{
 void *ast_dwhile(void *cond, void *exprs);
@@ -3393,7 +3406,7 @@ void *ast_dwhile(void *cond, void *exprs) {
 @}
 
 @d danmakufu.y grammar while @{
-$$ = ast_dwhile($3, $6);
+$$ = ast_dwhile($3, $5);
 printf("WHILE\n");
 @}
 
@@ -3413,6 +3426,7 @@ void *ast_dblock(void *exprs) {
 $$ = ast_dblock($3);
 printf("LOCAL\n");
 @}
+
 
 Danmakufu script'ный switch:
 @d danmakufu.y grammar @{
@@ -3483,10 +3497,10 @@ printf("OTHERS\n");
 @}
 
 @d danmakufu.y grammar @{
-ascent        : ASCENT '(' LET SYMB IN ret_expr DOUBLE_DOT ret_expr ')' '{' exprs '}'
+ascent        : ASCENT '(' LET SYMB IN ret_expr DOUBLE_DOT ret_expr ')' exprs_after_cycle
                                             { @<danmakufu.y grammar ascent with let@>
                                             }
-              | ASCENT '(' SYMB IN ret_expr DOUBLE_DOT ret_expr ')' '{' exprs '}'
+              | ASCENT '(' SYMB IN ret_expr DOUBLE_DOT ret_expr ')' exprs_after_cycle
                                             { @<danmakufu.y grammar ascent without let@>
                                             }
               ;
@@ -3510,29 +3524,29 @@ ascent и descent -- геморой в будущем, они вводят ли�
   вместо введения ast_ascent и ast_descent.
 
 @d danmakufu.y grammar ascent with let @{
-$$ = ast_dxcent(ast_ascent, ast_dimplet($4, NULL), $6, $8, $11);
+$$ = ast_dxcent(ast_ascent, ast_dimplet($4, NULL), $6, $8, $10);
 @}
 
 @d danmakufu.y grammar ascent without let @{
-$$ = ast_dxcent(ast_ascent, $3, $5, $7, $10);
+$$ = ast_dxcent(ast_ascent, $3, $5, $7, $9);
 @}
 
 @d danmakufu.y grammar @{
-descent       : DESCENT '(' LET SYMB IN ret_expr DOUBLE_DOT ret_expr ')' '{' exprs '}'
+descent       : DESCENT '(' LET SYMB IN ret_expr DOUBLE_DOT ret_expr ')' exprs_after_cycle
                                             { @<danmakufu.y grammar descent with let@>
                                             }
-              | DESCENT '(' SYMB IN ret_expr DOUBLE_DOT ret_expr ')' '{' exprs '}'
+              | DESCENT '(' SYMB IN ret_expr DOUBLE_DOT ret_expr ')' exprs_after_cycle
                                             { @<danmakufu.y grammar descent without let@>
                                             }
               ;
 @}
 
 @d danmakufu.y grammar descent with let @{
-$$ = ast_dxcent(ast_descent, ast_dimplet($4, NULL), $6, $8, $11);
+$$ = ast_dxcent(ast_descent, ast_dimplet($4, NULL), $6, $8, $10);
 @}
 
 @d danmakufu.y grammar descent without let @{
-$$ = ast_dxcent(ast_descent, $3, $5, $7, $10);
+$$ = ast_dxcent(ast_descent, $3, $5, $7, $9);
 @}
 
 
@@ -4007,7 +4021,8 @@ array_args    : ret_expr
 %token ELSE
 %token YIELD
 %token TASK
-%token LOOP_TIMES
+%token LOOP
+%token TIMES
 %token WHILE
 %token LOCAL
 %token ALTERNATIVE
@@ -4064,8 +4079,8 @@ yield               return YIELD;
 break               return BREAK;
 if                  return IF;
 else                return ELSE;
-loop                return LOOP_TIMES;
-times               return LOOP_TIMES;
+loop                return LOOP;
+times               return TIMES;
 while               return WHILE;
 local               return LOCAL;
 alternative         return ALTERNATIVE;
