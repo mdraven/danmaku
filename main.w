@@ -4372,19 +4372,27 @@ static char *remove_quotes(char *str, int len) {
 Макросы:
 @d danmakufu.lex vocabulary @{
 #TouhouDanmakufu              { yylval = NULL; return M_TOUHOUDANMAKUFU; }
-#TouhouDanmakufu{IN_BRACKETS} { @<danmakufu.lex vocabulary touhoudanmakufu@>
-                              }
+#TouhouDanmakufu{IN_BRACKETS} { @<danmakufu.lex vocabulary to-string@>
+                                return M_TOUHOUDANMAKUFU; }
 #\x93\x8c\x95\xfb\x92\x65\x96\x8b\x95\x97              { yylval = NULL; return M_TOUHOUDANMAKUFU; }
-#\x93\x8c\x95\xfb\x92\x65\x96\x8b\x95\x97{IN_BRACKETS} { @<danmakufu.lex vocabulary touhoudanmakufu@>
-                                                       }
-#Title{IN_BRACKETS}           return M_TITLE;
-#Text{IN_BRACKETS}            return M_TEXT;
-#Image{IN_BRACKETS}           return M_IMAGE;
-#BackGround{IN_BRACKETS}      return M_BACKGROUND;
-#BGM{IN_BRACKETS}             return M_BGM;
-#PlayLevel{IN_BRACKETS}       return M_PLAYLEVEL;
-#Player{IN_BRACKETS}          return M_PLAYER;
-#ScriptVersion{IN_BRACKETS}   return M_SCRIPTVERSION;
+#\x93\x8c\x95\xfb\x92\x65\x96\x8b\x95\x97{IN_BRACKETS} { @<danmakufu.lex vocabulary to-string@>
+                                                         return M_TOUHOUDANMAKUFU; }
+#Title{IN_BRACKETS}          { @<danmakufu.lex vocabulary to-string@>
+                               return M_TITLE; }
+#Text{IN_BRACKETS}           { @<danmakufu.lex vocabulary to-string@>
+                               return M_TEXT; }
+#Image{IN_BRACKETS}          { @<danmakufu.lex vocabulary to-string@>
+                               return M_IMAGE; }
+#BackGround{IN_BRACKETS}     { @<danmakufu.lex vocabulary to-string@>
+                               return M_BACKGROUND; }
+#BGM{IN_BRACKETS}            { @<danmakufu.lex vocabulary to-string@>
+                               return M_BGM; }
+#PlayLevel{IN_BRACKETS}      { @<danmakufu.lex vocabulary to-string@>
+                               return M_PLAYLEVEL; }
+#Player{IN_BRACKETS}         { @<danmakufu.lex vocabulary to-string@>
+                               return M_PLAYER; }
+#ScriptVersion{IN_BRACKETS}  { @<danmakufu.lex vocabulary to-string@>
+                               return M_SCRIPTVERSION; }
 @<danmakufu.lex vocabulary include_file@>
 @}
 
