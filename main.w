@@ -3974,7 +3974,8 @@ ret_expr      : NUM
                                                }
               | NOT ret_expr                   { @<danmakufu.y grammar ret_expr not@>
                                                }
-              | '-' ret_expr %prec NEG         { @<danmakufu.y grammar ret_expr negate@>
+              | '-' ret_expr %prec NEG         { @<danmakufu.y grammar ret_expr negative@>
+                                               }
               | '|' ret_expr '|'               { @<danmakufu.y grammar ret_expr abs@>
                                                }
               | '(' ret_expr ')'               { $$ = $2; }
@@ -4079,8 +4080,10 @@ $$ = ast_dfuncall(ast_add_symbol_to_tbl("not"),
 		ast_add_cons($2, NULL));
 @}
 
-@d danmakufu.y grammar ret_expr negate @{
-$$ = ast_dfuncall(ast_add_symbol_to_tbl("negate"),
+@d danmakufu.y grammar ret_expr negative @{
+$$ = ast_dfuncall(ast_add_symbol_to_tbl("negative"),
+		ast_add_cons($2, NULL));
+@}
 
 @d danmakufu.y grammar ret_expr abs @{
 $$ = ast_dfuncall(ast_add_symbol_to_tbl("absolute"),
