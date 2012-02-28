@@ -3867,9 +3867,9 @@ set_op        : set_op_elt '=' ret_expr ';'        { @<danmakufu.y grammar set o
                                                    }
               | set_op_elt DIV_SET_OP ret_expr ';' { @<danmakufu.y grammar div set operator@>
                                                    }
-              | set_op_elt INC_OP ';'              { @<danmakufu.y grammar inc operator@>
+              | set_op_elt INC_OP ';'              { @<danmakufu.y grammar successor@>
                                                    }
-              | set_op_elt DEC_OP ';'              { @<danmakufu.y grammar dec operator@>
+              | set_op_elt DEC_OP ';'              { @<danmakufu.y grammar predcessor@>
                                                    }
               ;
 @}
@@ -3892,44 +3892,42 @@ $$ = ast_dsetq($1, $3);
 
 @d danmakufu.y grammar add set operator @{
 $$ = ast_dsetq($1,
-		ast_dfuncall(ast_add_symbol_to_tbl("+"),
+		ast_dfuncall(ast_add_symbol_to_tbl("add"),
 			ast_add_cons($1,
 				ast_add_cons($3, NULL))));
 @}
 
 @d danmakufu.y grammar sub set operator @{
 $$ = ast_dsetq($1,
-		ast_dfuncall(ast_add_symbol_to_tbl("-"),
+		ast_dfuncall(ast_add_symbol_to_tbl("subtract"),
 			ast_add_cons($1,
 				ast_add_cons($3, NULL))));
 @}
 
 @d danmakufu.y grammar mul set operator @{
 $$ = ast_dsetq($1,
-		ast_dfuncall(ast_add_symbol_to_tbl("*"),
+		ast_dfuncall(ast_add_symbol_to_tbl("multiply"),
 			ast_add_cons($1,
 				ast_add_cons($3, NULL))));
 @}
 
 @d danmakufu.y grammar div set operator @{
 $$ = ast_dsetq($1,
-		ast_dfuncall(ast_add_symbol_to_tbl("/"),
+		ast_dfuncall(ast_add_symbol_to_tbl("divide"),
 			ast_add_cons($1,
 				ast_add_cons($3, NULL))));
 @}
 
-@d danmakufu.y grammar inc operator @{
+@d danmakufu.y grammar successor @{
 $$ = ast_dsetq($1,
-		ast_dfuncall(ast_add_symbol_to_tbl("+"),
-			ast_add_cons($1,
-				ast_add_cons(ast_add_number(1), NULL))));
+		ast_dfuncall(ast_add_symbol_to_tbl("successor"),
+			ast_add_cons($1, NULL)));
 @}
 
-@d danmakufu.y grammar dec operator @{
+@d danmakufu.y grammar predcessor @{
 $$ = ast_dsetq($1,
-		ast_dfuncall(ast_add_symbol_to_tbl("-"),
-			ast_add_cons($1,
-				ast_add_cons(ast_add_number(1), NULL))));
+		ast_dfuncall(ast_add_symbol_to_tbl("predcessor"),
+			ast_add_cons($1, NULL)));
 @}
 
 
