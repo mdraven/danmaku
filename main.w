@@ -4409,30 +4409,53 @@ static char *find_and_remove_quotes_in_macros(char *str, int len);
 static char *find_and_remove_quotes_in_macros(char *str, int len) {
 	int i, j;
 
-	for(i = 0; i < len-1; i++)
-		if(str[i] == '[') {
-			i++;
-			break;
-		}
-
-	for(; i < len-1; i++)
-		if(str[i] != '\"' && str[i] != ' ')
-			break;
-
-	for(j = len-1; j > i; j--)
-		if(str[j] == ']')
-			break;
-
-	for(j = j-1 ; j > i; j--)
-		if(str[j] != '\"' && str[j] != ' ') {
-			j++;
-			break;
-		}
+	@<find_and_remove_quotes_in_macros forward@>
+	@<find_and_remove_quotes_in_macros backward@>
 
 	str[j] = '\0';
 	return &str[i];
 }
 @}
+
+Ищем открывающую скобку:
+@d find_and_remove_quotes_in_macros forward @{
+for(i = 0; i < len-1; i++)
+	if(str[i] == '[') {
+		i++;
+		break;
+	}
+@}
+когда найдём, то переходим на следующий символ, так как
+  скобка нас не интересует. Выхода за границу массива нет,
+  потому что len-1.
+
+Пропускаем кавычки и пробелы:
+@d find_and_remove_quotes_in_macros forward @{
+for(; i < len-1; i++)
+	if(str[i] != '\"' && str[i] != ' ')
+		break;
+@}
+до len-1, так как там есть по крайней мере ']'
+
+Ищем закрывающую скобку:
+@d find_and_remove_quotes_in_macros backward @{
+for(j = len-1; j > i; j--)
+	if(str[j] == ']')
+		break;
+@}
+
+Пропускаем кавычки и пробелы:
+@d find_and_remove_quotes_in_macros backward @{
+if(j != i)
+	for(j = j-1; j > i; j--)
+		if(str[j] != '\"' && str[j] != ' ') {
+			j++;
+			break;
+		}
+@}
+после прошлого шага j указывает на ']' => искать будем с j-1.
+Проверка j != i нужна для случая пустых скобок "[]"(надо обратить внимание на то,
+  что иначе j = j-1, те побочный эффект).
 
 Пропускаем пробелы и символы конца строки:
 @d danmakufu.lex vocabulary @{
