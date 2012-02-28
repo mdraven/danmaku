@@ -4329,13 +4329,38 @@ DIGIT               [0-9]
 @}
 
 @d danmakufu.lex vocabulary @{
-{STRING}            return STRING;
+{STRING}            { yylval = ast_add_string(remove_quotes(yytext, yyleng)); return STRING; }
 {CHARACTER}         return CHARACTER;
 @}
 
 @d danmakufu.lex Lex defines @{
 STRING              \"[^\"]*\"
 CHARACTER           \'[^\']*\'
+@}
+
+Разрушающая функция, которая удаляет кавычки:
+@d danmakufu.lex C defines @{
+char *remove_quotes(char *str, int len);
+@}
+
+@d danmakufu.lex code @{
+char *remove_quotes(char *str, int len) {
+	int i, j;
+
+	for(i = 0; i < len-1; i++)
+		if(str[i] == '\"') {
+			i++;
+			break;
+		}
+
+	for(j = len-1; j > i; j--)
+		if(str[j] == '\"') {
+			str[j] = '\0';
+			break;
+		}
+
+	return &str[i];
+}
 @}
 
 Добавляем найденный символ в таблицу и возвращаем токен синтаксическому анализатору:
@@ -4346,10 +4371,12 @@ CHARACTER           \'[^\']*\'
 
 Макросы:
 @d danmakufu.lex vocabulary @{
-#TouhouDanmakufu              return M_TOUHOUDANMAKUFU;
-#TouhouDanmakufu{IN_BRACKETS} return M_TOUHOUDANMAKUFU;
-#\x93\x8c\x95\xfb\x92\x65\x96\x8b\x95\x97              return M_TOUHOUDANMAKUFU;
-#\x93\x8c\x95\xfb\x92\x65\x96\x8b\x95\x97{IN_BRACKETS} return M_TOUHOUDANMAKUFU;
+#TouhouDanmakufu              { yylval = NULL; return M_TOUHOUDANMAKUFU; }
+#TouhouDanmakufu{IN_BRACKETS} { @<danmakufu.lex vocabulary touhoudanmakufu@>
+                              }
+#\x93\x8c\x95\xfb\x92\x65\x96\x8b\x95\x97              { yylval = NULL; return M_TOUHOUDANMAKUFU; }
+#\x93\x8c\x95\xfb\x92\x65\x96\x8b\x95\x97{IN_BRACKETS} { @<danmakufu.lex vocabulary touhoudanmakufu@>
+                                                       }
 #Title{IN_BRACKETS}           return M_TITLE;
 #Text{IN_BRACKETS}            return M_TEXT;
 #Image{IN_BRACKETS}           return M_IMAGE;
@@ -4364,6 +4391,47 @@ CHARACTER           \'[^\']*\'
 Текст в квадратных скобках:
 @d danmakufu.lex Lex defines @{
 IN_BRACKETS         \[[^\]]*\]
+@}
+
+@d danmakufu.lex vocabulary touhoudanmakufu @{
+yylval = ast_add_string(find_and_remove_quotes_in_macros(yytext, yyleng));
+return M_TOUHOUDANMAKUFU;
+@}
+
+Разрушающая функция, используемая в макросах(#), которая ищет текст
+  содержащийся в квадратных скобках, удаляет кавычки(при необходимости) и возвращает
+  этот текст:
+@d danmakufu.lex C defines @{
+char *find_and_remove_quotes_in_macros(char *str, int len);
+@}
+
+@d danmakufu.lex code @{
+char *find_and_remove_quotes_in_macros(char *str, int len) {
+	int i, j;
+
+	for(i = 0; i < len-1; i++)
+		if(str[i] == '[') {
+			i++;
+			break;
+		}
+
+	for(; i < len-1; i++)
+		if(str[i] != '\"' && str[i] != ' ')
+			break;
+
+	for(j = len-1; j > i; j--)
+		if(str[j] == ']')
+			break;
+
+	for(; j > i; j--)
+		if(str[j] != '\"' && str[j] != ' ') {
+			j++;
+			break;
+		}
+
+	str[j] = '\0';
+	return &str[i];
+}
 @}
 
 Пропускаем пробелы и символы конца строки:
