@@ -3971,16 +3971,49 @@ $$ = ast_dfuncall(ast_add_symbol_to_tbl("negate"),
 @}
 
 @d danmakufu.y grammar @{
-array         : '[' ']'                         { printf("ARRAY\n"); }
-              | '[' array_args ']'              { printf("ARRAY\n"); }
-              | '[' array_args ',' ']'          { printf("ARRAY\n"); }
+array         : '[' ']'                         { @<danmakufu.y grammar make-array empty@>
+                                                }
+              | '[' array_args ']'              { @<danmakufu.y grammar make-array@>
+                                                }
+              | '[' array_args ',' ']'          { @<danmakufu.y grammar make-array@>
+                                                }
               ;
 
-array_args    : ret_expr
-              | array_args ',' ret_expr
+array_args    : ret_expr                        { @<danmakufu.y grammar create array_args@>
+                                                }
+              | array_args ',' ret_expr         { @<danmakufu.y grammar concat array_args@>
+                                                }
               ;
 @}
 
+@d danmakufu.y C defines @{
+void *ast_dmake_array(void *args);
+@}
+
+Вернуть объект setq:
+@d danmakufu.y code @{
+void *ast_dmake_array(void *args) {
+	return ast_add_cons(ast_make_array, args);
+}
+@}
+
+@d danmakufu.y grammar make-array empty @{
+$$ = ast_dmake_array(NULL);
+printf("ARRAY\n");
+@}
+
+@d danmakufu.y grammar make-array @{
+$$ = ast_dmake_array($2);
+printf("ARRAY\n");
+@}
+
+@d danmakufu.y grammar create array_args @{
+$$ = ast_add_cons($1, NULL);
+@}
+
+@d danmakufu.y grammar concat array_args @{
+$$ = ast_append($1, ast_add_cons($3, NULL));
+@}
 
 @d danmakufu.y Bison defines @{
 %token LOGICAL_OR
@@ -4822,6 +4855,7 @@ void ast_init(void) {
 	ast_block = ast_add_symbol_to_tbl("block");
 	ast_elt = ast_add_symbol_to_tbl("elt");
 	ast_subseq = ast_add_symbol_to_tbl("subseq");
+	ast_make_array = ast_add_symbol_to_tbl("make-array");
 }
 @}
 FIXME: усложнённый язык! После того как вычислятор будет написан, стоит упростить
@@ -4864,6 +4898,7 @@ AstSymbol *ast_while;
 AstSymbol *ast_block;
 AstSymbol *ast_elt;
 AstSymbol *ast_subseq;
+AstSymbol *ast_make_array;
 @}
 
 @d ast.h structs @{
@@ -4887,6 +4922,7 @@ extern AstSymbol *ast_while;
 extern AstSymbol *ast_block;
 extern AstSymbol *ast_elt;
 extern AstSymbol *ast_subseq;
+extern AstSymbol *ast_make_array;
 @}
 implet - императивная версия let(не как в лиспе)
 
