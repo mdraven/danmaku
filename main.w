@@ -3167,11 +3167,43 @@ $$ = ast_append($1, ast_add_cons($2, NULL));
 @}
 
 @d danmakufu.y grammar @{
-toplevel      : SCRIPT_MAIN '{' lines '}'          { printf("SCRIPT_MAIN\n"); }
-              | SCRIPT_CHILD SYMB '{' lines '}'
+toplevel      : SCRIPT_MAIN '{' lines '}'          { @<danmakufu.y grammar script main@>
+                                                   }
+              | SCRIPT_CHILD SYMB '{' lines '}'    { @<danmakufu.y grammar script child@>
+                                                   }
               | macros
               ;
+@}
 
+@d danmakufu.y C defines @{
+void *ast_ddefscriptmain(void *type, void *lines);
+void *ast_ddefscriptchild(void *type, void *name, void *lines);
+@}
+
+Вернуть объект defscriptmain и defscriptchild:
+@d danmakufu.y code @{
+void *ast_ddefscriptmain(void *type, void *lines) {
+	return ast_add_cons(ast_defscriptmain,
+			ast_add_cons(type, lines));
+}
+
+void *ast_ddefscriptchild(void *type, void *name, void *lines) {
+	return ast_add_cons(ast_defscriptchild,
+			ast_add_cons(type,
+				ast_add_cons(name, lines)));
+}
+@}
+
+@d danmakufu.y grammar script main @{
+$$ = ast_ddefscriptmain($1, $3);
+printf("SCRIPT_MAIN\n");
+@}
+
+@d danmakufu.y grammar script child @{
+$$ = ast_ddefscriptchild($1, $2, $4);
+@}
+
+@d danmakufu.y grammar @{
 macros        : M_TOUHOUDANMAKUFU
               | M_TITLE
               | M_TEXT
@@ -4149,11 +4181,11 @@ in                  return IN;
 ".."                return DOUBLE_DOT;
 return              return RETURN;
 
-script_enemy_main   return SCRIPT_MAIN;
-script_stage_main   return SCRIPT_MAIN;
+script_enemy_main   { yylval=ast_add_symbol_to_tbl(yytext); return SCRIPT_MAIN; }
+script_stage_main   { yylval=ast_add_symbol_to_tbl(yytext); return SCRIPT_MAIN; }
 
-script_enemy        return SCRIPT_CHILD;
-script_shot         return SCRIPT_CHILD;
+script_enemy        { yylval=ast_add_symbol_to_tbl(yytext); return SCRIPT_CHILD; }
+script_shot         { yylval=ast_add_symbol_to_tbl(yytext); return SCRIPT_CHILD; }
 
 @Initialize         { yylval=ast_add_symbol_to_tbl("@Initialize"); return DOG_NAME;}
 @MainLoop           { yylval=ast_add_symbol_to_tbl("@MainLoop"); return DOG_NAME;}
@@ -4880,6 +4912,9 @@ void ast_init(void) {
 	ast_elt = ast_add_symbol_to_tbl("elt");
 	ast_subseq = ast_add_symbol_to_tbl("subseq");
 	ast_make_array = ast_add_symbol_to_tbl("make-array");
+	ast_defscriptmain = ast_add_symbol_to_tbl("defscriptmain");
+	ast_defscriptchild = ast_add_symbol_to_tbl("defscriptchild");
+	ast_declare = ast_add_symbol_to_tbl("declare");
 }
 @}
 FIXME: усложнённый язык! После того как вычислятор будет написан, стоит упростить
@@ -4923,6 +4958,9 @@ AstSymbol *ast_block;
 AstSymbol *ast_elt;
 AstSymbol *ast_subseq;
 AstSymbol *ast_make_array;
+AstSymbol *ast_defscriptmain;
+AstSymbol *ast_defscriptchild;
+AstSymbol *ast_declare;
 @}
 
 @d ast.h structs @{
@@ -4947,6 +4985,9 @@ extern AstSymbol *ast_block;
 extern AstSymbol *ast_elt;
 extern AstSymbol *ast_subseq;
 extern AstSymbol *ast_make_array;
+extern AstSymbol *ast_defscriptmain;
+extern AstSymbol *ast_defscriptchild;
+extern AstSymbol *ast_declare;
 @}
 implet - императивная версия let(не как в лиспе)
 
