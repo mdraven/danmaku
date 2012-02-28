@@ -3981,31 +3981,31 @@ ret_expr      : NUM
 @}
 
 @d danmakufu.y grammar ret_expr add @{
-$$ = ast_dfuncall(ast_add_symbol_to_tbl("+"),
+$$ = ast_dfuncall(ast_add_symbol_to_tbl("add"),
 		ast_add_cons($1,
 			ast_add_cons($3, NULL)));
 @}
 
 @d danmakufu.y grammar ret_expr sub @{
-$$ = ast_dfuncall(ast_add_symbol_to_tbl("-"),
+$$ = ast_dfuncall(ast_add_symbol_to_tbl("subtract"),
 		ast_add_cons($1,
 			ast_add_cons($3, NULL)));
 @}
 
 @d danmakufu.y grammar ret_expr mul @{
-$$ = ast_dfuncall(ast_add_symbol_to_tbl("*"),
+$$ = ast_dfuncall(ast_add_symbol_to_tbl("multiply"),
 		ast_add_cons($1,
 			ast_add_cons($3, NULL)));
 @}
 
 @d danmakufu.y grammar ret_expr div @{
-$$ = ast_dfuncall(ast_add_symbol_to_tbl("/"),
+$$ = ast_dfuncall(ast_add_symbol_to_tbl("divide"),
 		ast_add_cons($1,
 			ast_add_cons($3, NULL)));
 @}
 
 @d danmakufu.y grammar ret_expr mod @{
-$$ = ast_dfuncall(ast_add_symbol_to_tbl("mod"),
+$$ = ast_dfuncall(ast_add_symbol_to_tbl("remainder"),
 		ast_add_cons($1,
 			ast_add_cons($3, NULL)));
 @}
@@ -4035,13 +4035,13 @@ $$ = ast_dfuncall(ast_add_symbol_to_tbl(">="),
 @}
 
 @d danmakufu.y grammar ret_expr pow @{
-$$ = ast_dfuncall(ast_add_symbol_to_tbl("expt"),
+$$ = ast_dfuncall(ast_add_symbol_to_tbl("power"),
 		ast_add_cons($1,
 			ast_add_cons($3, NULL)));
 @}
 
 @d danmakufu.y grammar ret_expr concatenate @{
-$$ = ast_dfuncall(ast_add_symbol_to_tbl("concat"),
+$$ = ast_dfuncall(ast_add_symbol_to_tbl("concatenate"),
 		ast_add_cons($1,
 			ast_add_cons($3, NULL)));
 @}
