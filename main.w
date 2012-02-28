@@ -3151,10 +3151,22 @@ typedef struct YYLTYPE {
 @}
 
 @d danmakufu.y grammar @{
-script        : /* empty */
-              | script toplevel
+script        : toplevel         { @<danmakufu.y grammar create script@>
+                                 }
+              | script toplevel  { @<danmakufu.y grammar concat script@>
+                                 }
               ;
+@}
 
+@d danmakufu.y grammar create script @{
+$$ = ast_add_cons($1, NULL);
+@}
+
+@d danmakufu.y grammar concat script @{
+$$ = ast_append($1, ast_add_cons($2, NULL));
+@}
+
+@d danmakufu.y grammar @{
 toplevel      : SCRIPT_MAIN '{' lines '}'          { printf("SCRIPT_MAIN\n"); }
               | SCRIPT_CHILD SYMB '{' lines '}'
               | macros
