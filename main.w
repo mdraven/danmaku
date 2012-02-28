@@ -4235,12 +4235,12 @@ script_stage_main   { yylval=ast_add_symbol_to_tbl(yytext); return SCRIPT_MAIN; 
 script_enemy        { yylval=ast_add_symbol_to_tbl(yytext); return SCRIPT_CHILD; }
 script_shot         { yylval=ast_add_symbol_to_tbl(yytext); return SCRIPT_CHILD; }
 
-@Initialize         { yylval=ast_add_symbol_to_tbl("@Initialize"); return DOG_NAME;}
-@MainLoop           { yylval=ast_add_symbol_to_tbl("@MainLoop"); return DOG_NAME;}
-@DrawLoop           { yylval=ast_add_symbol_to_tbl("@DrawLoop"); return DOG_NAME;}
-@Finalize           { yylval=ast_add_symbol_to_tbl("@Finalize"); return DOG_NAME;}
-@BackGround         { yylval=ast_add_symbol_to_tbl("@BackGround"); return DOG_NAME;}
-@DrawTopObject      { yylval=ast_add_symbol_to_tbl("@DrawTopObject"); return DOG_NAME;}
+@Initialize         { yylval=ast_add_symbol_to_tbl(yytext); return DOG_NAME;}
+@MainLoop           { yylval=ast_add_symbol_to_tbl(yytext); return DOG_NAME;}
+@DrawLoop           { yylval=ast_add_symbol_to_tbl(yytext); return DOG_NAME;}
+@Finalize           { yylval=ast_add_symbol_to_tbl(yytext); return DOG_NAME;}
+@BackGround         { yylval=ast_add_symbol_to_tbl(yytext); return DOG_NAME;}
+@DrawTopObject      { yylval=ast_add_symbol_to_tbl(yytext); return DOG_NAME;}
 
 \+                  return '+';
 -                   return '-';
