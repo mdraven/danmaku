@@ -5012,6 +5012,130 @@ static void clear_numbers(void) {
 }
 @}
 
+Строка:
+@d ast.h structs @{
+struct AstString {
+	struct AstString *prev;
+	struct AstString *next;
+	struct AstString *pool;
+	int type;
+	char *str;
+	unsigned int len;
+};
+
+typedef struct AstString AstString;
+@}
+type == ast_string.
+
+Список строк:
+@d ast.c structs @{
+static AstString *strings;
+@}
+
+Пулл строк и удалённых строк:
+@d ast.c structs @{
+static AstString *strings_pool;
+
+static AstString *strings_pool_free;
+static AstString *strings_end_pool_free;
+@}
+strings_end_pool_free - ссылка на последний элемент strings_pool_free
+
+STRING_ALLOC - аллоцируется слотов в самом начале
+STRING_ADD - добавляется при нехватке
+@d ast.c structs @{
+#define STRING_ALLOC 300
+#define STRING_ADD 50
+@}
+
+Функция для возвращения выделенных слотов обратно в пул:
+@d ast.c functions @{
+static void strings_free(AstString *string) {
+	if(string == strings)
+		strings = strings->next;
+
+	if(strings_pool_free == NULL)
+		strings_end_pool_free = string;
+
+	free(string->str);
+	string->str = NULL;
+
+	dlist_free((DList*)string, (DList**)(&strings_pool_free));
+}
+@}
+
+Соединить strings_pool_free с strings_pool:
+@d ast.c functions @{
+static void strings_pool_free_to_pool(void) {
+	if(strings_end_pool_free == NULL)
+		return;
+
+	strings_end_pool_free->pool = strings_pool;
+	strings_pool = strings_pool_free;
+
+	strings_pool_free = NULL;
+	strings_end_pool_free = NULL;
+}
+@}
+
+strings_get_free_cell - функция возвращающая свободный дескриптор:
+@d ast.c functions @{
+static AstString *strings_get_free_cell(void) {
+	if(strings_pool == NULL) {
+		int k = (strings == NULL) ? STRING_ALLOC : STRING_ADD;
+		int i;
+
+		strings_pool = malloc(sizeof(AstString)*k);
+		if(strings_pool == NULL) {
+			fprintf(stderr, "\nCan't allocate memory for strings' pool\n");
+			exit(1);
+		}
+
+		for(i = 0; i < k-1; i++)
+			strings_pool[i].pool = &(strings_pool[i+1]);
+		strings_pool[k-1].pool = NULL;
+	}
+
+	strings = (AstString*)dlist_alloc((DList*)strings, (DList**)(&strings_pool));
+
+	return strings;
+}
+@}
+
+
+Добавить элемент в таблицу:
+@d ast.c functions @{
+AstString *ast_add_string(const char *str) {
+	AstString *string = strings_get_free_cell();
+
+	string->type = ast_string;
+
+	string->len = strlen(str);
+
+	string->str = malloc(string->len*sizeof(char));
+	if(string->str == NULL) {
+		fprintf(stderr, "\nCan't allocate memory for symbols' pool\n");
+		exit(1);
+	}
+
+	strcpy(string->str, str);
+
+	return string;
+}
+@}
+
+
+@d ast.h prototypes @{
+AstString *ast_add_string_to_tbl(const char *name);
+@}
+
+Функция очистки:
+@d ast.c functions @{
+static void clear_strings(void) {
+	// BLA-BLA
+}
+@}
+
 Инициализация ast:
 @d ast.c functions @{
 void ast_init(void) {
@@ -5050,6 +5174,7 @@ void ast_clear(void) {
 	clear_symbols();
 	clear_conses();
 	clear_numbers();
+	clear_strings();
 }
 @}
 вызвать при выходе из игры(см. clear_symbols_tbl и clear_cons_array)
