@@ -5112,7 +5112,7 @@ AstString *ast_add_string(const char *str) {
 
 	string->len = strlen(str);
 
-	string->str = malloc(string->len*sizeof(char));
+	string->str = malloc((string->len + 1)*sizeof(char));
 	if(string->str == NULL) {
 		fprintf(stderr, "\nCan't allocate memory for symbols' pool\n");
 		exit(1);
@@ -5126,7 +5126,7 @@ AstString *ast_add_string(const char *str) {
 
 
 @d ast.h prototypes @{
-AstString *ast_add_string_to_tbl(const char *name);
+AstString *ast_add_string(const char *str);
 @}
 
 Функция очистки:
