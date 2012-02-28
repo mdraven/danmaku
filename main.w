@@ -3204,16 +3204,73 @@ $$ = ast_ddefscriptchild($1, $2, $4);
 @}
 
 @d danmakufu.y grammar @{
-macros        : M_TOUHOUDANMAKUFU
-              | M_TITLE
-              | M_TEXT
-              | M_IMAGE
-              | M_BACKGROUND
-              | M_BGM
-              | M_PLAYLEVEL
-              | M_PLAYER
-              | M_SCRIPTVERSION
+macros        : M_TOUHOUDANMAKUFU   { @<danmakufu.y grammar declare script type@>
+                                    }
+              | M_TITLE             { @<danmakufu.y grammar declare title@>
+                                    }
+              | M_TEXT              { @<danmakufu.y grammar declare text@>
+                                    }
+              | M_IMAGE             { @<danmakufu.y grammar declare image@>
+                                    }
+              | M_BACKGROUND        { @<danmakufu.y grammar declare background@>
+                                    }
+              | M_BGM               { @<danmakufu.y grammar declare bgm@>
+                                    }
+              | M_PLAYLEVEL         { @<danmakufu.y grammar declare playlevel@>
+                                    }
+              | M_PLAYER            { @<danmakufu.y grammar declare player@>
+                                    }
+              | M_SCRIPTVERSION     { @<danmakufu.y grammar declare scriptversion@>
+                                    }
               ;
+@}
+
+@d danmakufu.y C defines @{
+void *ast_ddeclare(void *name, void *expr);
+@}
+
+Вернуть объект declare:
+@d danmakufu.y code @{
+void *ast_ddeclare(void *name, void *expr) {
+	return ast_add_cons(ast_declare,
+			ast_add_cons(name, expr));
+}
+@}
+
+@d danmakufu.y grammar declare script type @{
+$$ = ast_ddeclare(ast_add_symbol_to_tbl("touhoudanmakufu"), $1);
+@}
+
+@d danmakufu.y grammar declare title @{
+$$ = ast_ddeclare(ast_add_symbol_to_tbl("title"), $1);
+@}
+
+@d danmakufu.y grammar declare text @{
+$$ = ast_ddeclare(ast_add_symbol_to_tbl("text"), $1);
+@}
+
+@d danmakufu.y grammar declare image @{
+$$ = ast_ddeclare(ast_add_symbol_to_tbl("image"), $1);
+@}
+
+@d danmakufu.y grammar declare background @{
+$$ = ast_ddeclare(ast_add_symbol_to_tbl("background"), $1);
+@}
+
+@d danmakufu.y grammar declare bgm @{
+$$ = ast_ddeclare(ast_add_symbol_to_tbl("bgm"), $1);
+@}
+
+@d danmakufu.y grammar declare playlevel @{
+$$ = ast_ddeclare(ast_add_symbol_to_tbl("playlevel"), $1);
+@}
+
+@d danmakufu.y grammar declare player @{
+$$ = ast_ddeclare(ast_add_symbol_to_tbl("player"), $1);
+@}
+
+@d danmakufu.y grammar declare scriptversion @{
+$$ = ast_ddeclare(ast_add_symbol_to_tbl("scriptversion"), $1);
 @}
 
 @d danmakufu.y grammar @{
