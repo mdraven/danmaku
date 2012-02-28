@@ -4642,7 +4642,6 @@ struct AstSymbol {
 	struct AstSymbol *pool;
 	int type;
 	char name[SYMBOL_MAX_LEN];
-	void *ptr;
 };
 
 typedef struct AstSymbol AstSymbol;
