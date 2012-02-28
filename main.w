@@ -4014,7 +4014,7 @@ array_args    : ret_expr                        { @<danmakufu.y grammar create a
 void *ast_dmake_array(void *args);
 @}
 
-Вернуть объект setq:
+Вернуть объект make-array:
 @d danmakufu.y code @{
 void *ast_dmake_array(void *args) {
 	return ast_add_cons(ast_make_array, args);
