@@ -4234,6 +4234,7 @@ script_stage_main   { yylval=ast_add_symbol_to_tbl(yytext); return SCRIPT_MAIN; 
 
 script_enemy        { yylval=ast_add_symbol_to_tbl(yytext); return SCRIPT_CHILD; }
 script_shot         { yylval=ast_add_symbol_to_tbl(yytext); return SCRIPT_CHILD; }
+script_spell        { yylval=ast_add_symbol_to_tbl(yytext); return SCRIPT_CHILD; }
 
 @Initialize         { yylval=ast_add_symbol_to_tbl(yytext); return DOG_NAME;}
 @MainLoop           { yylval=ast_add_symbol_to_tbl(yytext); return DOG_NAME;}
