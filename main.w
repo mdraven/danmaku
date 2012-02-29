@@ -4280,8 +4280,9 @@ script_shot         { yylval=ast_add_symbol_to_tbl(yytext); return SCRIPT_CHILD;
 ==                  return EQUAL_OP;
 !=                  return NOT_EQUAL_OP;
 
-false               { yylval = ast_add_number(0.0); return NUM; }
-true                { yylval = ast_add_number(1.0); return NUM; }
+false               { yylval = ast_false; return NUM; }
+true                { yylval = ast_true; return NUM; }
+pi                  { yylval = ast_pi; return NUM; }
 @}
 
 Будем возвращаеть перед каждым '}' ещё и ';':
@@ -5199,6 +5200,10 @@ void ast_init(void) {
 	ast_defscriptmain = ast_add_symbol_to_tbl("defscriptmain");
 	ast_defscriptchild = ast_add_symbol_to_tbl("defscriptchild");
 	ast_declare = ast_add_symbol_to_tbl("declare");
+
+	ast_false = ast_add_number(0.0);
+	ast_true = ast_add_number(1.0);
+	ast_pi = ast_add_number(3.1415);
 }
 @}
 FIXME: усложнённый язык! После того как вычислятор будет написан, стоит упростить
@@ -5244,6 +5249,10 @@ AstSymbol *ast_make_array;
 AstSymbol *ast_defscriptmain;
 AstSymbol *ast_defscriptchild;
 AstSymbol *ast_declare;
+
+AstNumber *ast_false;
+AstNumber *ast_true;
+AstNumber *ast_pi;
 @}
 
 @d ast.h structs @{
@@ -5269,6 +5278,10 @@ extern AstSymbol *ast_make_array;
 extern AstSymbol *ast_defscriptmain;
 extern AstSymbol *ast_defscriptchild;
 extern AstSymbol *ast_declare;
+
+extern AstNumber *ast_false;
+extern AstNumber *ast_true;
+extern AstNumber *ast_pi;
 @}
 implet - императивная версия let(не как в лиспе)
 
