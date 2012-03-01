@@ -5333,6 +5333,65 @@ AstCons *ast_append(AstCons *cons, AstCons *to_back) {
 @}
 с той же целью, что и cdr() и car().
 
+Функция печати, нужна для отладки:
+@d ast.c prototypes @{
+void ast_print(const AstCons *cons);
+static void ast_print_helper(const void *obj, int shift);
+@}
+shift - число пробелов в отступе
+
+@d ast.c functions @{
+void ast_print(const AstCons *cons) {
+	ast_print_helper(cons, 0);
+}
+
+static void ast_print_helper(const void *obj, int shift) {
+	int i;
+	for(i = 0; i < shift; i++)
+		printf(" ");
+
+	if(obj == NULL) {
+		printf("NIL");
+		return;
+	}
+
+	switch(((const AstCons*)obj)->type) {
+		case ast_cons: {
+			const AstCons *cons = obj;
+			printf("(cons\n");
+			ast_print_helper(cons->car, shift+1);
+			printf("\n");
+			ast_print_helper(cons->cdr, shift+1);
+			printf(")");
+			break;
+		}
+		case ast_symbol: {
+			const AstSymbol *symb = obj;
+			printf("%s", symb->name);
+			break;
+		}
+		case ast_string: {
+			const AstString *str = obj;
+			printf("\"%s\"", str->str);
+			break;
+		}
+		case ast_character: {
+			const AstString *chr = obj;
+			printf("'%s'", chr->str);
+			break;
+		}
+		case ast_number: {
+			const AstNumber *num = obj;
+			printf("%f", num->number);
+			break;
+		}
+		default:
+			fprintf(stderr, "\nast_print_helper: unknown object\n");
+			exit(1);
+			break;
+	}
+}
+@}
 
 ===========================================================
 
