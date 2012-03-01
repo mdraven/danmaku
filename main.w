@@ -3159,7 +3159,8 @@ script        : toplevel         { @<danmakufu.y grammar create script@>
 @}
 
 @d danmakufu.y grammar create script @{
-$$ = ast_add_cons($1, NULL);
+toplevel_cons = ast_add_cons($1, NULL);
+$$ = toplevel_cons;
 @}
 
 @d danmakufu.y grammar concat script @{
