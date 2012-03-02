@@ -4334,13 +4334,13 @@ static char *remove_quotes(char *str, int len) {
 	int i, j;
 
 	for(i = 0; i < len-1; i++)
-		if(str[i] == '\"') {
+		if(str[i] == '\"' || str[i] == '\'') {
 			i++;
 			break;
 		}
 
 	for(j = len-1; j > i; j--)
-		if(str[j] == '\"') {
+		if(str[j] == '\"' || str[j] == '\'') {
 			str[j] = '\0';
 			break;
 		}
