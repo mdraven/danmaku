@@ -3159,7 +3159,7 @@ script        : /* empty */         { $$ = NULL; }
 @d danmakufu.y grammar concat script @{
 if($2 != NULL) {
 	if($1 == NULL)
-		$$ = ast_add_cons($2, NULL);
+		$$ = ast_dprogn($2, NULL);
 	else
 		$$ = ast_append($1, ast_add_cons($2, NULL));
 } else
@@ -3224,7 +3224,8 @@ void *ast_ddeclare(void *name, void *expr);
 @d danmakufu.y code @{
 void *ast_ddeclare(void *name, void *expr) {
 	return ast_add_cons(ast_declare,
-			ast_add_cons(name, expr));
+			ast_add_cons(name,
+				ast_add_cons(expr, NULL)));
 }
 @}
 
@@ -3299,7 +3300,8 @@ void *ast_dimplet(void *name, void *exprs);
 @d danmakufu.y code @{
 void *ast_dimplet(void *name, void *exprs) {
 	return ast_add_cons(ast_implet,
-			ast_add_cons(name, exprs));
+			ast_add_cons(name,
+				ast_add_cons(exprs, NULL)));
 }
 @}
 
@@ -3359,7 +3361,8 @@ void *ast_dfunction(void *name, void *lets, void *exprs);
 void *ast_dfunction(void *name, void *lets, void *exprs) {
 	return ast_add_cons(ast_defun,
 			ast_add_cons(name,
-				ast_add_cons(lets, exprs)));
+				ast_add_cons(lets,
+					ast_add_cons(exprs, NULL))));
 }
 @}
 
@@ -3369,7 +3372,7 @@ printf("FUNCTION: %s\n", ((AstSymbol*)$2)->name);
 @}
 
 @d danmakufu.y grammar function with lets @{
-$$ = ast_dfunction($2, $4, $6);
+$$ = ast_dfunction($2, $4, $7);
 printf("FUNCTION: %s\n", ((AstSymbol*)$2)->name);
 @}
 
@@ -3433,11 +3436,22 @@ expr          : ';'                  { $$ = NULL; }
 у "/* empty */" и ';' явно присваивание NULL не случайность, а необходимость. Иначе
   ';' будет вставлять какой-то мусор.
 
+@d danmakufu.y C defines @{
+void *ast_dprogn(void *first, void *others);
+@}
+
+Вернуть объект progn:
+@d danmakufu.y code @{
+void *ast_dprogn(void *first, void *others) {
+	return ast_add_cons(ast_progn,
+			ast_add_cons(first, others));
+}
+@}
 
 @d danmakufu.y grammar concatenate expr list @{
 if($2 != NULL) {
 	if($1 == NULL)
-		$$ = ast_add_cons($2, NULL);
+		$$ = ast_dprogn($2, NULL);
 	else
 		$$ = ast_append($1, ast_add_cons($2, NULL));
 } else
@@ -3452,9 +3466,9 @@ exprs_after_cycle : '{' exprs '}'              { $$ = $2; }
 @}
 
 @d danmakufu.y grammar @{
-call_keyword  : YIELD ';'                                    { $$ = ast_yield; }
-              | BREAK ';'                                    { $$ = ast_break; }
-              | RETURN ret_expr ';'                          { $$ = ast_add_cons(ast_return, $2); }
+call_keyword  : YIELD ';'                                    { $$ = ast_add_cons(ast_yield, NULL); }
+              | BREAK ';'                                    { $$ = ast_add_cons(ast_break, NULL); }
+              | RETURN ret_expr ';'                          { @<danmakufu.y grammar return with expr@> }
               | RETURN ';'                                   { $$ = ast_add_cons(ast_return, NULL); }
               | LOOP '(' ret_expr ')' '{' exprs '}'          { @<danmakufu.y grammar loop with args@> }
               | LOOP '{' exprs '}'                           { @<danmakufu.y grammar loop without args@> }
@@ -3469,6 +3483,22 @@ call_keyword  : YIELD ';'                                    { $$ = ast_yield; }
 @}
 
 @d danmakufu.y C defines @{
+void *ast_dreturn(void *expr);
+@}
+
+Вернуть объект return:
+@d danmakufu.y code @{
+void *ast_dreturn(void *expr) {
+	return ast_add_cons(ast_return,
+			ast_add_cons(expr, NULL));
+}
+@}
+
+@d danmakufu.y grammar return with expr @{
+$$ = ast_dreturn($2);
+@}
+
+@d danmakufu.y C defines @{
 void *ast_dloop(void *times, void *exprs);
 @}
 
@@ -3476,7 +3506,8 @@ void *ast_dloop(void *times, void *exprs);
 @d danmakufu.y code @{
 void *ast_dloop(void *times, void *exprs) {
 	return ast_add_cons(ast_loop,
-			ast_add_cons(times, exprs));
+			ast_add_cons(times,
+				ast_add_cons(exprs, NULL)));
 }
 @}
 
@@ -3503,7 +3534,8 @@ void *ast_dwhile(void *cond, void *exprs);
 @d danmakufu.y code @{
 void *ast_dwhile(void *cond, void *exprs) {
 	return ast_add_cons(ast_while,
-			ast_add_cons(cond, exprs));
+			ast_add_cons(cond,
+				ast_add_cons(exprs, NULL)));
 }
 @}
 
@@ -3520,7 +3552,8 @@ void *ast_dblock(void *exprs);
 Вернуть объект block:
 @d danmakufu.y code @{
 void *ast_dblock(void *exprs) {
-	return ast_add_cons(ast_block, exprs);
+	return ast_add_cons(ast_block,
+			ast_add_cons(exprs, NULL));
 }
 @}
 
@@ -3555,7 +3588,8 @@ void *ast_dcase(void *args, void *exprs);
 void *ast_dalternative(void *cond, void *case_, void *others_) {
 	return ast_add_cons(ast_alternative,
 			ast_add_cons(cond,
-				ast_add_cons(case_, others_)));
+				ast_add_cons(case_,
+					ast_add_cons(others_, NULL))));
 }
 @}
 
@@ -3563,7 +3597,8 @@ void *ast_dalternative(void *cond, void *case_, void *others_) {
 @d danmakufu.y code @{
 void *ast_dcase(void *args, void *exprs) {
 	return ast_add_cons(ast_case,
-			ast_add_cons(args, exprs));
+			ast_add_cons(args,
+				ast_add_cons(exprs, NULL)));
 }
 @}
 
@@ -3611,7 +3646,8 @@ void *ast_dxcent(void *xcent, void *symb, void *from, void *to, void *exprs) {
 	return ast_add_cons(xcent,
 			ast_add_cons(symb,
 				ast_add_cons(from,
-					ast_add_cons(to, exprs))));
+					ast_add_cons(to,
+						ast_add_cons(exprs, NULL)))));
 }
 @}
 ascent и descent -- геморой в будущем, они вводят лишние понятия, которые можно заменить
@@ -3751,7 +3787,8 @@ void *ast_dtaskcall(void *name);
 Вернуть объект taskcall:
 @d danmakufu.y code @{
 void *ast_dtaskcall(void *name) {
-	return ast_add_cons(ast_taskcall, name);
+	return ast_add_cons(ast_taskcall,
+			ast_add_cons(name, NULL));
 }
 @}
 
@@ -3823,7 +3860,8 @@ void *ast_dsetq(void *lval, void *rval);
 @d danmakufu.y code @{
 void *ast_dsetq(void *lval, void *rval) {
 	return ast_add_cons(ast_setq,
-			ast_add_cons(lval, rval));
+			ast_add_cons(lval,
+				ast_add_cons(rval, NULL)));
 }
 @}
 
@@ -4023,13 +4061,23 @@ array_args    : ret_expr                        { @<danmakufu.y grammar create a
 @}
 
 @d danmakufu.y C defines @{
+void *ast_dquote(void *args);
 void *ast_dmake_array(void *args);
 @}
 
 Вернуть объект make-array:
 @d danmakufu.y code @{
+void *ast_dquote(void *arg) {
+	return ast_add_cons(ast_quote,
+			ast_add_cons(arg, NULL));
+}
+
 void *ast_dmake_array(void *args) {
-	return ast_add_cons(ast_make_array, args);
+	if(args == NULL)
+		return ast_add_cons(ast_make_array, NULL);
+	else
+		return ast_add_cons(ast_make_array,
+				ast_add_cons(ast_dlist(args), NULL));
 }
 @}
 
@@ -4041,6 +4089,17 @@ printf("ARRAY\n");
 @d danmakufu.y grammar make-array @{
 $$ = ast_dmake_array($2);
 printf("ARRAY\n");
+@}
+
+@d danmakufu.y C defines @{
+void *ast_dlist(void *args);
+@}
+
+Вернуть объект list:
+@d danmakufu.y code @{
+void *ast_dlist(void *args) {
+	return ast_add_cons(ast_list, args);
+}
 @}
 
 @d danmakufu.y grammar create array_args @{
@@ -5138,6 +5197,9 @@ void ast_init(void) {
 	ast_defscriptmain = ast_add_symbol_to_tbl("defscriptmain");
 	ast_defscriptchild = ast_add_symbol_to_tbl("defscriptchild");
 	ast_declare = ast_add_symbol_to_tbl("declare");
+	ast_progn = ast_add_symbol_to_tbl("progn");
+	ast_quote = ast_add_symbol_to_tbl("quote");
+	ast_list = ast_add_symbol_to_tbl("list");
 
 	ast_false = ast_add_number(0.0);
 	ast_true = ast_add_number(1.0);
@@ -5187,6 +5249,9 @@ AstSymbol *ast_make_array;
 AstSymbol *ast_defscriptmain;
 AstSymbol *ast_defscriptchild;
 AstSymbol *ast_declare;
+AstSymbol *ast_progn;
+AstSymbol *ast_quote;
+AstSymbol *ast_list;
 
 AstNumber *ast_false;
 AstNumber *ast_true;
@@ -5216,6 +5281,9 @@ extern AstSymbol *ast_make_array;
 extern AstSymbol *ast_defscriptmain;
 extern AstSymbol *ast_defscriptchild;
 extern AstSymbol *ast_declare;
+extern AstSymbol *ast_progn;
+extern AstSymbol *ast_quote;
+extern AstSymbol *ast_list;
 
 extern AstNumber *ast_false;
 extern AstNumber *ast_true;
