@@ -3761,6 +3761,7 @@ void *ast_dfuncall(void *name, void *args) {
 			ast_add_cons(name, args));
 }
 @}
+может лучше убрать ast_funcall и сделать как в Scheme?
 
 @d danmakufu.y grammar call without args @{
 $$ = ast_dfuncall($1, NULL);
