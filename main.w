@@ -5273,19 +5273,21 @@ void ast_print(const AstCons *cons);
 @}
 
 @d ast.c prototypes @{
-static void ast_print_helper(const void *obj, int shift);
+static void ast_print_helper(const void *obj, int shift, int skip_first_shift);
 @}
 shift - число пробелов в отступе
 
 @d ast.c functions @{
 void ast_print(const AstCons *cons) {
-	ast_print_helper(cons, 0);
+	ast_print_helper(cons, 0, 0);
 }
 
-static void ast_print_helper(const void *obj, int shift) {
+static void ast_print_helper(const void *obj, int shift, int skip_first_shift) {
 	int i;
-	for(i = 0; i < shift; i++)
-		printf(" ");
+
+	if(skip_first_shift == 0)
+		for(i = 0; i < shift; i++)
+			printf(" ");
 
 	if(obj == NULL) {
 		printf("NIL");
@@ -5296,26 +5298,26 @@ static void ast_print_helper(const void *obj, int shift) {
 		case ast_cons: {
 			const AstCons *p;
 
-			printf("(\n");
+			printf("(");
 			for(p = obj;
 				p->cdr != NULL && ((const AstCons*)p->cdr)->type == ast_cons;
 				p = p->cdr) {
-				ast_print_helper(p->car, shift+1);
+				ast_print_helper(p->car, shift+1, (p == obj) ? 1 : 0);
 				printf("\n");
 			}
-			ast_print_helper(p->car, shift+1);
+			ast_print_helper(p->car, shift+1, (p == obj) ? 1 : 0);
 			if(p->cdr != NULL) {
 				printf(" .\n");
-				ast_print_helper(p->cdr, shift+1);
+				ast_print_helper(p->cdr, shift+1, 0);
 			}
 			printf(")");
 
 			/*
 			const AstCons *cons = obj;
 			printf("(cons\n");
-			ast_print_helper(cons->car, shift+1);
+			ast_print_helper(cons->car, shift+1, 0);
 			printf("\n");
-			ast_print_helper(cons->cdr, shift+1);
+			ast_print_helper(cons->cdr, shift+1, 0);
 			printf(")");
 			*/
 			break;
