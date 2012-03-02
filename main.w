@@ -5268,8 +5268,11 @@ AstCons *ast_append(AstCons *cons, AstCons *to_back) {
 с той же целью, что и cdr() и car().
 
 Функция печати, нужна для отладки:
-@d ast.c prototypes @{
+@d ast.h prototypes @{
 void ast_print(const AstCons *cons);
+@}
+
+@d ast.c prototypes @{
 static void ast_print_helper(const void *obj, int shift);
 @}
 shift - число пробелов в отступе
@@ -5291,12 +5294,30 @@ static void ast_print_helper(const void *obj, int shift) {
 
 	switch(((const AstCons*)obj)->type) {
 		case ast_cons: {
+			const AstCons *p;
+
+			printf("(list\n");
+			for(p = obj;
+				p->cdr != NULL && ((const AstCons*)p->cdr)->type == ast_cons;
+				p = p->cdr) {
+				ast_print_helper(p->car, shift+1);
+				printf("\n");
+			}
+			ast_print_helper(p->car, shift+1);
+			if(p->cdr != NULL) {
+				printf(" .\n");
+				ast_print_helper(p->cdr, shift+1);
+			}
+			printf(")");
+
+			/*
 			const AstCons *cons = obj;
 			printf("(cons\n");
 			ast_print_helper(cons->car, shift+1);
 			printf("\n");
 			ast_print_helper(cons->cdr, shift+1);
 			printf(")");
+			*/
 			break;
 		}
 		case ast_symbol: {
