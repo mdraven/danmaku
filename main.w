@@ -5296,7 +5296,7 @@ static void ast_print_helper(const void *obj, int shift) {
 		case ast_cons: {
 			const AstCons *p;
 
-			printf("(list\n");
+			printf("(\n");
 			for(p = obj;
 				p->cdr != NULL && ((const AstCons*)p->cdr)->type == ast_cons;
 				p = p->cdr) {
