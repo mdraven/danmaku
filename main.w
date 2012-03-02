@@ -3151,27 +3151,26 @@ typedef struct YYLTYPE {
 @}
 
 @d danmakufu.y grammar @{
-script        : toplevel         { @<danmakufu.y grammar create script@>
-                                 }
-              | script toplevel  { @<danmakufu.y grammar concat script@>
-                                 }
+script        : /* empty */         { $$ = NULL; }
+              | script toplevel     { @<danmakufu.y grammar concat script@> }
               ;
 @}
 
-@d danmakufu.y grammar create script @{
-toplevel_cons = ast_add_cons($1, NULL);
-$$ = toplevel_cons;
-@}
-
 @d danmakufu.y grammar concat script @{
-$$ = ast_append($1, ast_add_cons($2, NULL));
+if($2 != NULL) {
+	if($1 == NULL)
+		$$ = ast_add_cons($2, NULL);
+	else
+		$$ = ast_append($1, ast_add_cons($2, NULL));
+} else
+	$$ = $1;
+
+toplevel_cons = $$;
 @}
 
 @d danmakufu.y grammar @{
-toplevel      : SCRIPT_MAIN '{' lines '}'          { @<danmakufu.y grammar script main@>
-                                                   }
-              | SCRIPT_CHILD SYMB '{' lines '}'    { @<danmakufu.y grammar script child@>
-                                                   }
+toplevel      : SCRIPT_MAIN '{' lines '}'          { @<danmakufu.y grammar script main@> }
+              | SCRIPT_CHILD SYMB '{' lines '}'    { @<danmakufu.y grammar script child@> }
               | macros
               ;
 @}
@@ -3205,24 +3204,15 @@ $$ = ast_ddefscriptchild($1, $2, $4);
 @}
 
 @d danmakufu.y grammar @{
-macros        : M_TOUHOUDANMAKUFU   { @<danmakufu.y grammar declare script type@>
-                                    }
-              | M_TITLE             { @<danmakufu.y grammar declare title@>
-                                    }
-              | M_TEXT              { @<danmakufu.y grammar declare text@>
-                                    }
-              | M_IMAGE             { @<danmakufu.y grammar declare image@>
-                                    }
-              | M_BACKGROUND        { @<danmakufu.y grammar declare background@>
-                                    }
-              | M_BGM               { @<danmakufu.y grammar declare bgm@>
-                                    }
-              | M_PLAYLEVEL         { @<danmakufu.y grammar declare playlevel@>
-                                    }
-              | M_PLAYER            { @<danmakufu.y grammar declare player@>
-                                    }
-              | M_SCRIPTVERSION     { @<danmakufu.y grammar declare scriptversion@>
-                                    }
+macros        : M_TOUHOUDANMAKUFU   { @<danmakufu.y grammar declare script type@> }
+              | M_TITLE             { @<danmakufu.y grammar declare title@> }
+              | M_TEXT              { @<danmakufu.y grammar declare text@> }
+              | M_IMAGE             { @<danmakufu.y grammar declare image@> }
+              | M_BACKGROUND        { @<danmakufu.y grammar declare background@> }
+              | M_BGM               { @<danmakufu.y grammar declare bgm@> }
+              | M_PLAYLEVEL         { @<danmakufu.y grammar declare playlevel@> }
+              | M_PLAYER            { @<danmakufu.y grammar declare player@> }
+              | M_SCRIPTVERSION     { @<danmakufu.y grammar declare scriptversion@> }
               ;
 @}
 
@@ -3275,31 +3265,29 @@ $$ = ast_ddeclare(ast_add_symbol_to_tbl("scriptversion"), $1);
 @}
 
 @d danmakufu.y grammar @{
-lines         : line          { @<danmakufu.y grammar create lines@>
-                              }
-              | lines line    { @<danmakufu.y grammar concat lines@>
-                              }
+lines         : /* empty */           { $$ = NULL; }
+              | lines line            { @<danmakufu.y grammar concat lines@> }
               ;
 
 line          : expr
               | dog_block
-              | error ';'                  { printf("file %s, line %d\n", @2.filename, @2.first_line); YYABORT; }
+              | error ';'             { printf("file %s, line %d\n", @2.filename, @2.first_line); YYABORT; }
               ;
 @}
 
-@d danmakufu.y grammar create lines @{
-$$ = ast_add_cons($1, NULL);
-@}
-
 @d danmakufu.y grammar concat lines @{
-$$ = ast_append($1, ast_add_cons($2, NULL));
+if($2 != NULL) {
+	if($1 == NULL)
+		$$ = ast_add_cons($2, NULL);
+	else
+		$$ = ast_append($1, ast_add_cons($2, NULL));
+} else
+	$$ = $1;
 @}
 
 @d danmakufu.y grammar @{
-let           : LET SYMB '=' ret_expr ';'          { @<danmakufu.y grammar let with set@>
-                                                   }
-              | LET SYMB ';'                       { @<danmakufu.y grammar let without set@>
-                                                   }
+let           : LET SYMB '=' ret_expr ';'          { @<danmakufu.y grammar let with set@> }
+              | LET SYMB ';'                       { @<danmakufu.y grammar let without set@> }
               ;
 @}
 
@@ -3327,8 +3315,7 @@ printf("LET %s\n", ((AstSymbol*)$2)->name);
 @}
 
 @d danmakufu.y grammar @{
-dog_block     : DOG_NAME '{' exprs '}'   { @<danmakufu.y grammar dogs@>
-                                         }
+dog_block     : DOG_NAME '{' exprs '}'   { @<danmakufu.y grammar dogs@> }
               ;
 @}
 
@@ -3351,19 +3338,15 @@ printf("%s\n", ((AstSymbol*)$1)->name);
 
 Процедура:
 @d danmakufu.y grammar @{
-defsub_block  : SUB SYMB '{' exprs '}'   { @<danmakufu.y grammar function without parenthesis@>
-                                         }
+defsub_block  : SUB SYMB '{' exprs '}'   { @<danmakufu.y grammar function without parenthesis@> }
               ;
 @}
 имеет тот же обработчик, что и функция без параметров.
 
 @d danmakufu.y grammar @{
-deffunc_block : FUNCTION SYMB '(' ')' '{' exprs '}'        { @<danmakufu.y grammar function without lets@>
-                                                           }
-              | FUNCTION SYMB '(' lets ')' '{' exprs '}'   { @<danmakufu.y grammar function with lets@>
-                                                           }
-              | FUNCTION SYMB '{' exprs '}'                { @<danmakufu.y grammar function without parenthesis@>
-                                                           }
+deffunc_block : FUNCTION SYMB '(' ')' '{' exprs '}'      { @<danmakufu.y grammar function without lets@> }
+              | FUNCTION SYMB '(' lets ')' '{' exprs '}' { @<danmakufu.y grammar function with lets@> }
+              | FUNCTION SYMB '{' exprs '}'              { @<danmakufu.y grammar function without parenthesis@> }
               ;
 @}
 
@@ -3396,12 +3379,9 @@ printf("FUNCTION: %s\n", ((AstSymbol*)$2)->name);
 @}
 
 @d danmakufu.y grammar @{
-deftask_block : TASK SYMB '(' ')' '{' exprs '}'       { @<danmakufu.y grammar task without lets@>
-                                                      }
-              | TASK SYMB '(' lets ')' '{' exprs '}'  { @<danmakufu.y grammar task with lets@>
-                                                      }
-              | TASK SYMB '{' exprs '}'               { @<danmakufu.y grammar task without parenthesis@>
-                                                      }
+deftask_block : TASK SYMB '(' ')' '{' exprs '}'       { @<danmakufu.y grammar task without lets@> }
+              | TASK SYMB '(' lets ')' '{' exprs '}'  { @<danmakufu.y grammar task with lets@> }
+              | TASK SYMB '{' exprs '}'               { @<danmakufu.y grammar task without parenthesis@> }
               ;
 @}
 
@@ -3435,11 +3415,11 @@ printf("FUNCTION: %s\n", ((AstSymbol*)$2)->name);
 
 @d danmakufu.y grammar @{
 
-exprs         : /* empty */
-              | exprs expr
+exprs         : /* empty */          { $$ = NULL; }
+              | exprs expr           { @<danmakufu.y grammar concatenate expr list@> }
               ;
 
-expr          : ';'
+expr          : ';'                  { $$ = NULL; }
               | deffunc_block
               | defsub_block
               | deftask_block
@@ -3449,6 +3429,19 @@ expr          : ';'
               | call_keyword
               | set_op
               ;
+@}
+у "/* empty */" и ';' явно присваивание NULL не случайность, а необходимость. Иначе
+  ';' будет вставлять какой-то мусор.
+
+
+@d danmakufu.y grammar concatenate expr list @{
+if($2 != NULL) {
+	if($1 == NULL)
+		$$ = ast_add_cons($2, NULL);
+	else
+		$$ = ast_append($1, ast_add_cons($2, NULL));
+} else
+	$$ = $1;
 @}
 
 Выражение после times, while, ascent и descent:
@@ -3463,16 +3456,11 @@ call_keyword  : YIELD ';'                                    { $$ = ast_yield; }
               | BREAK ';'                                    { $$ = ast_break; }
               | RETURN ret_expr ';'                          { $$ = ast_add_cons(ast_return, $2); }
               | RETURN ';'                                   { $$ = ast_add_cons(ast_return, NULL); }
-              | LOOP '(' ret_expr ')' '{' exprs '}'          { @<danmakufu.y grammar loop with args@>
-                                                             }
-              | LOOP '{' exprs '}'                           { @<danmakufu.y grammar loop without args@>
-                                                             }
-              | TIMES '(' ret_expr ')' exprs_after_cycle     { @<danmakufu.y grammar times@>
-                                                             }
-              | WHILE '(' ret_expr ')' exprs_after_cycle     { @<danmakufu.y grammar while@>
-                                                             }
-              | LOCAL '{' exprs '}'                          { @<danmakufu.y grammar local@>
-                                                             }
+              | LOOP '(' ret_expr ')' '{' exprs '}'          { @<danmakufu.y grammar loop with args@> }
+              | LOOP '{' exprs '}'                           { @<danmakufu.y grammar loop without args@> }
+              | TIMES '(' ret_expr ')' exprs_after_cycle     { @<danmakufu.y grammar times@> }
+              | WHILE '(' ret_expr ')' exprs_after_cycle     { @<danmakufu.y grammar while@> }
+              | LOCAL '{' exprs '}'                          { @<danmakufu.y grammar local@> }
               | ascent                                       { printf("ASCENT\n"); }
               | descent                                      { printf("DESCENT\n"); }
               | if
@@ -3544,20 +3532,15 @@ printf("LOCAL\n");
 
 Danmakufu script'ный switch:
 @d danmakufu.y grammar @{
-alternative   : ALTERNATIVE '(' ret_expr ')' case others     { @<danmakufu.y grammar alternative with others@>
-                                                             }
-              | ALTERNATIVE '(' ret_expr ')' case            { @<danmakufu.y grammar alternative without others@>
-                                                             }
+alternative   : ALTERNATIVE '(' ret_expr ')' case others   { @<danmakufu.y grammar alternative with others@> }
+              | ALTERNATIVE '(' ret_expr ')' case          { @<danmakufu.y grammar alternative without others@> }
               ;
 
-case          : CASE '(' args ')' '{' exprs '}'              { @<danmakufu.y grammar case1@>
-                                                             }
-              | case CASE '(' args ')' '{' exprs '}'         { @<danmakufu.y grammar case2@>
-                                                             }
+case          : CASE '(' args ')' '{' exprs '}'            { @<danmakufu.y grammar case1@> }
+              | case CASE '(' args ')' '{' exprs '}'       { @<danmakufu.y grammar case2@> }
               ;
 
-others        : OTHERS '{' exprs '}'                         { @<danmakufu.y grammar other@>
-                                                             }
+others        : OTHERS '{' exprs '}'                       { @<danmakufu.y grammar other@> }
               ;
 @}
 Выглядит как говно, зато без конфликта shift/reduce.
@@ -3612,11 +3595,9 @@ printf("OTHERS\n");
 
 @d danmakufu.y grammar @{
 ascent        : ASCENT '(' LET SYMB IN ret_expr DOUBLE_DOT ret_expr ')' exprs_after_cycle
-                                            { @<danmakufu.y grammar ascent with let@>
-                                            }
+                                            { @<danmakufu.y grammar ascent with let@> }
               | ASCENT '(' SYMB IN ret_expr DOUBLE_DOT ret_expr ')' exprs_after_cycle
-                                            { @<danmakufu.y grammar ascent without let@>
-                                            }
+                                            { @<danmakufu.y grammar ascent without let@> }
               ;
 @}
 
@@ -3647,11 +3628,9 @@ $$ = ast_dxcent(ast_ascent, $3, $5, $7, $9);
 
 @d danmakufu.y grammar @{
 descent       : DESCENT '(' LET SYMB IN ret_expr DOUBLE_DOT ret_expr ')' exprs_after_cycle
-                                            { @<danmakufu.y grammar descent with let@>
-                                            }
+                                            { @<danmakufu.y grammar descent with let@> }
               | DESCENT '(' SYMB IN ret_expr DOUBLE_DOT ret_expr ')' exprs_after_cycle
-                                            { @<danmakufu.y grammar descent without let@>
-                                            }
+                                            { @<danmakufu.y grammar descent without let@> }
               ;
 @}
 
@@ -3665,15 +3644,12 @@ $$ = ast_dxcent(ast_descent, $3, $5, $7, $9);
 
 
 @d danmakufu.y grammar @{
-if            : IF '(' ret_expr ')' '{' exprs '}' else_if    { @<danmakufu.y grammar if@>
-                                                             }
+if            : IF '(' ret_expr ')' '{' exprs '}' else_if    { @<danmakufu.y grammar if@> }
               ;
 
-else_if       : /* empty */
-              | ELSE if                                      { @<danmakufu.y grammar else if@>
-                                                             }
-              | ELSE '{' exprs '}'                           { @<danmakufu.y grammar else@>
-                                                             }
+else_if       : /* empty */                                  { $$ = NULL; }
+              | ELSE if                                      { @<danmakufu.y grammar else if@> }
+              | ELSE '{' exprs '}'                           { @<danmakufu.y grammar else@> }
               ;
 @}
 
@@ -3706,22 +3682,14 @@ printf("ELSE\n");
 @}
 
 @d danmakufu.y grammar @{
-indexing         : array '[' ret_expr ']'                         { @<danmakufu.y grammar index@>
-                                                                  }
-                 | array '[' ret_expr DOUBLE_DOT ret_expr ']'     { @<danmakufu.y grammar slice@>
-                                                                  }
-                 | SYMB '[' ret_expr ']'                          { @<danmakufu.y grammar index@>
-                                                                  }
-                 | SYMB '[' ret_expr DOUBLE_DOT ret_expr ']'      { @<danmakufu.y grammar slice@>
-                                                                  }
-                 | call_func '[' ret_expr ']'                     { @<danmakufu.y grammar index@>
-                                                                  }
-                 | call_func '[' ret_expr DOUBLE_DOT ret_expr ']' { @<danmakufu.y grammar slice@>
-                                                                  }
-                 | indexing '[' ret_expr ']'                      { @<danmakufu.y grammar index@>
-                                                                  }
-                 | indexing '[' ret_expr DOUBLE_DOT ret_expr ']'  { @<danmakufu.y grammar slice@>
-                                                                  }
+indexing         : array '[' ret_expr ']'                         { @<danmakufu.y grammar index@> }
+                 | array '[' ret_expr DOUBLE_DOT ret_expr ']'     { @<danmakufu.y grammar slice@> }
+                 | SYMB '[' ret_expr ']'                          { @<danmakufu.y grammar index@> }
+                 | SYMB '[' ret_expr DOUBLE_DOT ret_expr ']'      { @<danmakufu.y grammar slice@> }
+                 | call_func '[' ret_expr ']'                     { @<danmakufu.y grammar index@> }
+                 | call_func '[' ret_expr DOUBLE_DOT ret_expr ']' { @<danmakufu.y grammar slice@> }
+                 | indexing '[' ret_expr ']'                      { @<danmakufu.y grammar index@> }
+                 | indexing '[' ret_expr DOUBLE_DOT ret_expr ']'  { @<danmakufu.y grammar slice@> }
                  ;
 @}
 
@@ -3741,10 +3709,8 @@ printf("SLICE\n");
 @}
 
 @d danmakufu.y grammar @{
-call_func        : SYMB '(' ')'                       { @<danmakufu.y grammar call without args@>
-                                                      }
-                 | SYMB '(' args ')'                  { @<danmakufu.y grammar call with args@>
-                                                      }
+call_func        : SYMB '(' ')'                       { @<danmakufu.y grammar call without args@> }
+                 | SYMB '(' args ')'                  { @<danmakufu.y grammar call with args@> }
                  ;
 @}
 
@@ -3772,8 +3738,7 @@ printf("CALL %s\n", ((AstSymbol*)$1)->name);
 
 Вызов task:
 @d danmakufu.y grammar @{
-call_task        : SYMB                               { @<danmakufu.y grammar task call@>
-                                                      }
+call_task        : SYMB                               { @<danmakufu.y grammar task call@> }
                  ;
 @}
 интересно, никогда ли не возникает противоречий с функциями.
@@ -3797,10 +3762,8 @@ printf("CALL TASK %s\n", ((AstSymbol*)$1)->name);
 
 Список аргументов при вызове функций и, возможно, чего-то ещё:
 @d danmakufu.y grammar @{
-args          : ret_expr              { @<danmakufu.y grammar args create list@>
-                                      }
-              | args ',' ret_expr     { @<danmakufu.y grammar args concatenate@>
-                                      }
+args          : ret_expr              { @<danmakufu.y grammar args create list@> }
+              | args ',' ret_expr     { @<danmakufu.y grammar args concatenate@> }
               ;
 @}
 
@@ -3816,14 +3779,11 @@ $$ = ast_append($1, ast_add_cons($3, NULL));
   прочих подобных штук:
 @d danmakufu.y grammar @{
 let_expr      : ret_expr
-              | LET SYMB              { @<danmakufu.y grammar let_expr with let@>
-                                      }
+              | LET SYMB              { @<danmakufu.y grammar let_expr with let@> }
               ;
 
-lets          : let_expr              { @<danmakufu.y grammar lets create list@>
-                                      }
-              | lets ',' let_expr     { @<danmakufu.y grammar lets concatenate@>
-                                      }
+lets          : let_expr              { @<danmakufu.y grammar lets create list@> }
+              | lets ',' let_expr     { @<danmakufu.y grammar lets concatenate@> }
               ;
 @}
 
@@ -3845,20 +3805,13 @@ set_op_elt    : SYMB
               | indexing
               ;
 
-set_op        : set_op_elt '=' ret_expr ';'        { @<danmakufu.y grammar set operator@>
-                                                   }
-              | set_op_elt ADD_SET_OP ret_expr ';' { @<danmakufu.y grammar add set operator@>
-                                                   }
-              | set_op_elt SUB_SET_OP ret_expr ';' { @<danmakufu.y grammar sub set operator@>
-                                                   }
-              | set_op_elt MUL_SET_OP ret_expr ';' { @<danmakufu.y grammar mul set operator@>
-                                                   }
-              | set_op_elt DIV_SET_OP ret_expr ';' { @<danmakufu.y grammar div set operator@>
-                                                   }
-              | set_op_elt INC_OP ';'              { @<danmakufu.y grammar successor@>
-                                                   }
-              | set_op_elt DEC_OP ';'              { @<danmakufu.y grammar predcessor@>
-                                                   }
+set_op        : set_op_elt '=' ret_expr ';'        { @<danmakufu.y grammar set operator@> }
+              | set_op_elt ADD_SET_OP ret_expr ';' { @<danmakufu.y grammar add set operator@> }
+              | set_op_elt SUB_SET_OP ret_expr ';' { @<danmakufu.y grammar sub set operator@> }
+              | set_op_elt MUL_SET_OP ret_expr ';' { @<danmakufu.y grammar mul set operator@> }
+              | set_op_elt DIV_SET_OP ret_expr ';' { @<danmakufu.y grammar div set operator@> }
+              | set_op_elt INC_OP ';'              { @<danmakufu.y grammar successor@> }
+              | set_op_elt DEC_OP ';'              { @<danmakufu.y grammar predcessor@> }
               ;
 @}
 
@@ -3928,42 +3881,24 @@ ret_expr      : NUM
               | call_func
               | indexing
               | array
-              | ret_expr '+' ret_expr          { @<danmakufu.y grammar ret_expr add@>
-                                               }
-              | ret_expr '-' ret_expr          { @<danmakufu.y grammar ret_expr sub@>
-                                               }
-              | ret_expr '*' ret_expr          { @<danmakufu.y grammar ret_expr mul@>
-                                               }
-              | ret_expr '/' ret_expr          { @<danmakufu.y grammar ret_expr div@>
-                                               }
-              | ret_expr '%' ret_expr          { @<danmakufu.y grammar ret_expr mod@>
-                                               }
-              | ret_expr '<' ret_expr          { @<danmakufu.y grammar ret_expr less@>
-                                               }
-              | ret_expr LE_OP ret_expr        { @<danmakufu.y grammar ret_expr less-equal@>
-                                               }
-              | ret_expr '>' ret_expr          { @<danmakufu.y grammar ret_expr greater@>
-                                               }
-              | ret_expr GE_OP ret_expr        { @<danmakufu.y grammar ret_expr greater-equal@>
-                                               }
-              | ret_expr '^' ret_expr          { @<danmakufu.y grammar ret_expr pow@>
-                                               }
-              | ret_expr '~' ret_expr          { @<danmakufu.y grammar ret_expr concatenate@>
-                                               }
-              | ret_expr LOGICAL_OR ret_expr   { @<danmakufu.y grammar ret_expr logical or@>
-                                               }
-              | ret_expr LOGICAL_AND ret_expr  { @<danmakufu.y grammar ret_expr logical and@>
-                                               }
-              | ret_expr EQUAL_OP ret_expr     { @<danmakufu.y grammar ret_expr equal@>
-                                               }
-              | ret_expr NOT_EQUAL_OP ret_expr { @<danmakufu.y grammar ret_expr not equal@>
-                                               }
-              | NOT ret_expr                   { @<danmakufu.y grammar ret_expr not@>
-                                               }
-              | '-' ret_expr %prec NEG         { @<danmakufu.y grammar ret_expr negative@>
-                                               }
-              | '|' ret_expr '|'               { @<danmakufu.y grammar ret_expr abs@>
-                                               }
+              | ret_expr '+' ret_expr          { @<danmakufu.y grammar ret_expr add@> }
+              | ret_expr '-' ret_expr          { @<danmakufu.y grammar ret_expr sub@> }
+              | ret_expr '*' ret_expr          { @<danmakufu.y grammar ret_expr mul@> }
+              | ret_expr '/' ret_expr          { @<danmakufu.y grammar ret_expr div@> }
+              | ret_expr '%' ret_expr          { @<danmakufu.y grammar ret_expr mod@> }
+              | ret_expr '<' ret_expr          { @<danmakufu.y grammar ret_expr less@> }
+              | ret_expr LE_OP ret_expr        { @<danmakufu.y grammar ret_expr less-equal@> }
+              | ret_expr '>' ret_expr          { @<danmakufu.y grammar ret_expr greater@> }
+              | ret_expr GE_OP ret_expr        { @<danmakufu.y grammar ret_expr greater-equal@> }
+              | ret_expr '^' ret_expr          { @<danmakufu.y grammar ret_expr pow@> }
+              | ret_expr '~' ret_expr          { @<danmakufu.y grammar ret_expr concatenate@> }
+              | ret_expr LOGICAL_OR ret_expr   { @<danmakufu.y grammar ret_expr logical or@> }
+              | ret_expr LOGICAL_AND ret_expr  { @<danmakufu.y grammar ret_expr logical and@> }
+              | ret_expr EQUAL_OP ret_expr     { @<danmakufu.y grammar ret_expr equal@> }
+              | ret_expr NOT_EQUAL_OP ret_expr { @<danmakufu.y grammar ret_expr not equal@> }
+              | NOT ret_expr                   { @<danmakufu.y grammar ret_expr not@> }
+              | '-' ret_expr %prec NEG         { @<danmakufu.y grammar ret_expr negative@> }
+              | '|' ret_expr '|'               { @<danmakufu.y grammar ret_expr abs@> }
               | '(' ret_expr ')'               { $$ = $2; }
               ;
 @}
@@ -4077,18 +4012,13 @@ $$ = ast_dfuncall(ast_add_symbol_to_tbl("absolute"),
 @}
 
 @d danmakufu.y grammar @{
-array         : '[' ']'                         { @<danmakufu.y grammar make-array empty@>
-                                                }
-              | '[' array_args ']'              { @<danmakufu.y grammar make-array@>
-                                                }
-              | '[' array_args ',' ']'          { @<danmakufu.y grammar make-array@>
-                                                }
+array         : '[' ']'                         { @<danmakufu.y grammar make-array empty@> }
+              | '[' array_args ']'              { @<danmakufu.y grammar make-array@> }
+              | '[' array_args ',' ']'          { @<danmakufu.y grammar make-array@> }
               ;
 
-array_args    : ret_expr                        { @<danmakufu.y grammar create array_args@>
-                                                }
-              | array_args ',' ret_expr         { @<danmakufu.y grammar concat array_args@>
-                                                }
+array_args    : ret_expr                        { @<danmakufu.y grammar create array_args@> }
+              | array_args ',' ret_expr         { @<danmakufu.y grammar concat array_args@> }
               ;
 @}
 
