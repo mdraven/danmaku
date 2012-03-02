@@ -4061,17 +4061,11 @@ array_args    : ret_expr                        { @<danmakufu.y grammar create a
 @}
 
 @d danmakufu.y C defines @{
-void *ast_dquote(void *args);
 void *ast_dmake_array(void *args);
 @}
 
 Вернуть объект make-array:
 @d danmakufu.y code @{
-void *ast_dquote(void *arg) {
-	return ast_add_cons(ast_quote,
-			ast_add_cons(arg, NULL));
-}
-
 void *ast_dmake_array(void *args) {
 	if(args == NULL)
 		return ast_add_cons(ast_make_array, NULL);
@@ -5198,7 +5192,6 @@ void ast_init(void) {
 	ast_defscriptchild = ast_add_symbol_to_tbl("defscriptchild");
 	ast_declare = ast_add_symbol_to_tbl("declare");
 	ast_progn = ast_add_symbol_to_tbl("progn");
-	ast_quote = ast_add_symbol_to_tbl("quote");
 	ast_list = ast_add_symbol_to_tbl("list");
 
 	ast_false = ast_add_number(0.0);
@@ -5250,7 +5243,6 @@ AstSymbol *ast_defscriptmain;
 AstSymbol *ast_defscriptchild;
 AstSymbol *ast_declare;
 AstSymbol *ast_progn;
-AstSymbol *ast_quote;
 AstSymbol *ast_list;
 
 AstNumber *ast_false;
@@ -5282,7 +5274,6 @@ extern AstSymbol *ast_defscriptmain;
 extern AstSymbol *ast_defscriptchild;
 extern AstSymbol *ast_declare;
 extern AstSymbol *ast_progn;
-extern AstSymbol *ast_quote;
 extern AstSymbol *ast_list;
 
 extern AstNumber *ast_false;
