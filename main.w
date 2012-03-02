@@ -3217,52 +3217,52 @@ macros        : M_TOUHOUDANMAKUFU   { @<danmakufu.y grammar declare script type@
 @}
 
 @d danmakufu.y C defines @{
-void *ast_ddeclare(void *name, void *expr);
+void *ast_ddefvar(void *name, void *expr);
 @}
 
 Вернуть объект declare:
 @d danmakufu.y code @{
-void *ast_ddeclare(void *name, void *expr) {
-	return ast_add_cons(ast_declare,
+void *ast_ddefvar(void *name, void *expr) {
+	return ast_add_cons(ast_defvar,
 			ast_add_cons(name,
 				ast_add_cons(expr, NULL)));
 }
 @}
 
 @d danmakufu.y grammar declare script type @{
-$$ = ast_ddeclare(ast_add_symbol_to_tbl("touhoudanmakufu"), $1);
+$$ = ast_ddefvar(ast_add_symbol_to_tbl("*touhoudanmakufu*"), $1);
 @}
 
 @d danmakufu.y grammar declare title @{
-$$ = ast_ddeclare(ast_add_symbol_to_tbl("title"), $1);
+$$ = ast_ddefvar(ast_add_symbol_to_tbl("*title*"), $1);
 @}
 
 @d danmakufu.y grammar declare text @{
-$$ = ast_ddeclare(ast_add_symbol_to_tbl("text"), $1);
+$$ = ast_ddefvar(ast_add_symbol_to_tbl("*text*"), $1);
 @}
 
 @d danmakufu.y grammar declare image @{
-$$ = ast_ddeclare(ast_add_symbol_to_tbl("image"), $1);
+$$ = ast_ddefvar(ast_add_symbol_to_tbl("*image*"), $1);
 @}
 
 @d danmakufu.y grammar declare background @{
-$$ = ast_ddeclare(ast_add_symbol_to_tbl("background"), $1);
+$$ = ast_ddefvar(ast_add_symbol_to_tbl("*background*"), $1);
 @}
 
 @d danmakufu.y grammar declare bgm @{
-$$ = ast_ddeclare(ast_add_symbol_to_tbl("bgm"), $1);
+$$ = ast_ddefvar(ast_add_symbol_to_tbl("*bgm*"), $1);
 @}
 
 @d danmakufu.y grammar declare playlevel @{
-$$ = ast_ddeclare(ast_add_symbol_to_tbl("playlevel"), $1);
+$$ = ast_ddefvar(ast_add_symbol_to_tbl("*playlevel*"), $1);
 @}
 
 @d danmakufu.y grammar declare player @{
-$$ = ast_ddeclare(ast_add_symbol_to_tbl("player"), $1);
+$$ = ast_ddefvar(ast_add_symbol_to_tbl("*player*"), $1);
 @}
 
 @d danmakufu.y grammar declare scriptversion @{
-$$ = ast_ddeclare(ast_add_symbol_to_tbl("scriptversion"), $1);
+$$ = ast_ddefvar(ast_add_symbol_to_tbl("*scriptversion*"), $1);
 @}
 
 @d danmakufu.y grammar @{
@@ -5190,7 +5190,7 @@ void ast_init(void) {
 	ast_make_array = ast_add_symbol_to_tbl("make-array");
 	ast_defscriptmain = ast_add_symbol_to_tbl("defscriptmain");
 	ast_defscriptchild = ast_add_symbol_to_tbl("defscriptchild");
-	ast_declare = ast_add_symbol_to_tbl("declare");
+	ast_defvar = ast_add_symbol_to_tbl("defvar");
 	ast_progn = ast_add_symbol_to_tbl("progn");
 	ast_list = ast_add_symbol_to_tbl("list");
 
@@ -5241,7 +5241,7 @@ AstSymbol *ast_block;
 AstSymbol *ast_make_array;
 AstSymbol *ast_defscriptmain;
 AstSymbol *ast_defscriptchild;
-AstSymbol *ast_declare;
+AstSymbol *ast_defvar;
 AstSymbol *ast_progn;
 AstSymbol *ast_list;
 
@@ -5272,7 +5272,7 @@ extern AstSymbol *ast_block;
 extern AstSymbol *ast_make_array;
 extern AstSymbol *ast_defscriptmain;
 extern AstSymbol *ast_defscriptchild;
-extern AstSymbol *ast_declare;
+extern AstSymbol *ast_defvar;
 extern AstSymbol *ast_progn;
 extern AstSymbol *ast_list;
 
