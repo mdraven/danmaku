@@ -4619,6 +4619,8 @@ global_filename = &yytext[1];
 @o ast.h @{
 @<License@>
 
+#include "dlist.h"
+
 @<ast.h structs@>
 @<ast.h prototypes@>
 @}
@@ -4788,89 +4790,38 @@ static void clear_symbols(void) {
 
 Cons-пара danmakufu:
 @d ast.h structs @{
-struct AstCons {
-	struct AstCons *prev;
-	struct AstCons *next;
-	struct AstCons *pool;
+DLIST_DEFSTRUCT(AstCons)
 	int type;
 	void *car;
 	void *cdr;
-};
-
-typedef struct AstCons AstCons;
+DLIST_ENDS(AstCons)
 @}
 type - указывает тип, всегда равен ast_cons.
 
-Список cons'ов:
+Список занятых cons'ов, пулл свободных cons'ов и удалённых cons'ов:
 @d ast.c structs @{
-static AstCons *conses;
+DLIST_SPECIAL_VARS(conses, AstCons)
 @}
 
-Пулл cons'ов и удалённых cons'ов:
+Аллоцируется слотов в самом начале и добавляется при нехватке:
 @d ast.c structs @{
-static AstCons *conses_pool;
-
-static AstCons *conses_pool_free;
-static AstCons *conses_end_pool_free;
-@}
-conses_end_pool_free - ссылка на последний элемент conses_pool_free
-
-CONS_ALLOC - аллоцируется слотов в самом начале
-CONS_ADD - добавляется при нехватке
-@d ast.c structs @{
-#define CONS_ALLOC 10000
-#define CONS_ADD 1000
+DLIST_ALLOC_VARS(conses, 10000, 1000)
 @}
 
 Функция для возвращения выделенных слотов обратно в пул:
 @d ast.c functions @{
-static void conses_free(AstCons *cons) {
-	if(cons == conses)
-		conses = conses->next;
-
-	if(conses_pool_free == NULL)
-		conses_end_pool_free = cons;
-
-	dlist_free((DList*)cons, (DList**)(&conses_pool_free));
-}
+DLIST_FREE_FUNC(conses, AstCons)
+DLIST_END_FREE_FUNC(conses, AstCons)
 @}
 
 Соединить conses_pool_free с conses_pool:
 @d ast.c functions @{
-static void conses_pool_free_to_pool(void) {
-	if(conses_end_pool_free == NULL)
-		return;
-
-	conses_end_pool_free->pool = conses_pool;
-	conses_pool = conses_pool_free;
-
-	conses_pool_free = NULL;
-	conses_end_pool_free = NULL;
-}
+DLIST_POOL_FREE_TO_POOL_FUNC(conses, AstCons)
 @}
 
 conses_get_free_cell - функция возвращающая свободный дескриптор:
 @d ast.c functions @{
-static AstCons *conses_get_free_cell(void) {
-	if(conses_pool == NULL) {
-		int k = (conses == NULL) ? CONS_ALLOC : CONS_ADD;
-		int i;
-
-		conses_pool = malloc(sizeof(AstCons)*k);
-		if(conses_pool == NULL) {
-			fprintf(stderr, "\nCan't allocate memory for conses' pool\n");
-			exit(1);
-		}
-
-		for(i = 0; i < k-1; i++)
-			conses_pool[i].pool = &(conses_pool[i+1]);
-		conses_pool[k-1].pool = NULL;
-	}
-
-	conses = (AstCons*)dlist_alloc((DList*)conses, (DList**)(&conses_pool));
-
-	return conses;
-}
+DLIST_GET_FREE_CELL_FUNC(conses, AstCons)
 @}
 
 Добавить cons в массив:
@@ -5068,18 +5019,10 @@ STRING_ADD - добавляется при нехватке
 
 Функция для возвращения выделенных слотов обратно в пул:
 @d ast.c functions @{
-static void strings_free(AstString *string) {
-	if(string == strings)
-		strings = strings->next;
-
-	if(strings_pool_free == NULL)
-		strings_end_pool_free = string;
-
-	free(string->str);
-	string->str = NULL;
-
-	dlist_free((DList*)string, (DList**)(&strings_pool_free));
-}
+DLIST_FREE_FUNC(strings, AstString)
+	free(elm->str);
+	elm->str = NULL;
+DLIST_END_FREE_FUNC(strings, AstString)
 @}
 
 Соединить strings_pool_free с strings_pool:
@@ -8054,8 +7997,13 @@ if(bonus->move_to_player == 1) {
 @o dlist.h @{
 @<License@>
 
+#ifndef __DLIST_H_DANMAKU__
+#define __DLIST_H_DANMAKU__
+
 @<Dlist public structs@>
 @<Dlist public prototypes@>
+
+#endif /* __DLIST_H_DANMAKU__ */
 @}
 
 @o dlist.c @{
@@ -8153,6 +8101,115 @@ void dlist_free(DList *el, DList **pool) {
 
 @d Dlist public prototypes @{@-
 void dlist_free(DList *el, DList **pool);
+@}
+
+
+Охапка "волшебных" макросов.
+
+Макрос для объявления структуры с именем struct_name;
+открывающий
+@d Dlist public structs @{
+#define DLIST_DEFSTRUCT(struct_name) \
+struct struct_name { \
+	struct struct_name *prev; \
+	struct struct_name *next; \
+	struct struct_name *pool;
+@}
+закрывающий:
+@d Dlist public structs @{
+#define DLIST_ENDS(struct_name) \
+}; \
+typedef struct struct_name struct_name;
+@}
+
+Макрос создающий глобальные переменные для обслуживания пула:
+@d Dlist public structs @{
+#define DLIST_SPECIAL_VARS(prefix, struct_name) \
+static struct_name *prefix; \
+static struct_name *prefix##_pool; \
+static struct_name *prefix##_pool_free; \
+static struct_name *prefix##_end_pool_free;
+@}
+prefix - список выделенных(занятых) элементов(далее его вписывают во все поля prefix)
+X_pool - список свободных элементов
+X_pool_free - список элементов, которые уже удалили, но ещё не освободили(те
+  ещё не присоединили к X_pool)
+X_end_pool_free - ссылка на последний элемент X_pool_free
+
+Макрос определяющий количество элементов в пуле при создании списка
+и количество элементов которое добавится при нехватке:
+@d Dlist public structs @{
+#define DLIST_ALLOC_VARS(prefix, init_num, add_num) \
+static const int prefix##_init = init_num; \
+static const int prefix##_add = add_num;
+@}
+X_init - аллоцируется слотов в самом начале
+X_add - добавляется при нехватке
+
+Макрос для создания функции удаления элементов,
+начало:
+@d Dlist public structs @{
+#define DLIST_FREE_FUNC(prefix, struct_name) \
+static void prefix##_free(struct_name *elm) { \
+	if(elm == prefix) \
+		prefix = prefix->next; \
+\
+	if(prefix##_pool_free == NULL) \
+		prefix##_end_pool_free = elm; \
+@}
+если удаляем элемент на который ссылается список элементов(prefix), то
+  не забываем исправить prefix.
+Если пул удалённых элементов пуст, то elm становится не только первым, но и
+  последним.
+
+конец:
+@d Dlist public structs @{
+#define DLIST_END_FREE_FUNC(prefix, struct_name) \
+	dlist_free((DList*)elm, (DList**)(&prefix##_pool_free)); \
+}
+@}
+Присоединяем elm к началу пула удалённых элементов.
+Между этими блоками располагается код, который очищает содержимое elm,
+  если это требуется.
+
+Макрос создающий функцию которая освобождает удалённые элементы:
+@d Dlist public structs @{
+#define DLIST_POOL_FREE_TO_POOL_FUNC(prefix, struct_name) \
+static void prefix##_pool_free_to_pool(void) { \
+	if(prefix##_end_pool_free == NULL) \
+		return; \
+\
+	prefix##_end_pool_free->pool = prefix##_pool; \
+	prefix##_pool = prefix##_pool_free; \
+\
+	prefix##_pool_free = NULL; \
+	prefix##_end_pool_free = NULL; \
+}
+@}
+
+Макрос для функции возвращающей свободный элемент:
+@d Dlist public structs @{
+#define DLIST_GET_FREE_CELL_FUNC(prefix, struct_name) \
+static struct_name *prefix##_get_free_cell(void) { \
+	if(prefix##_pool == NULL) { \
+		int k = (prefix == NULL) ? prefix##_init : prefix##_add; \
+		int i; \
+\
+		prefix##_pool = malloc(sizeof(struct_name)*k); \
+		if(prefix##_pool == NULL) { \
+			fprintf(stderr, "\nCan't allocate memory for "#prefix" pool\n"); \
+			exit(1); \
+		} \
+\
+		for(i = 0; i < k-1; i++) \
+			prefix##_pool[i].pool = &(prefix##_pool[i+1]); \
+		prefix##_pool[k-1].pool = NULL; \
+	} \
+\
+	prefix = (struct_name*)dlist_alloc((DList*)prefix, (DList**)(&prefix##_pool)); \
+\
+	return prefix; \
+}
 @}
 
 =========================================================
