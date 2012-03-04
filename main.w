@@ -5753,6 +5753,45 @@ case ast_implet:
 	break;
 @}
 
+Выйти из цикла:
+@d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper cons @{
+case ast_break: {
+
+	code[*pos++] = bc_goto;
+
+	code[*pos++] = last_break;
+	last_break = *pos-1;
+
+	break;
+}
+@}
+break выходит из цикла, но в какую точку кода делать goto?
+Любая сущность, которая допускает использования break, должна
+  запоминать старое значение last_break, затем присваивать ему 0;
+  в конце нужно восстановить значение last_break.
+При компиляции break, вместо адресов перехода goto запоминается позиция
+  прошлого break, те создаётся список.
+@d danmakufu_bytecode.c structs @{
+static int last_break;
+@}
+
+@d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper save last_break @{
+int old_last_break = last_break;
+last_break = 0;
+@}
+
+@d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper restore last_break @{
+while(last_break != 0) {
+	int i = code[last_break];
+	code[last_break] = *pos;
+	last_break = i;
+}
+
+last_break = old_last_break;
+@}
+
+
+
 Возврат из блока:
 @d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper cons @{
 case ast_return: {
