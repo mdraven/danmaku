@@ -5377,6 +5377,347 @@ static void ast_print_helper(const void *obj, int shift, int skip_first_shift) {
 
 ===========================================================
 
+===========================================================
+
+Компиляция в байткод для danmakufu
+
+@o danmakufu_bytecode.h @{
+@<License@>
+
+@<danmakufu_bytecode.h structs@>
+@<danmakufu_bytecode.h prototypes@>
+@}
+
+@o danmakufu_bytecode.c @{
+@<License@>
+
+#include "danmakufu_bytecode.h"
+#include "ast.h"
+
+@<danmakufu_bytecode.c structs@>
+@<danmakufu_bytecode.c prototypes@>
+@<danmakufu_bytecode.c functions@>
+@}
+
+Коды байткода:
+@d danmakufu_bytecode.h structs @{
+enum {
+	bc_lit,
+	bc_setq,
+	bc_drop,
+	bc_decl,
+	bc_scope_push,
+	bc_scope_pop,
+	bc_defun,
+	bc_ret,
+	bc_goto,
+};
+@}
+bc_lit - положить на стек содержимое следующую ячейку
+bc_setq - принять со стека a и b и положить в символ с адресом а b
+bc_drop - выкинуть элемент со стека
+bc_decl - отметить символ в текущем scope(bc_setq присваивает там
+  где отмечено, а не в текущем); адрес символа должен располагаться
+  в следующей ячейке  
+bc_scope_push, bc_scope_pop - создать и удалить scope
+bc_defun - создать функцию в текущем scope; в следующей ячейке адрес символа с
+  именем функции, безусловный переход на ячейку после функции, далее код функции, который завершается bc_ret
+bc_ret - перейти по адресу из стека адресов
+bc_goto - переход на ячейку с номером в слудующей ячейке после bc_goto(именно номер, а не адрес)
+
+
+
+Компиляция в байткод:
+@d danmakufu_bytecode.c functions @{
+intptr_t *danmakufu_compile_to_bytecode(const AstCons *cons) {
+	intptr_t *code = malloc(sizeof(intptr_t)*DANMAKUFU_BYTECODE_MAXSIZE);
+	if(code == NULL) {
+		fprintf(stderr, "\nCan't allocate memory for bytecode\n");
+		exit(1);
+	}
+
+	int pos = 0;
+	danmakufu_compile_to_bytecode_helper(cons, code, &pos);
+
+	return code;
+}
+@}
+
+@d danmakufu_bytecode.h prototypes @{
+intptr_t *danmakufu_compile_to_bytecode(const AstCons *cons);
+@}
+
+Максимальный размер буфера для байткода:
+@d danmakufu_bytecode.c structs @{
+#define DANMAKUFU_BYTECODE_MAXSIZE 65536
+@}
+
+@d danmakufu_bytecode.c functions @{
+static void danmakufu_compile_to_bytecode_helper(const void *obj, intptr_t *code, int *pos) {
+	if(obj == NULL) {
+		fprintf(stderr, "\ndanmakufu_compile_to_bytecode_helper: NIL\n");
+		exit(1);
+	}
+
+	switch(((const AstCons*)obj)->type) {
+		case ast_cons: {
+			const AstCons *p = obj;
+			switch(car(p)) {
+				@<danmakufu.c danmakufu_compile_to_bytecode_helper cons@>
+			}
+			break;
+		}
+		case ast_symbol: {
+			const AstSymbol *symb = obj;
+			printf("%s", symb->name);
+			break;
+		}
+		case ast_string: {
+			const AstString *str = obj;
+			printf("\"%s\"", str->str);
+			break;
+		}
+		case ast_character: {
+			const AstString *chr = obj;
+			printf("'%s'", chr->str);
+			break;
+		}
+		case ast_number: {
+			const AstNumber *num = obj;
+			printf("%f", num->number);
+			break;
+		}
+		default:
+			fprintf(stderr, "\ndanmakufu_compile_to_bytecode_helper: unknown object\n");
+			exit(1);
+			break;
+	}
+}
+@}
+
+Если встретили progn:
+@d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper cons @{
+case ast_progn:
+	if(cdr(p) == NULL) {
+		fprintf(stderr, "\nprogn without args\n");
+		exit(1);
+	}
+	for(AstCons *s = cdr(p); cdr(s) != NULL; s = cdr(s)) {
+		danmakufu_compile_to_bytecode_helper(s, code, pos);
+		code[pos++] = bc_drop;
+	}
+
+	danmakufu_compile_to_bytecode_helper(s, code, pos);
+
+	break;
+@}
+можно запоминать глубину стека, но пока(для простоты) сделано из
+  предположения, что функция возвращает всегда один параметр.
+Выкидываем один элемент со стека после вызова, кроме последнего.
+FIXME: на самом деле, многие вообще ничего не возвращают(пока),
+  поэтому в vm надо временно отключить bc_drop для тестирования.
+
+@d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper cons @{
+case ast_defvar:
+	if(cdr(p) == NULL || cddr(p) == NULL) {
+		fprintf(stderr, "\ndefvar without args\n");
+		exit(1);
+	}
+
+	if(cadr(p)->type != ast_symbol) {
+		fprintf(stderr, "\ndefvar: not symbol\n");
+		exit(1);
+	}
+
+	danmakufu_compile_to_bytecode_helper(cddr(p), code, pos);
+	code[pos++] = bc_lit;
+	code[pos++] = cadr(p);
+	code[pos++] = bc_setq;
+	break;
+@}
+
+@d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper cons @{
+case ast_defscriptmain:
+	// cadr(p) contains type of scriptmain
+	if(cdr(p) == NULL || cddr(p) == NULL) {
+		fprintf(stderr, "\ndefscriptmain without args\n");
+		exit(1);
+	}
+	code[pos++] = bc_scope_push;
+	danmakufu_compile_to_bytecode_helper(cddr(p), code, pos);
+	code[pos++] = bc_scope_pop;
+	break;
+@}
+не учитываем тип скрипта, так как я не знаю зачем он :(
+
+Вызов функции:
+@d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper cons @{
+case ast_funcall:
+	if(cdr(p) == NULL || cadr(p) == NULL) {
+		fprintf(stderr, "\nfuncall without args\n");
+		exit(1);
+	}
+	for(AstCons *s = cddr(p); s != NULL; s = cdr(s))
+		danmakufu_compile_to_bytecode_helper(car(s), code, pos);
+	code[pos++] = cadr(p);
+	break;
+@}
+
+Создание символа в scope и необязательное присваивание:
+@d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper cons @{
+case ast_implet:
+	if(cdr(p) == NULL || cadr(p) == NULL) {
+		fprintf(stderr, "\nimplet without args\n");
+		exit(1);
+	}
+
+	if(cadr(p)->type != ast_symbol) {
+		fprintf(stderr, "\nimplet: not symbol\n");
+		exit(1);
+	}
+
+	code[pos++] = bc_decl;
+	code[pos++] = cadr(p);
+
+	if(cddr(p) != NULL) {
+		danmakufu_compile_to_bytecode_helper(cddr(p), code, pos);
+
+		code[pos++] = bc_lit;
+		code[pos++] = cadr(p);
+		code[pos++] = bc_setq;
+	}
+	break;
+@}
+
+Возврат из блока:
+@d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper cons @{
+case ast_return: {
+	if(cdr(p) != NULL)
+		danmakufu_compile_to_bytecode_helper(cdr(p), code, pos);
+
+	code[pos++] = bc_goto;
+
+	insert_return(pos);
+	code[pos++] = last_return;
+	last_return = pos-1;
+
+	break;
+}
+@}
+так как мы ещё не знаем в какую точку переходить при вызове return,
+  то введём специальный список точек возрата: в первом неизвестном
+  return будет 0, а следующие будут указывать на этот с помощью переменной:
+@d danmakufu_bytecode.c structs @{
+static int last_return;
+@}
+при объявлении блока, её будут устанавливать в 0, а return будет переопределять её
+на себя. После завершения блока переменной нужно вернуть старое значение; вдруг
+я буду лямбды делать.
+
+Объявление функции:
+@d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper cons @{
+case ast_defun: {
+	if(cdr(p) == NULL || cadr(p) == NULL) {
+		fprintf(stderr, "\ndefun without args\n");
+		exit(1);
+	}
+
+	@<danmakufu.c danmakufu_compile_to_bytecode_helper defun@>
+
+	break;
+}
+@}
+
+Команда на создание функции, имя функции, команда перехода,
+зарезервированная ячейка для перехода на неё и команда создания скопа:
+@d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper defun @{
+code[pos++] = bc_defun;
+code[pos++] = cadr(p);
+code[pos++] = bc_goto;
+
+int for_goto = pos;
+code[pos++] = 0;
+
+@<danmakufu.c danmakufu_compile_to_bytecode_helper save last_return@>
+
+code[pos++] = bc_scope_push;
+@}
+goto нужен, чтобы при объявлении функции не выполнять её тело.
+
+Для коректной работы return сохраним старое значение last_return, и
+присвоим ему 0:
+@d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper save last_return @{
+int old_last_return = last_return;
+last_return = 0;
+@}
+
+Из-за стека придётся перевернуть параметры местами. Пересчитаем количество
+ячеек необходимое для параметров:
+@d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper defun @{
+int reserv = 0;
+
+for(const AstCons *s = car(cddr(p)); s != NULL; s = cdr(s)) {
+	if(car(s)->type == ast_symbol)
+		reserv += 3;
+	else if(car(s)->type == ast_cons && caar(s) == ast_implet)
+		reserv += 5;
+	else {
+		fprintf(stderr, "\ndefun incorrect args\n");
+		exit(1);
+	}
+}
+@}
+
+Скомпилируем параметры в зависимости от их вида:
+@d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper defun @{
+pos += reserv;
+
+for(const AstCons *s = car(cddr(p)); s != NULL; s = cdr(s)) {
+	if(car(s)->type == ast_symbol) {
+		pos -= 3;
+		code[pos] = bc_lit;
+		code[pos+1] = car(s);
+		code[pos+2] = bc_setq;
+	} else if(car(s)->type == ast_cons && caar(s) == ast_implet) {
+		pos -= 5;
+		code[pos] = bc_decl;
+		code[pos+1] = car(cadr(s));
+
+		code[pos+2] = bc_lit;
+		code[pos+3] = car(s);
+		code[pos+4] = bc_setq;
+	}
+}
+
+pos += reserv;
+@}
+
+Скомпилируем тело функции, закроем скоп, запишем команду выхода из функции
+и заполним ячейку после bc_goto:
+@d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper defun @{
+danmakufu_compile_to_bytecode_helper(cdr(cddr(p)), code, pos);
+
+@<danmakufu.c danmakufu_compile_to_bytecode_helper restore last_return@>
+
+code[pos++] = bc_scope_pop;
+code[pos++] = bc_ret;
+
+code[for_goto] = pos;
+@}
+
+Восстановим last_return и заполним все return'ы значением pos:
+@d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper restore last_return @{
+while(last_return != 0) {
+	int i = code[last_return];
+	code[last_return] = pos;
+	last_return = i;
+}
+
+last_return = old_last_return;
+@}
+
+===========================================================
+
 Игровой персонаж.
 
 @o player.h @{
