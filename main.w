@@ -5680,7 +5680,7 @@ case ast_progn:
 	}
 	for(AstCons *s = cdr(p); cdr(s) != NULL; s = cdr(s)) {
 		danmakufu_compile_to_bytecode_helper(s, code, pos);
-		code[pos++] = bc_drop;
+		code[*pos++] = bc_drop;
 	}
 
 	danmakufu_compile_to_bytecode_helper(s, code, pos);
@@ -5706,9 +5706,9 @@ case ast_defvar:
 	}
 
 	danmakufu_compile_to_bytecode_helper(cddr(p), code, pos);
-	code[pos++] = bc_lit;
-	code[pos++] = cadr(p);
-	code[pos++] = bc_setq;
+	code[*pos++] = bc_lit;
+	code[*pos++] = cadr(p);
+	code[*pos++] = bc_setq;
 	break;
 @}
 
@@ -5719,9 +5719,9 @@ case ast_defscriptmain:
 		fprintf(stderr, "\ndefscriptmain without args\n");
 		exit(1);
 	}
-	code[pos++] = bc_scope_push;
+	code[*pos++] = bc_scope_push;
 	danmakufu_compile_to_bytecode_helper(cddr(p), code, pos);
-	code[pos++] = bc_scope_pop;
+	code[*pos++] = bc_scope_pop;
 	break;
 @}
 не учитываем тип скрипта, так как я не знаю зачем он :(
@@ -5735,7 +5735,7 @@ case ast_funcall:
 	}
 	for(AstCons *s = cddr(p); s != NULL; s = cdr(s))
 		danmakufu_compile_to_bytecode_helper(car(s), code, pos);
-	code[pos++] = cadr(p);
+	code[*pos++] = cadr(p);
 	break;
 @}
 
@@ -5752,15 +5752,15 @@ case ast_implet:
 		exit(1);
 	}
 
-	code[pos++] = bc_decl;
-	code[pos++] = cadr(p);
+	code[*pos++] = bc_decl;
+	code[*pos++] = cadr(p);
 
 	if(cddr(p) != NULL) {
 		danmakufu_compile_to_bytecode_helper(cddr(p), code, pos);
 
-		code[pos++] = bc_lit;
-		code[pos++] = cadr(p);
-		code[pos++] = bc_setq;
+		code[*pos++] = bc_lit;
+		code[*pos++] = cadr(p);
+		code[*pos++] = bc_setq;
 	}
 	break;
 @}
@@ -5771,11 +5771,10 @@ case ast_return: {
 	if(cdr(p) != NULL)
 		danmakufu_compile_to_bytecode_helper(cdr(p), code, pos);
 
-	code[pos++] = bc_goto;
+	code[*pos++] = bc_goto;
 
-	insert_return(pos);
-	code[pos++] = last_return;
-	last_return = pos-1;
+	code[*pos++] = last_return;
+	last_return = *pos-1;
 
 	break;
 }
@@ -5807,16 +5806,16 @@ case ast_defun: {
 Команда на создание функции, имя функции, команда перехода,
 зарезервированная ячейка для перехода на неё и команда создания скопа:
 @d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper defun @{
-code[pos++] = bc_defun;
-code[pos++] = cadr(p);
-code[pos++] = bc_goto;
+code[*pos++] = bc_defun;
+code[*pos++] = cadr(p);
+code[*pos++] = bc_goto;
 
-int for_goto = pos;
-code[pos++] = 0;
+int for_goto = *pos;
+code[*pos++] = 0;
 
 @<danmakufu.c danmakufu_compile_to_bytecode_helper save last_return@>
 
-code[pos++] = bc_scope_push;
+code[*pos++] = bc_scope_push;
 @}
 goto нужен, чтобы при объявлении функции не выполнять её тело.
 
@@ -5846,26 +5845,26 @@ for(const AstCons *s = car(cddr(p)); s != NULL; s = cdr(s)) {
 
 Скомпилируем параметры в зависимости от их вида:
 @d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper defun @{
-pos += reserv;
+*pos += reserv;
 
 for(const AstCons *s = car(cddr(p)); s != NULL; s = cdr(s)) {
 	if(car(s)->type == ast_symbol) {
-		pos -= 3;
-		code[pos] = bc_lit;
-		code[pos+1] = car(s);
-		code[pos+2] = bc_setq;
+		*pos -= 3;
+		code[*pos] = bc_lit;
+		code[*pos+1] = car(s);
+		code[*pos+2] = bc_setq;
 	} else if(car(s)->type == ast_cons && caar(s) == ast_implet) {
-		pos -= 5;
-		code[pos] = bc_decl;
-		code[pos+1] = car(cadr(s));
+		*pos -= 5;
+		code[*pos] = bc_decl;
+		code[*pos+1] = car(cadr(s));
 
-		code[pos+2] = bc_lit;
-		code[pos+3] = car(s);
-		code[pos+4] = bc_setq;
+		code[*pos+2] = bc_lit;
+		code[*pos+3] = car(s);
+		code[*pos+4] = bc_setq;
 	}
 }
 
-pos += reserv;
+*pos += reserv;
 @}
 
 Скомпилируем тело функции, закроем скоп, запишем команду выхода из функции
@@ -5875,17 +5874,17 @@ danmakufu_compile_to_bytecode_helper(cdr(cddr(p)), code, pos);
 
 @<danmakufu.c danmakufu_compile_to_bytecode_helper restore last_return@>
 
-code[pos++] = bc_scope_pop;
-code[pos++] = bc_ret;
+code[*pos++] = bc_scope_pop;
+code[*pos++] = bc_ret;
 
-code[for_goto] = pos;
+code[for_goto] = *pos;
 @}
 
 Восстановим last_return и заполним все return'ы значением pos:
 @d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper restore last_return @{
 while(last_return != 0) {
 	int i = code[last_return];
-	code[last_return] = pos;
+	code[last_return] = *pos;
 	last_return = i;
 }
 
