@@ -3429,8 +3429,7 @@ expr          : ';'                  { $$ = NULL; }
               | defsub_block
               | deftask_block
               | let
-              | call_func ';'
-              | call_task ';'
+              | ret_expr ';'
               | call_keyword
               | set_op
               ;
@@ -3751,6 +3750,7 @@ call_func        : SYMB '(' ')'                       { @<danmakufu.y grammar ca
                  | SYMB '(' args ')'                  { @<danmakufu.y grammar call with args@> }
                  ;
 @}
+Одиночный символ -- тоже вызов функции
 
 @d danmakufu.y C defines @{
 void *ast_dfuncall(void *name, void *args);
@@ -3775,30 +3775,6 @@ $$ = ast_dfuncall($1, $3);
 printf("CALL %s\n", ((AstSymbol*)$1)->name);
 @}
 
-Вызов task:
-@d danmakufu.y grammar @{
-call_task        : SYMB                               { @<danmakufu.y grammar task call@> }
-                 ;
-@}
-интересно, никогда ли не возникает противоречий с функциями.
-  Возможно стоит сделать task -- функцией, но пока это будет отдельная сущность.
-
-@d danmakufu.y C defines @{
-void *ast_dtaskcall(void *name);
-@}
-
-Вернуть объект taskcall:
-@d danmakufu.y code @{
-void *ast_dtaskcall(void *name) {
-	return ast_add_cons(ast_taskcall,
-			ast_add_cons(name, NULL));
-}
-@}
-
-@d danmakufu.y grammar task call @{
-$$ = ast_dtaskcall($1);
-printf("CALL TASK %s\n", ((AstSymbol*)$1)->name);
-@}
 
 Список аргументов при вызове функций и, возможно, чего-то ещё:
 @d danmakufu.y grammar @{
@@ -5122,7 +5098,6 @@ void ast_init(void) {
 	ast_alternative = ast_add_symbol_to_tbl("alternative");
 	ast_case = ast_add_symbol_to_tbl("case");
 	ast_funcall = ast_add_symbol_to_tbl("funcall");
-	ast_taskcall = ast_add_symbol_to_tbl("taskcall");
 	ast_dog_name = ast_add_symbol_to_tbl("dog_name");
 	ast_setq = ast_add_symbol_to_tbl("setq");
 	ast_ascent = ast_add_symbol_to_tbl("ascent");
@@ -5173,7 +5148,6 @@ AstSymbol *ast_if;
 AstSymbol *ast_alternative;
 AstSymbol *ast_case;
 AstSymbol *ast_funcall;
-AstSymbol *ast_taskcall;
 AstSymbol *ast_dog_name;
 AstSymbol *ast_setq;
 AstSymbol *ast_ascent;
@@ -5204,7 +5178,6 @@ extern AstSymbol *ast_if;
 extern AstSymbol *ast_alternative;
 extern AstSymbol *ast_case;
 extern AstSymbol *ast_funcall;
-extern AstSymbol *ast_taskcall;
 extern AstSymbol *ast_dog_name;
 extern AstSymbol *ast_setq;
 extern AstSymbol *ast_ascent;
