@@ -5587,6 +5587,9 @@ enum {
 	bc_defun,
 	bc_ret,
 	bc_goto,
+	bc_if,
+	bc_repeat,
+	bc_make_array,
 };
 @}
 bc_lit - положить на стек содержимое следующую ячейку
@@ -5600,7 +5603,13 @@ bc_defun - создать функцию в текущем scope; в следу�
   именем функции, безусловный переход на ячейку после функции, далее код функции, который завершается bc_ret
 bc_ret - перейти по адресу из стека адресов
 bc_goto - переход на ячейку с номером в слудующей ячейке после bc_goto(именно номер, а не адрес)
-
+bc_if - если на стеке число 0, то перейти через следующую ячейку,
+  если не 0, то перейти на ячейку с номером хранящемся в следующей ячейке
+bc_repeat - избыточное слово, но думаю так будет быстрее. Берёт число N со стека и
+  выполняет код(который начинается через ячейку) N раз. В следующей ячейке хранится номер ячейки
+  куда будет выполнен переход, если N <= 0.
+bc_make_array - создаёт массив из элементо, что хранится на стеке. Число элементов хранится в следующей
+  ячейке, поэтому после создания нужно перейти через ячейку.
 
 
 Компиляция в байткод:
@@ -5889,6 +5898,101 @@ while(last_return != 0) {
 }
 
 last_return = old_last_return;
+@}
+
+
+Условный оператор if:
+@d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper cons @{
+case ast_if: {
+	if(cdr(p) == NULL || cadr(p) == NULL) {
+		fprintf(stderr, "\nif without args\n");
+		exit(1);
+	}
+
+	danmakufu_compile_to_bytecode_helper(cadr(p), code, pos);
+
+	code[*pos++] = bc_if;
+
+	int for_if = *pos;
+	code[*pos++] = 0;
+
+	danmakufu_compile_to_bytecode_helper(car(cddr(p)), code, pos);
+
+	code[for_if] = *pos;
+
+	if(cdr(cddr(p)) != NULL) {
+		code[*pos++] = bc_goto;
+		int for_else = *pos;
+		code[*pos++] = 0;
+
+		danmakufu_compile_to_bytecode_helper(cdr(cddr(p)), code, pos);
+
+		code[for_else] = *pos;
+	}
+
+	break;
+}
+@}
+
+Оператор цикла loop:
+@d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper cons @{
+case ast_loop: {
+	if(cdr(p) == NULL || cadr(p) == NULL) {
+		fprintf(stderr, "\nloop without args\n");
+		exit(1);
+	}
+
+	danmakufu_compile_to_bytecode_helper(cadr(p), code, pos);
+
+	code[*pos++] = bc_repeat;
+
+	int for_loop = *pos;
+	code[*pos++] = 0;
+
+	danmakufu_compile_to_bytecode_helper(cddr(p), code, pos);
+
+	code[for_loop] = *pos;
+
+	break;
+}
+@}
+
+Оператор присваивания setq:
+@d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper cons @{
+case ast_setq: {
+	if(cdr(p) == NULL || cadr(p) == NULL) {
+		fprintf(stderr, "\nsetq without args\n");
+		exit(1);
+	}
+
+	code[*pos++] = bc_lit;
+	code[*pos++] = cadr(p);
+	code[*pos++] = bc_setq;
+
+	break;
+}
+@}
+
+Оператор создания массива:
+@d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper cons @{
+case ast_make_array: {
+	int num_el = 0;
+
+	if(cdr(p) != NULL && car(cadr(p)) == ast_list)
+		for(const AstCons *s = cdr(cadr(p)); s != NULL; s = cdr(s)) {
+			danmakufu_compile_to_bytecode_helper(car(s), code, pos);
+			num_el++;
+		}
+	else if(cdr(p) != NULL) {
+		fprintf(stderr, "\nmake-array incorrect args\n");
+		exit(1);
+	}
+
+	code[*pos++] = bc_make_array;
+	code[*pos++] = num_el;
+
+	break;
+}
 @}
 
 ===========================================================
