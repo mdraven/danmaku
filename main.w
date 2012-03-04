@@ -3399,7 +3399,8 @@ void *ast_dtask(void *name, void *lets, void *exprs);
 void *ast_dtask(void *name, void *lets, void *exprs) {
 	return ast_add_cons(ast_task,
 				ast_add_cons(name,
-					ast_add_cons(lets, exprs)));
+					ast_add_cons(lets,
+						ast_add_cons(exprs, NULL))));
 }
 @}
 
@@ -3589,7 +3590,7 @@ void *ast_dcase(void *args, void *exprs);
 void *ast_dalternative(void *cond, void *case_, void *others_) {
 	return ast_add_cons(ast_alternative,
 			ast_add_cons(cond,
-				ast_add_cons(case_,
+				ast_add_cons(ast_dlist(case_),
 					ast_add_cons(others_, NULL))));
 }
 @}
@@ -3598,7 +3599,7 @@ void *ast_dalternative(void *cond, void *case_, void *others_) {
 @d danmakufu.y code @{
 void *ast_dcase(void *args, void *exprs) {
 	return ast_add_cons(ast_case,
-			ast_add_cons(args,
+			ast_add_cons(ast_dlist(args),
 				ast_add_cons(exprs, NULL)));
 }
 @}
