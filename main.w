@@ -5934,7 +5934,9 @@ case ast_if: {
 	int for_if = *pos;
 	code[*pos++] = 0;
 
+	code[*pos++] = bc_scope_push;
 	danmakufu_compile_to_bytecode_helper(car(cddr(p)), code, pos);
+	code[*pos++] = bc_scope_pop;
 
 	code[for_if] = *pos;
 
@@ -5943,7 +5945,9 @@ case ast_if: {
 		int for_else = *pos;
 		code[*pos++] = 0;
 
+		code[*pos++] = bc_scope_push;
 		danmakufu_compile_to_bytecode_helper(cdr(cddr(p)), code, pos);
+		code[*pos++] = bc_scope_pop;
 
 		code[for_else] = *pos;
 	}
@@ -5960,20 +5964,51 @@ case ast_loop: {
 		exit(1);
 	}
 
-	danmakufu_compile_to_bytecode_helper(cadr(p), code, pos);
-
-	code[*pos++] = bc_repeat;
-
-	int for_loop = *pos;
-	code[*pos++] = 0;
-
-	danmakufu_compile_to_bytecode_helper(cddr(p), code, pos);
-
-	code[for_loop] = *pos;
+	@<danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper loop@>
 
 	break;
 }
 @}
+
+Число выполнений цикла:
+@d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper loop @{
+danmakufu_compile_to_bytecode_helper(cadr(p), code, pos);
+@}
+
+@d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper loop @{
+int for_repeat = *pos;
+code[*pos++] = bc_repeat;
+
+int for_loop = *pos;
+code[*pos++] = 0;
+@}
+for_repeat - метка куда будет делаться goto из конца цикла
+for_loop - метка для перехода когда число повторов станет 0
+
+@d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper loop @{
+code[*pos++] = bc_scope_push;
+
+@<danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper save last_break@>
+danmakufu_compile_to_bytecode_helper(cddr(p), code, pos);
+
+code[*pos++] = bc_scope_pop;
+@}
+создание и удаление скопа; сохранение метки для break; само тело цикла
+
+@d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper loop @{
+code[*pos++] = bc_goto
+code[*pos++] = for_repeat;
+@}
+прыжок в начало цикла
+
+@d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper loop @{
+@<danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper restore last_break@>
+code[*pos++] = bc_scope_pop;
+
+code[for_loop] = *pos;
+@}
+заполнение break'ов и дублирование закрытия скопа(так как первое мы перепрыгним);
+заполнение метки для завершения цикла у repeat
 
 Оператор цикла while:
 @d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper cons @{
@@ -5991,16 +6026,26 @@ case ast_while: {
 	int for_while = *pos;
 	code[*pos++] = 0;
 
+	code[*pos++] = bc_scope_push;
+
+	@<danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper save last_break@>
+
 	danmakufu_compile_to_bytecode_helper(cddr(p), code, pos);
+
+	code[*pos++] = bc_scope_pop;
 
 	code[*pos++] = bc_goto
 	code[*pos++] = for_begin;
+
+	@<danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper restore last_break@>
+	code[*pos++] = bc_scope_pop;
 
 	code[for_while] = *pos;
 
 	break;
 }
 @}
+смотреть для loop
 
 Оператор присваивания setq:
 @d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper cons @{
