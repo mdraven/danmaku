@@ -3700,7 +3700,8 @@ void *ast_dif(void *cond, void *then, void *else_);
 void *ast_dif(void *cond, void *then, void *else_) {
 	return ast_add_cons(ast_if,
 			ast_add_cons(cond,
-				ast_add_cons(then, else_)));
+				ast_add_cons(then,
+					ast_add_cons(else_, NULL))));
 }
 @}
 
