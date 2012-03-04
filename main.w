@@ -5627,7 +5627,7 @@ static void danmakufu_compile_to_bytecode_helper(const void *obj, intptr_t *code
 		case ast_cons: {
 			const AstCons *p = obj;
 			switch(car(p)) {
-				@<danmakufu.c danmakufu_compile_to_bytecode_helper cons@>
+				@<danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper cons@>
 			}
 			break;
 		}
@@ -5785,7 +5785,7 @@ case ast_defun: {
 		exit(1);
 	}
 
-	@<danmakufu.c danmakufu_compile_to_bytecode_helper defun@>
+	@<danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper defun@>
 
 	break;
 }
@@ -5801,7 +5801,7 @@ code[*pos++] = bc_goto;
 int for_goto = *pos;
 code[*pos++] = 0;
 
-@<danmakufu.c danmakufu_compile_to_bytecode_helper save last_return@>
+@<danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper save last_return@>
 
 code[*pos++] = bc_scope_push;
 @}
@@ -5860,7 +5860,7 @@ for(const AstCons *s = car(cddr(p)); s != NULL; s = cdr(s)) {
 @d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper defun @{
 danmakufu_compile_to_bytecode_helper(cdr(cddr(p)), code, pos);
 
-@<danmakufu.c danmakufu_compile_to_bytecode_helper restore last_return@>
+@<danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper restore last_return@>
 
 code[*pos++] = bc_scope_pop;
 code[*pos++] = bc_ret;
