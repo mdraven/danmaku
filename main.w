@@ -5232,6 +5232,10 @@ implet - императивная версия let(не как в лиспе)
 @d ast.h prototypes @{
 AstCons *car(AstCons *cons);
 AstCons *cdr(AstCons *cons);
+AstCons *caar(AstCons *cons);
+AstCons *cadr(AstCons *cons);
+AstCons *cdar(AstCons *cons);
+AstCons *cddr(AstCons *cons);
 @}
 
 @d ast.c functions @{
@@ -5241,6 +5245,22 @@ AstCons *car(AstCons *cons) {
 
 AstCons *cdr(AstCons *cons) {
 	return cons->cdr;
+}
+
+AstCons *caar(AstCons *cons) {
+	return ((AstCons*)cons->car)->car;
+}
+
+AstCons *cadr(AstCons *cons) {
+	return ((AstCons*)cons->cdr)->car;
+}
+
+AstCons *cdar(AstCons *cons) {
+	return ((AstCons*)cons->car)->cdr;
+}
+
+AstCons *cddr(AstCons *cons) {
+	return ((AstCons*)cons->cdr)->cdr;
 }
 @}
 функции примитивны: казалось бы, зачем они? Но они позволяют уменьшить
