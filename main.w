@@ -5959,6 +5959,33 @@ case ast_loop: {
 }
 @}
 
+Оператор цикла while:
+@d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper cons @{
+case ast_while: {
+	if(cdr(p) == NULL || cadr(p) == NULL) {
+		fprintf(stderr, "\nwhile without args\n");
+		exit(1);
+	}
+
+	int for_begin = *pos;
+	danmakufu_compile_to_bytecode_helper(cadr(p), code, pos);
+
+	code[*pos++] = bc_if;
+
+	int for_while = *pos;
+	code[*pos++] = 0;
+
+	danmakufu_compile_to_bytecode_helper(cddr(p), code, pos);
+
+	code[*pos++] = bc_goto
+	code[*pos++] = for_begin;
+
+	code[for_while] = *pos;
+
+	break;
+}
+@}
+
 Оператор присваивания setq:
 @d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper cons @{
 case ast_setq: {
