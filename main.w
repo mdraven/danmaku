@@ -5668,11 +5668,11 @@ case ast_progn:
 		exit(1);
 	}
 	for(AstCons *s = cdr(p); cdr(s) != NULL; s = cdr(s)) {
-		danmakufu_compile_to_bytecode_helper(s, code, pos);
+		danmakufu_compile_to_bytecode_helper(car(s), code, pos);
 		code[*pos++] = bc_drop;
 	}
 
-	danmakufu_compile_to_bytecode_helper(s, code, pos);
+	danmakufu_compile_to_bytecode_helper(car(s), code, pos);
 
 	break;
 @}
@@ -5694,7 +5694,7 @@ case ast_defvar:
 		exit(1);
 	}
 
-	danmakufu_compile_to_bytecode_helper(cddr(p), code, pos);
+	danmakufu_compile_to_bytecode_helper(car(cddr(p)), code, pos);
 	code[*pos++] = bc_lit;
 	code[*pos++] = cadr(p);
 	code[*pos++] = bc_setq;
@@ -5709,7 +5709,7 @@ case ast_defscriptmain:
 		exit(1);
 	}
 	code[*pos++] = bc_scope_push;
-	danmakufu_compile_to_bytecode_helper(cddr(p), code, pos);
+	danmakufu_compile_to_bytecode_helper(car(cddr(p)), code, pos);
 	code[*pos++] = bc_scope_pop;
 	break;
 @}
@@ -5745,7 +5745,7 @@ case ast_implet:
 	code[*pos++] = cadr(p);
 
 	if(cddr(p) != NULL) {
-		danmakufu_compile_to_bytecode_helper(cddr(p), code, pos);
+		danmakufu_compile_to_bytecode_helper(car(cddr(p)), code, pos);
 
 		code[*pos++] = bc_lit;
 		code[*pos++] = cadr(p);
@@ -5797,7 +5797,7 @@ last_break = old_last_break;
 @d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper cons @{
 case ast_return: {
 	if(cdr(p) != NULL)
-		danmakufu_compile_to_bytecode_helper(cdr(p), code, pos);
+		danmakufu_compile_to_bytecode_helper(cadr(p), code, pos);
 
 	code[*pos++] = bc_goto;
 
@@ -5884,10 +5884,10 @@ for(const AstCons *s = car(cddr(p)); s != NULL; s = cdr(s)) {
 	} else if(car(s)->type == ast_cons && caar(s) == ast_implet) {
 		*pos -= 5;
 		code[*pos] = bc_decl;
-		code[*pos+1] = car(cadr(s));
+		code[*pos+1] = car(cdar(s));
 
 		code[*pos+2] = bc_lit;
-		code[*pos+3] = car(s);
+		code[*pos+3] = car(cdar(s));
 		code[*pos+4] = bc_setq;
 	}
 }
@@ -5898,7 +5898,7 @@ for(const AstCons *s = car(cddr(p)); s != NULL; s = cdr(s)) {
 Скомпилируем тело функции, закроем скоп, запишем команду выхода из функции
 и заполним ячейку после bc_goto:
 @d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper defun @{
-danmakufu_compile_to_bytecode_helper(cdr(cddr(p)), code, pos);
+danmakufu_compile_to_bytecode_helper(cadr(cddr(p)), code, pos);
 
 @<danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper restore last_return@>
 
@@ -5932,22 +5932,24 @@ case ast_if: {
 
 	code[*pos++] = bc_if;
 
-	int for_if = *pos;
+	int for_end = *pos;
 	code[*pos++] = 0;
 
 	code[*pos++] = bc_scope_push;
 	danmakufu_compile_to_bytecode_helper(car(cddr(p)), code, pos);
 	code[*pos++] = bc_scope_pop;
 
-	code[for_if] = *pos;
+	code[for_end] = *pos;
 
 	if(cdr(cddr(p)) != NULL) {
 		code[*pos++] = bc_goto;
 		int for_else = *pos;
 		code[*pos++] = 0;
 
+		code[for_end] = *pos;
+
 		code[*pos++] = bc_scope_push;
-		danmakufu_compile_to_bytecode_helper(cdr(cddr(p)), code, pos);
+		danmakufu_compile_to_bytecode_helper(cadr(cddr(p)), code, pos);
 		code[*pos++] = bc_scope_pop;
 
 		code[for_else] = *pos;
@@ -5990,7 +5992,7 @@ for_loop - метка для перехода когда число повтор
 code[*pos++] = bc_scope_push;
 
 @<danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper save last_break@>
-danmakufu_compile_to_bytecode_helper(cddr(p), code, pos);
+danmakufu_compile_to_bytecode_helper(car(cddr(p)), code, pos);
 
 code[*pos++] = bc_scope_pop;
 @}
@@ -6031,7 +6033,7 @@ case ast_while: {
 
 	@<danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper save last_break@>
 
-	danmakufu_compile_to_bytecode_helper(cddr(p), code, pos);
+	danmakufu_compile_to_bytecode_helper(car(cddr(p)), code, pos);
 
 	code[*pos++] = bc_scope_pop;
 
@@ -6141,10 +6143,10 @@ for(const AstCons *s = car(cddr(p)); s != NULL; s = cdr(s)) {
 	} else if(car(s)->type == ast_cons && caar(s) == ast_implet) {
 		*pos -= 5;
 		code[*pos] = bc_decl;
-		code[*pos+1] = car(cadr(s));
+		code[*pos+1] = car(cdar(s));
 
 		code[*pos+2] = bc_lit;
-		code[*pos+3] = car(s);
+		code[*pos+3] = car(cdar(s));
 		code[*pos+4] = bc_setq;
 	}
 }
@@ -6162,7 +6164,7 @@ code[*pos++] = 0;
 первый процесс переходит в конец функции(там где закрытие скопа и прочее)
 
 @d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper task @{
-danmakufu_compile_to_bytecode_helper(cdr(cddr(p)), code, pos);
+danmakufu_compile_to_bytecode_helper(cadr(cddr(p)), code, pos);
 
 @<danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper restore last_return@>
 
@@ -6197,23 +6199,26 @@ case ast_alternative: {
 
 	@<danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper save last_break@>
 
-	for(const AstCons *s = car(cdr(cddr(p))); s != NULL; s = cdr(s)) {
-		int last_goto = 0;
+	int last_end = 0;
+
+	const AstCons *cases = cdar(cddr(p));
+	for(const AstCons *s = cases; s != NULL; s = cdr(s)) {
+		int last_goto_to_begin_case = 0;
 
 		const AstCons *z;
-		for(z = cdr(cadr(s)); cdr(z) != NULL; z = cdr(z)) {
+		for(z = cdar(cdar(s)); cdr(z) != NULL; z = cdr(z)) {
 			code[*pos++] = bc_dup;
 
 			danmakufu_compile_to_bytecode_helper(car(z), code, pos);
 			code[*pos++] = ast_add_symbol_to_tbl("equalp");
 			code[*pos++] = bc_if;
 
-			code[*pos] = *pos + 1;
+			code[*pos] = *pos + 3;
 			pos++;
 
 			code[*pos++] = bc_goto;
-			code[*pos++] = last_goto;
-			last_goto = *pos - 1;
+			code[*pos++] = last_goto_to_begin_case;
+			last_goto_to_begin_case = *pos - 1;
 		}
 
 		code[*pos++] = bc_dup;
@@ -6222,44 +6227,52 @@ case ast_alternative: {
 		code[*pos++] = ast_add_symbol_to_tbl("equalp");
 		code[*pos++] = bc_if;
 
-		code[*pos++] = bc_goto;
-
-		int for_goto = *pos;
+		int for_end_case = *pos;
 		code[*pos++] = 0;
 
-		while(last_goto != 0) {
-			int i = code[last_goto];
-			code[last_goto] = *pos;
-			last_goto = i;
+		while(last_goto_to_begin_case != 0) {
+			int i = code[last_goto_to_begin_case];
+			code[last_goto_to_begin_case] = *pos;
+			last_goto_to_begin_case = i;
 		}
 
 
 		code[*pos++] = bc_scope_push;
-		danmakufu_compile_to_bytecode_helper(car(cddr(s)), code, pos);
+		danmakufu_compile_to_bytecode_helper(cadr(cdar(s)), code, pos);
 		code[*pos++] = bc_scope_pop;
 
-		code[for_goto] = *pos;
+		code[for_end_case] = *pos;
+
+		code[*pos++] = bc_goto;
+		code[*pos++] = last_end;
+		last_end = *pos - 1;
 	}
 
 
 	if(cdr(cddr(p)) != NULL) {
-		code[*pos++] = bc_goto;
-		int for_else = *pos;
-		code[*pos++] = 0;
+		code[for_end_case] = *pos;
 
 		code[*pos++] = bc_scope_push;
-		danmakufu_compile_to_bytecode_helper(cdr(cddr(p)), code, pos);
+		danmakufu_compile_to_bytecode_helper(cadr(cddr(p)), code, pos);
 		code[*pos++] = bc_scope_pop;
 
-		code[for_else] = *pos;
+		code[*pos++] = bc_goto;
+		code[*pos++] = last_end;
+		last_end = *pos - 1;
 	}
 
 	@<danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper restore last_break@>
+	code[*pos++] = bc_scope_pop;
+
+	while(last_end != 0) {
+		int i = code[last_end];
+		code[last_end] = *pos;
+		last_end = i;
+	}
 
 	break;
 }
 @}
-
 
 ===========================================================
 
