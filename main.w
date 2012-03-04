@@ -4688,7 +4688,7 @@ SYMBOL_ALLOC - аллоцируется слотов в самом начале
 SYMBOL_ADD - добавляется при нехватке
 @d ast.c structs @{
 #define SYMBOL_ALLOC 1000
-#define SYMBOL_ADD 500
+#define SYMBOL_ADD 100
 @}
 
 Функция для возвращения выделенных слотов обратно в пул:
