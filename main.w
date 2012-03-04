@@ -3184,13 +3184,15 @@ void *ast_ddefscriptchild(void *type, void *name, void *lines);
 @d danmakufu.y code @{
 void *ast_ddefscriptmain(void *type, void *lines) {
 	return ast_add_cons(ast_defscriptmain,
-			ast_add_cons(type, lines));
+			ast_add_cons(type,
+				ast_add_cons(lines, NULL)));
 }
 
 void *ast_ddefscriptchild(void *type, void *name, void *lines) {
 	return ast_add_cons(ast_defscriptchild,
 			ast_add_cons(type,
-				ast_add_cons(name, lines)));
+				ast_add_cons(name,
+					ast_add_cons(lines, NULL))));
 }
 @}
 
@@ -3279,7 +3281,7 @@ line          : expr
 @d danmakufu.y grammar concat lines @{
 if($2 != NULL) {
 	if($1 == NULL)
-		$$ = ast_add_cons($2, NULL);
+		$$ = ast_dprogn($2, NULL);
 	else
 		$$ = ast_append($1, ast_add_cons($2, NULL));
 } else
