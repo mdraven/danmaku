@@ -6377,6 +6377,55 @@ case ast_dog_name: {
 оформляются как функции в текущем скопе. Те вначале мы выполняем байт код, получаем функции
   @BlaBla и некоторую инициализацию; далее ищем функции @BlaBla в скопе и выполняем когда нужно.
 
+
+Цикл ascent:
+@d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper cons @{
+case ast_ascent: {
+
+	if(cadr(p)->type == ast_symbol) {
+		danmakufu_compile_to_bytecode_helper(cadr(cddr(p)), code, pos);
+		danmakufu_compile_to_bytecode_helper(car(cddr(p)), code, pos);
+
+		int for_begin = *pos;
+		code[*pos++] = bc_dup;
+
+		code[*pos++] = bc_lit;
+		code[*pos++] = cadr(p);
+		code[*pos++] = bc_setq;
+
+		code[*pos++] = bc_2dup;
+
+		code[*pos++] = ast_add_symbol_to_tbl(">");
+		code[*pos++] = bc_if;
+
+		int for_end_xcent = *pos;
+		code[*pos++] = 0;
+
+		@<danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper save last_break@>
+
+		code[*pos++] = bc_scope_push;
+		danmakufu_compile_to_bytecode_helper(car(cddr(cddr(p))), code, pos);
+		code[*pos++] = bc_scope_pop;
+
+		code[*pos++] = bc_goto;
+		code[*pos++] = for_begin;
+
+		@<danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper restore last_break@>
+		code[*pos++] = bc_scope_pop;
+
+		code[for_end_xcent] = *pos;
+
+	} else if(car(cadr(p)) == ast_implet) {
+
+	} else {
+		fprintf(stderr, "\nascent incorrect args\n");
+		exit(1);
+	}
+
+	break;
+}
+@}
+
 ===========================================================
 
 Игровой персонаж.
