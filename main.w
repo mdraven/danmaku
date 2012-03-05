@@ -5558,6 +5558,8 @@ enum {
 	bc_lit,
 	bc_setq,
 	bc_drop,
+	bc_dup,
+	bc_2dup,
 	bc_decl,
 	bc_scope_push,
 	bc_scope_pop,
@@ -5569,6 +5571,8 @@ enum {
 	bc_make_array,
 	bc_fork,
 	bc_yield,
+	bc_inc,
+	bc_dec,
 };
 @}
 bc_lit - положить на стек содержимое следующую ячейку
@@ -5600,6 +5604,8 @@ bc_fork - разбивает текущую задачу на две. Текущ
   У второй задачи стек возвратов пуст, поэтому вызов bc_ret завершает его выполнение.
   Копируется скоп и стек данных.
 bc_yield - передаёт управление следующей задаче
+bc_dup - дублировать элемент на стеке
+bc_inc, bc_dec - инкрементировать, декрементировать элемент на стеке
 
 Компиляция в байткод:
 @d danmakufu_bytecode.c functions @{
@@ -6378,53 +6384,118 @@ case ast_dog_name: {
   @BlaBla и некоторую инициализацию; далее ищем функции @BlaBla в скопе и выполняем когда нужно.
 
 
-Цикл ascent:
+Циклы ascent и descent:
 @d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper cons @{
-case ast_ascent: {
-
-	if(cadr(p)->type == ast_symbol) {
-		danmakufu_compile_to_bytecode_helper(cadr(cddr(p)), code, pos);
-		danmakufu_compile_to_bytecode_helper(car(cddr(p)), code, pos);
-
-		int for_begin = *pos;
-		code[*pos++] = bc_dup;
-
-		code[*pos++] = bc_lit;
-		code[*pos++] = cadr(p);
-		code[*pos++] = bc_setq;
-
-		code[*pos++] = bc_2dup;
-
-		code[*pos++] = ast_add_symbol_to_tbl(">");
-		code[*pos++] = bc_if;
-
-		int for_end_xcent = *pos;
-		code[*pos++] = 0;
-
-		@<danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper save last_break@>
-
-		code[*pos++] = bc_scope_push;
-		danmakufu_compile_to_bytecode_helper(car(cddr(cddr(p))), code, pos);
-		code[*pos++] = bc_scope_pop;
-
-		code[*pos++] = bc_goto;
-		code[*pos++] = for_begin;
-
-		@<danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper restore last_break@>
-		code[*pos++] = bc_scope_pop;
-
-		code[for_end_xcent] = *pos;
-
-	} else if(car(cadr(p)) == ast_implet) {
-
-	} else {
-		fprintf(stderr, "\nascent incorrect args\n");
-		exit(1);
-	}
-
+case ast_ascent:
+case ast_descent:
+	bytecode_xcent(p, code, pos);
 	break;
+@}
+
+
+@d danmakufu_bytecode.c prototypes @{
+static void bytecode_xcent(AstCons *p, intptr_t *code, int *pos);
+@}
+ascent или descent догадается по содержимому p
+
+@d danmakufu_bytecode.c functions @{
+static void bytecode_xcent(AstCons *p, intptr_t *code, int *pos) {
+	@<danmakufu_bytecode.c bytecode_xcent@>
+
+
+
+
+
+
+
 }
 @}
+
+Интервал, вначале "до", потом "от":
+@d danmakufu_bytecode.c bytecode_xcent @{
+danmakufu_compile_to_bytecode_helper(cadr(cddr(p)), code, pos);
+danmakufu_compile_to_bytecode_helper(car(cddr(p)), code, pos);
+@}
+
+Сохранить в переменной:
+@d danmakufu_bytecode.c bytecode_xcent @{
+int for_begin = *pos;
+code[*pos++] = bc_dup;
+
+if(car(cadr(p)) == ast_implet)
+	code[*pos++] = bc_scope_push;
+
+code[*pos++] = bc_lit;
+
+if(car(cadr(p)) == ast_implet)
+	code[*pos++] = cadr(cadr(p));
+else if(cadr(p)->type == ast_symbol)
+	code[*pos++] = cadr(p);
+else {
+	fprintf(stderr, "\nascent incorrect args\n");
+	exit(1);
+}
+
+code[*pos++] = bc_setq;
+@}
+если был "let", то создаётся скоп;
+for_begin - метка для перехода в начало при следующей итерации;
+
+Проверить условие:
+@d danmakufu_bytecode.c bytecode_xcent @{
+code[*pos++] = bc_2dup;
+
+if(car(p) == ast_ascent)
+	code[*pos++] = ast_add_symbol_to_tbl(">");
+else
+	code[*pos++] = ast_add_symbol_to_tbl("<");
+code[*pos++] = bc_if;
+
+int for_end_xcent = *pos;
+code[*pos++] = 0;
+@}
+дублируем "до" и "от", проверяем и переходим.
+for_end_xcent - метка из цикла xcent
+
+Тело цикла:
+@d danmakufu_bytecode.c bytecode_xcent @{
+@<danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper save last_break@>
+
+code[*pos++] = bc_scope_push;
+danmakufu_compile_to_bytecode_helper(car(cddr(cddr(p))), code, pos);
+code[*pos++] = bc_scope_pop;
+@}
+
+Конец итерации:
+@d danmakufu_bytecode.c bytecode_xcent @{
+if(car(p) == ast_ascent)
+	code[*pos++] = bc_inc;
+else
+	code[*pos++] = bc_dec;
+
+code[*pos++] = bc_goto;
+code[*pos++] = for_begin;
+@}
+Меняем значение счётчика и повторяем цикл.
+
+Обработка выхода по break:
+@d danmakufu_bytecode.c bytecode_xcent @{
+@<danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper restore last_break@>
+code[*pos++] = bc_scope_pop;
+@}
+
+Чистим:
+@d danmakufu_bytecode.c bytecode_xcent @{
+code[for_end_xcent] = *pos;
+
+if(car(cadr(p)) == ast_implet)
+	code[*pos++] = bc_scope_pop;
+
+code[*pos++] = bc_2drop;
+@}
+заполняем метку для выхода из цикла; закрываем внешний скоп, если был "let";
+  выкидываем "от" и "до".
+
 
 ===========================================================
 
