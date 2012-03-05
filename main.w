@@ -5537,6 +5537,10 @@ TODO: написать обработку ошибок при парсинге �
 @o danmakufu_bytecode.h @{
 @<License@>
 
+#include <stdint.h>
+
+#include "ast.h"
+
 @<danmakufu_bytecode.h structs@>
 @<danmakufu_bytecode.h prototypes@>
 @}
@@ -5544,8 +5548,10 @@ TODO: написать обработку ошибок при парсинге �
 @o danmakufu_bytecode.c @{
 @<License@>
 
+#include <stdlib.h>
+#include <stdio.h>
+
 #include "danmakufu_bytecode.h"
-#include "ast.h"
 
 @<danmakufu_bytecode.c structs@>
 @<danmakufu_bytecode.c prototypes@>
