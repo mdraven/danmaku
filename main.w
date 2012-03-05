@@ -5449,7 +5449,7 @@ DLIST_DEFSTRUCT(DanmakufuDict)
 	void *ptr;
 DLIST_ENDS(DanmakufuDict)
 @}
-указывает на символ и его значение.
+symb, ptr - символ и его значение.
 
 Список занятых, свободных и удалённых элементов:
 @d danmakufu.c structs @{
@@ -5485,9 +5485,13 @@ DLIST_GET_FREE_CELL_FUNC(danmakufu_dicts, DanmakufuDict)
 Список словарей:
 @d danmakufu.h structs @{
 DLIST_DEFSTRUCT(DanmakufuDictList)
+	int new_scope;
 	DanmakufuDict *dict;
 DLIST_ENDS(DanmakufuDictList)
 @}
+new_scope - флаг; 0 - если нет символа в этом списке, посмотреть в предыдущем,
+  1 - если символ не найден, то и искать в глобальном скопе.
+
 
 Список занятых, свободных и удалённых элементов:
 @d danmakufu.c structs @{
@@ -5560,6 +5564,8 @@ enum {
 	bc_decl,
 	bc_scope_push,
 	bc_scope_pop,
+	bc_create_scope,
+	bc_kill_scope,
 	bc_defun,
 	bc_ret,
 	bc_goto,
@@ -5575,10 +5581,17 @@ bc_setq - принять со стека X и Y и положить в симв�
 bc_drop - выкинуть элемент со стека
 bc_decl - отметить символ в текущем scope(bc_setq присваивает там
   где отмечено, а не в текущем); адрес символа должен располагаться
-  в следующей ячейке  
-bc_scope_push, bc_scope_pop - создать и удалить scope
+  в следующей ячейке
+
+bc_scope_push, bc_scope_pop - создать и удалить слой скопа(прошлые слои доступны);
+  используется в while, if итд
+bc_create_scope, bc_kill_scope - создать скоп и удалить скоп вместе со слоями;
+  используется в defun, task итд. Если заменить на bc_scope_(push/pop) то получится,
+  что-то вроде динамической видимости.
+  TODO: флаг new_scope ещё жив? если да, то написать тут про него
+
 bc_defun - создать функцию в текущем scope; в следующей ячейке адрес символа с
-  именем функции, безусловный переход на ячейку после функции, далее код функции, который завершается bc_ret
+  именем функции, номер ячейки после функции, далее код функции, который завершается bc_ret
 bc_ret - перейти по адресу из стека адресов
 bc_goto - переход на ячейку с номером в следующей ячейке после bc_goto(именно номер, а не адрес)
 bc_if - если на стеке не 0, то перейти через следующую ячейку,
@@ -5592,6 +5605,7 @@ bc_fork - разбивает текущую задачу на две. Текущ
   N - хранится в следующей ячейки. Второй начинает с через ячейку.
   У второй задачи стек возвратов пуст, поэтому вызов bc_ret завершает его выполнение.
 bc_yield - передаёт управление следующей задаче
+
 
 Компиляция в байткод:
 @d danmakufu_bytecode.c functions @{
@@ -5837,14 +5851,13 @@ case ast_defun: {
 @d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper defun @{
 code[*pos++] = bc_defun;
 code[*pos++] = cadr(p);
-code[*pos++] = bc_goto;
 
 int for_goto = *pos;
 code[*pos++] = 0;
 
 @<danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper save last_return@>
 
-code[*pos++] = bc_scope_push;
+code[*pos++] = bc_create_scope;
 @}
 goto нужен, чтобы при объявлении функции не выполнять её тело.
 
@@ -5903,7 +5916,7 @@ danmakufu_compile_to_bytecode_helper(cadr(cddr(p)), code, pos);
 
 @<danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper restore last_return@>
 
-code[*pos++] = bc_scope_pop;
+code[*pos++] = bc_kill_scope;
 code[*pos++] = bc_ret;
 
 code[for_goto] = *pos;
@@ -6107,15 +6120,24 @@ case ast_task: {
 @d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper task @{
 code[*pos++] = bc_defun;
 code[*pos++] = cadr(p);
-code[*pos++] = bc_goto;
 
 int for_goto = *pos;
 code[*pos++] = 0;
 
 @<danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper save last_return@>
 
-code[*pos++] = bc_scope_push;
+code[*pos++] = bc_create_scope;
 @}
+
+bc_fork:
+@d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper task @{
+code[*pos++] = bc_fork;
+
+int for_fork = *pos;
+code[*pos++] = 0;
+@}
+первый процесс переходит в конец функции(там где закрытие скопа и прочее)
+
 
 @d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper task @{
 int reserv = 0;
@@ -6155,14 +6177,6 @@ for(const AstCons *s = car(cddr(p)); s != NULL; s = cdr(s)) {
 *pos += reserv;
 @}
 
-bc_fork отличает функцию от задачи:
-@d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper task @{
-code[*pos++] = bc_fork;
-
-int for_fork = *pos;
-code[*pos++] = 0;
-@}
-первый процесс переходит в конец функции(там где закрытие скопа и прочее)
 
 @d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper task @{
 danmakufu_compile_to_bytecode_helper(cadr(cddr(p)), code, pos);
@@ -6171,7 +6185,7 @@ danmakufu_compile_to_bytecode_helper(cadr(cddr(p)), code, pos);
 
 code[for_fork] = *pos - for_fork;
 
-code[*pos++] = bc_scope_pop;
+code[*pos++] = bc_kill_scope;
 code[*pos++] = bc_ret;
 
 code[for_goto] = *pos;
