@@ -6204,82 +6204,138 @@ case ast_alternative: {
 		exit(1);
 	}
 
-	danmakufu_compile_to_bytecode_helper(cadr(p), code, pos);
-
-	@<danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper save last_break@>
-
-	int last_end = 0;
-
-	const AstCons *cases = cdar(cddr(p));
-	for(const AstCons *s = cases; s != NULL; s = cdr(s)) {
-		int last_goto_to_begin_case = 0;
-
-		const AstCons *z;
-		for(z = cdar(cdar(s)); cdr(z) != NULL; z = cdr(z)) {
-			code[*pos++] = bc_dup;
-
-			danmakufu_compile_to_bytecode_helper(car(z), code, pos);
-			code[*pos++] = ast_add_symbol_to_tbl("equalp");
-			code[*pos++] = bc_if;
-
-			code[*pos] = *pos + 3;
-			pos++;
-
-			code[*pos++] = bc_goto;
-			code[*pos++] = last_goto_to_begin_case;
-			last_goto_to_begin_case = *pos - 1;
-		}
-
-		code[*pos++] = bc_dup;
-
-		danmakufu_compile_to_bytecode_helper(car(z), code, pos);
-		code[*pos++] = ast_add_symbol_to_tbl("equalp");
-		code[*pos++] = bc_if;
-
-		int for_end_case = *pos;
-		code[*pos++] = 0;
-
-		while(last_goto_to_begin_case != 0) {
-			int i = code[last_goto_to_begin_case];
-			code[last_goto_to_begin_case] = *pos;
-			last_goto_to_begin_case = i;
-		}
-
-
-		code[*pos++] = bc_scope_push;
-		danmakufu_compile_to_bytecode_helper(cadr(cdar(s)), code, pos);
-		code[*pos++] = bc_scope_pop;
-
-		code[for_end_case] = *pos;
-
-		code[*pos++] = bc_goto;
-		code[*pos++] = last_end;
-		last_end = *pos - 1;
-	}
-
-
-	if(cdr(cddr(p)) != NULL) {
-		code[for_end_case] = *pos;
-
-		code[*pos++] = bc_scope_push;
-		danmakufu_compile_to_bytecode_helper(cadr(cddr(p)), code, pos);
-		code[*pos++] = bc_scope_pop;
-
-		code[*pos++] = bc_goto;
-		code[*pos++] = last_end;
-		last_end = *pos - 1;
-	}
-
-	@<danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper restore last_break@>
-	code[*pos++] = bc_scope_pop;
-
-	while(last_end != 0) {
-		int i = code[last_end];
-		code[last_end] = *pos;
-		last_end = i;
-	}
+	@<danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper alternative@>
 
 	break;
+}
+@}
+
+Скомпилируем код условия(которое внутри alternative); подготовим переменные
+  для break:
+@d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper alternative @{
+danmakufu_compile_to_bytecode_helper(cadr(p), code, pos);
+
+@<danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper save last_break@>
+@}
+
+Переменная для создания цепочки из goto передающих управление за блок alternative:
+@d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper alternative @{
+int last_end = 0;
+@}
+
+Обходим все case:
+@d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper alternative @{
+const AstCons *cases = cdar(cddr(p));
+for(const AstCons *s = cases; s != NULL; s = cdr(s)) {
+	@<danmakufu_bytecode.c alternative cases@>
+}
+@}
+
+Переменная для создания цепочки из goto для перехода в начало case:
+@d danmakufu_bytecode.c alternative cases @{
+int last_goto_to_begin_case = 0;
+@}
+используется для перехода из блока условий внутрь case при удачном матчинге.
+
+Перебрать все условия текущего case кроме последнего(или первого, если условие одно):
+@d danmakufu_bytecode.c alternative cases @{
+const AstCons *z;
+for(z = cdar(cdar(s)); cdr(z) != NULL; z = cdr(z)) {
+	code[*pos++] = bc_dup;
+
+	danmakufu_compile_to_bytecode_helper(car(z), code, pos);
+	code[*pos++] = ast_add_symbol_to_tbl("equalp");
+	code[*pos++] = bc_if;
+
+	code[*pos] = *pos + 3;
+	pos++;
+
+	code[*pos++] = bc_goto;
+	code[*pos++] = last_goto_to_begin_case;
+	last_goto_to_begin_case = *pos - 1;
+}
+@}
+дублируем вычисление из alternative, вычисляем условие в case, проверяем на равенство:
+  если не равно, то переходим на следующий case(+3)
+  если равно, то на начало тела case(оно находится благодаря last_goto_to_begin_case и
+    цепочки goto ссылающихся на предыдущее goto)
+
+Последнее условие из текущего case:
+@d danmakufu_bytecode.c alternative cases @{
+code[*pos++] = bc_dup;
+
+danmakufu_compile_to_bytecode_helper(car(z), code, pos);
+code[*pos++] = ast_add_symbol_to_tbl("equalp");
+code[*pos++] = bc_if;
+
+int for_end_case = *pos;
+code[*pos++] = 0;
+@}
+примерно тоже, что и у других условий(описаны выше), но при неудачном сравнении
+  переходит в ячейку code[for_end_case], а при удачном оказывается в теле case(без
+  всяких goto), так как тело идёт за последним условием.
+
+Заполним цепочку goto в условиях текущего case:
+@d danmakufu_bytecode.c alternative cases @{
+while(last_goto_to_begin_case != 0) {
+	int i = code[last_goto_to_begin_case];
+	code[last_goto_to_begin_case] = *pos;
+	last_goto_to_begin_case = i;
+}
+@}
+теперь в случае успешного матчинга условие будет передавать управление в начало тела case.
+
+Тело case вместе с объявлением скопа:
+@d danmakufu_bytecode.c alternative cases @{
+code[*pos++] = bc_scope_push;
+danmakufu_compile_to_bytecode_helper(cadr(cdar(s)), code, pos);
+code[*pos++] = bc_scope_pop;
+@}
+
+Когда тело выполнится, то перейти за блок alternative:
+@d danmakufu_bytecode.c alternative cases @{
+code[*pos++] = bc_goto;
+code[*pos++] = last_end;
+last_end = *pos - 1;
+@}
+для этого формируем цепочку из goto и переменной last_end
+
+Заполняем ячейку goto последнего условия case для перехода к следующему case'у:
+@d danmakufu_bytecode.c alternative cases @{
+code[for_end_case] = *pos;
+@}
+
+
+Блок other:
+@d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper alternative @{
+if(cdr(cddr(p)) != NULL) {
+	code[*pos++] = bc_scope_push;
+	danmakufu_compile_to_bytecode_helper(cadr(cddr(p)), code, pos);
+	code[*pos++] = bc_scope_pop;
+
+	code[*pos++] = bc_goto;
+	code[*pos++] = last_end;
+	last_end = *pos - 1;
+}
+@}
+если он присутствует, то он расположен как раз по-значению в code[for_end_case],
+  те последний case передаст управление на other, если последний из его тестов
+  будет отрицательным.
+
+Other тоже нужен goto в конце, так как после него идёт специальный блок,
+  который нужно перепрыгнуть в случае нормального завершения:
+@d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper alternative @{
+@<danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper restore last_break@>
+code[*pos++] = bc_scope_pop;
+@}
+этот блок закроет скоп в случае выхода по break
+
+Заполняем цепочку goto для выхода из блока alternative:
+@d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper alternative @{
+while(last_end != 0) {
+	int i = code[last_end];
+	code[last_end] = *pos;
+	last_end = i;
 }
 @}
 
