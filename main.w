@@ -5601,7 +5601,6 @@ bc_fork - разбивает текущую задачу на две. Текущ
   Копируется скоп и стек данных.
 bc_yield - передаёт управление следующей задаче
 
-
 Компиляция в байткод:
 @d danmakufu_bytecode.c functions @{
 intptr_t *danmakufu_compile_to_bytecode(const AstCons *cons) {
@@ -6347,6 +6346,27 @@ while(last_end != 0) {
 }
 @}
 
+Различные @BlaBla {}
+@d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper cons @{
+case ast_dog_name: {
+
+	code[*pos++] = bc_decl;
+	code[*pos++] = cadr(p);
+
+	int for_end_dog = *pos;
+	code[*pos++] = 0;
+
+	code[*pos++] = bc_scope_push;
+	danmakufu_compile_to_bytecode_helper(car(cddr(p)), code, pos);
+	code[*pos++] = bc_scope_pop;
+
+	code[*pos++] = bc_ret;
+
+	code[for_end_dog] = *pos;
+
+	break;
+}
+@}
 ===========================================================
 
 Игровой персонаж.
