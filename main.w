@@ -6187,6 +6187,15 @@ case ast_yield: {
 }
 @}
 
+@d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper cons @{
+case ast_block: {
+	code[*pos++] = bc_scope_push;
+	danmakufu_compile_to_bytecode_helper(cadr(p), code, pos);
+	code[*pos++] = bc_scope_pop;
+
+	break;
+}
+@}
 
 @d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper cons @{
 case ast_alternative: {
