@@ -3331,7 +3331,8 @@ void *ast_ddog_name(void *name, void *exprs);
 @d danmakufu.y code @{
 void *ast_ddog_name(void *name, void *exprs) {
 	return ast_add_cons(ast_dog_name,
-			ast_add_cons(name, exprs));
+			ast_add_cons(name,
+				ast_add_cons(exprs, NULL)));
 }
 @}
 
