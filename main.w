@@ -6504,10 +6504,11 @@ for_end_xcent - метка из цикла xcent
 Тело цикла:
 @d danmakufu_bytecode.c bytecode_xcent @{
 @<danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper save last_break@>
-
-code[(*pos)++] = bc_scope_push;
-danmakufu_compile_to_bytecode_helper(car(cddr(cddr(p))), code, pos);
-code[(*pos)++] = bc_scope_pop;
+if(cddr(cddr(p)) != NULL) {
+	code[(*pos)++] = bc_scope_push;
+	danmakufu_compile_to_bytecode_helper(car(cddr(cddr(p))), code, pos);
+	code[(*pos)++] = bc_scope_pop;
+}
 @}
 
 Конец итерации:
@@ -6525,7 +6526,8 @@ code[(*pos)++] = for_begin;
 Обработка выхода по break:
 @d danmakufu_bytecode.c bytecode_xcent @{
 @<danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper restore last_break@>
-code[(*pos)++] = bc_scope_pop;
+if(cddr(cddr(p)) != NULL)
+	code[(*pos)++] = bc_scope_pop;
 @}
 
 Чистим:
