@@ -5679,22 +5679,22 @@ static void danmakufu_compile_to_bytecode_helper(void *obj, intptr_t *code, int 
 		}
 		case ast_symbol: {
 			AstSymbol *symb = obj;
-			code[*pos++] = (intptr_t)symb;
+			code[(*pos)++] = (intptr_t)symb;
 			break;
 		}
 		case ast_string: {
 			AstString *str = obj;
-			code[*pos++] = (intptr_t)str;
+			code[(*pos)++] = (intptr_t)str;
 			break;
 		}
 		case ast_character: {
 			AstString *chr = obj;
-			code[*pos++] = (intptr_t)chr;
+			code[(*pos)++] = (intptr_t)chr;
 			break;
 		}
 		case ast_number: {
 			AstNumber *num = obj;
-			code[*pos++] = (intptr_t)num;
+			code[(*pos)++] = (intptr_t)num;
 			break;
 		}
 		default:
@@ -5716,7 +5716,7 @@ if((AstSymbol*)car(p) == ast_progn) {
 	AstCons *s;
 	for(s = cdr(p); cdr(s) != NULL; s = cdr(s)) {
 		danmakufu_compile_to_bytecode_helper(car(s), code, pos);
-		code[*pos++] = bc_drop;
+		code[(*pos)++] = bc_drop;
 	}
 
 	danmakufu_compile_to_bytecode_helper(car(s), code, pos);
@@ -5741,9 +5741,9 @@ else if((AstSymbol*)car(p) == ast_defvar) {
 	}
 
 	danmakufu_compile_to_bytecode_helper(car(cddr(p)), code, pos);
-	code[*pos++] = bc_lit;
-	code[*pos++] = (intptr_t)cadr(p);
-	code[*pos++] = bc_setq;
+	code[(*pos)++] = bc_lit;
+	code[(*pos)++] = (intptr_t)cadr(p);
+	code[(*pos)++] = bc_setq;
 }
 @}
 
@@ -5754,9 +5754,9 @@ else if((AstSymbol*)car(p) == ast_defscriptmain) {
 		fprintf(stderr, "\ndefscriptmain without args\n");
 		exit(1);
 	}
-	code[*pos++] = bc_scope_push;
+	code[(*pos)++] = bc_scope_push;
 	danmakufu_compile_to_bytecode_helper(car(cddr(p)), code, pos);
-	code[*pos++] = bc_scope_pop;
+	code[(*pos)++] = bc_scope_pop;
 }
 @}
 не учитываем тип скрипта, так как я не знаю зачем он :(
@@ -5772,7 +5772,7 @@ else if((AstSymbol*)car(p) == ast_funcall) {
 	AstCons *s;
 	for(s = cddr(p); s != NULL; s = cdr(s))
 		danmakufu_compile_to_bytecode_helper(car(s), code, pos);
-	code[*pos++] = (intptr_t)cadr(p);
+	code[(*pos)++] = (intptr_t)cadr(p);
 }
 @}
 
@@ -5789,15 +5789,15 @@ else if((AstSymbol*)car(p) == ast_implet) {
 		exit(1);
 	}
 
-	code[*pos++] = bc_decl;
-	code[*pos++] = (intptr_t)cadr(p);
+	code[(*pos)++] = bc_decl;
+	code[(*pos)++] = (intptr_t)cadr(p);
 
 	if(cddr(p) != NULL) {
 		danmakufu_compile_to_bytecode_helper(car(cddr(p)), code, pos);
 
-		code[*pos++] = bc_lit;
-		code[*pos++] = (intptr_t)cadr(p);
-		code[*pos++] = bc_setq;
+		code[(*pos)++] = bc_lit;
+		code[(*pos)++] = (intptr_t)cadr(p);
+		code[(*pos)++] = bc_setq;
 	}
 }
 @}
@@ -5806,9 +5806,9 @@ else if((AstSymbol*)car(p) == ast_implet) {
 @d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper cons @{
 else if((AstSymbol*)car(p) == ast_break) {
 
-	code[*pos++] = bc_goto;
+	code[(*pos)++] = bc_goto;
 
-	code[*pos++] = last_break;
+	code[(*pos)++] = last_break;
 	last_break = *pos-1;
 }
 @}
@@ -5845,9 +5845,9 @@ else if((AstSymbol*)car(p) == ast_return) {
 	if(cdr(p) != NULL)
 		danmakufu_compile_to_bytecode_helper(cadr(p), code, pos);
 
-	code[*pos++] = bc_goto;
+	code[(*pos)++] = bc_goto;
 
-	code[*pos++] = last_return;
+	code[(*pos)++] = last_return;
 	last_return = *pos-1;
 }
 @}
@@ -5876,15 +5876,15 @@ else if((AstSymbol*)car(p) == ast_defun) {
 Команда на создание функции, имя функции, команда перехода,
 зарезервированная ячейка для перехода на неё и команда создания скопа:
 @d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper defun @{
-code[*pos++] = bc_defun;
-code[*pos++] = (intptr_t)cadr(p);
+code[(*pos)++] = bc_defun;
+code[(*pos)++] = (intptr_t)cadr(p);
 
 int for_goto = *pos;
-code[*pos++] = 0;
+code[(*pos)++] = 0;
 
 @<danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper save last_return@>
 
-code[*pos++] = bc_scope_push;
+code[(*pos)++] = bc_scope_push;
 @}
 goto нужен, чтобы при объявлении функции не выполнять её тело.
 
@@ -5944,8 +5944,8 @@ danmakufu_compile_to_bytecode_helper(cadr(cddr(p)), code, pos);
 
 @<danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper restore last_return@>
 
-code[*pos++] = bc_scope_pop;
-code[*pos++] = bc_ret;
+code[(*pos)++] = bc_scope_pop;
+code[(*pos)++] = bc_ret;
 
 code[for_goto] = *pos;
 @}
@@ -5972,27 +5972,27 @@ else if((AstSymbol*)car(p) == ast_if) {
 
 	danmakufu_compile_to_bytecode_helper(cadr(p), code, pos);
 
-	code[*pos++] = bc_if;
+	code[(*pos)++] = bc_if;
 
 	int for_end = *pos;
-	code[*pos++] = 0;
+	code[(*pos)++] = 0;
 
-	code[*pos++] = bc_scope_push;
+	code[(*pos)++] = bc_scope_push;
 	danmakufu_compile_to_bytecode_helper(car(cddr(p)), code, pos);
-	code[*pos++] = bc_scope_pop;
+	code[(*pos)++] = bc_scope_pop;
 
 	code[for_end] = *pos;
 
 	if(cdr(cddr(p)) != NULL) {
-		code[*pos++] = bc_goto;
+		code[(*pos)++] = bc_goto;
 		int for_else = *pos;
-		code[*pos++] = 0;
+		code[(*pos)++] = 0;
 
 		code[for_end] = *pos;
 
-		code[*pos++] = bc_scope_push;
+		code[(*pos)++] = bc_scope_push;
 		danmakufu_compile_to_bytecode_helper(cadr(cddr(p)), code, pos);
-		code[*pos++] = bc_scope_pop;
+		code[(*pos)++] = bc_scope_pop;
 
 		code[for_else] = *pos;
 	}
@@ -6018,33 +6018,33 @@ danmakufu_compile_to_bytecode_helper(cadr(p), code, pos);
 
 @d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper loop @{
 int for_repeat = *pos;
-code[*pos++] = bc_repeat;
+code[(*pos)++] = bc_repeat;
 
 int for_loop = *pos;
-code[*pos++] = 0;
+code[(*pos)++] = 0;
 @}
 for_repeat - метка куда будет делаться goto из конца цикла
 for_loop - метка для перехода когда число повторов станет 0
 
 @d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper loop @{
-code[*pos++] = bc_scope_push;
+code[(*pos)++] = bc_scope_push;
 
 @<danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper save last_break@>
 danmakufu_compile_to_bytecode_helper(car(cddr(p)), code, pos);
 
-code[*pos++] = bc_scope_pop;
+code[(*pos)++] = bc_scope_pop;
 @}
 создание и удаление скопа; сохранение метки для break; само тело цикла
 
 @d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper loop @{
-code[*pos++] = bc_goto;
-code[*pos++] = for_repeat;
+code[(*pos)++] = bc_goto;
+code[(*pos)++] = for_repeat;
 @}
 прыжок в начало цикла
 
 @d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper loop @{
 @<danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper restore last_break@>
-code[*pos++] = bc_scope_pop;
+code[(*pos)++] = bc_scope_pop;
 
 code[for_loop] = *pos;
 @}
@@ -6062,24 +6062,24 @@ else if((AstSymbol*)car(p) == ast_while) {
 	int for_begin = *pos;
 	danmakufu_compile_to_bytecode_helper(cadr(p), code, pos);
 
-	code[*pos++] = bc_if;
+	code[(*pos)++] = bc_if;
 
 	int for_while = *pos;
-	code[*pos++] = 0;
+	code[(*pos)++] = 0;
 
-	code[*pos++] = bc_scope_push;
+	code[(*pos)++] = bc_scope_push;
 
 	@<danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper save last_break@>
 
 	danmakufu_compile_to_bytecode_helper(car(cddr(p)), code, pos);
 
-	code[*pos++] = bc_scope_pop;
+	code[(*pos)++] = bc_scope_pop;
 
-	code[*pos++] = bc_goto;
-	code[*pos++] = for_begin;
+	code[(*pos)++] = bc_goto;
+	code[(*pos)++] = for_begin;
 
 	@<danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper restore last_break@>
-	code[*pos++] = bc_scope_pop;
+	code[(*pos)++] = bc_scope_pop;
 
 	code[for_while] = *pos;
 }
@@ -6095,9 +6095,9 @@ else if((AstSymbol*)car(p) == ast_setq) {
 	}
 
 	if(cadr(p)->type == ast_symbol) {
-		code[*pos] = bc_lit;
-		code[*pos++] = (intptr_t)cadr(p);
-		code[*pos++] = bc_setq;
+		code[(*pos)++] = bc_lit;
+		code[(*pos)++] = (intptr_t)cadr(p);
+		code[(*pos)++] = bc_setq;
 	} else if((AstSymbol*)car(cadr(p)) == ast_funcall) {
 		fprintf(stderr, "\nSETQ INDEX PROBLEM!!!\n");
 		exit(1);
@@ -6123,8 +6123,8 @@ else if((AstSymbol*)car(p) == ast_make_array) {
 		exit(1);
 	}
 
-	code[*pos++] = bc_make_array;
-	code[*pos++] = num_el;
+	code[(*pos)++] = bc_make_array;
+	code[(*pos)++] = num_el;
 }
 @}
 
@@ -6142,15 +6142,15 @@ else if((AstSymbol*)car(p) == ast_task) {
 @}
 
 @d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper task @{
-code[*pos++] = bc_defun;
-code[*pos++] = (intptr_t)cadr(p);
+code[(*pos)++] = bc_defun;
+code[(*pos)++] = (intptr_t)cadr(p);
 
 int for_goto = *pos;
-code[*pos++] = 0;
+code[(*pos)++] = 0;
 
 @<danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper save last_return@>
 
-code[*pos++] = bc_scope_push;
+code[(*pos)++] = bc_scope_push;
 @}
 
 @d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper task @{
@@ -6194,10 +6194,10 @@ for(s = car(cddr(p)); s != NULL; s = cdr(s)) {
 
 bc_fork:
 @d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper task @{
-code[*pos++] = bc_fork;
+code[(*pos)++] = bc_fork;
 
 int for_fork = *pos;
-code[*pos++] = 0;
+code[(*pos)++] = 0;
 @}
 первый процесс переходит в конец функции(там где закрытие скопа и прочее)
 
@@ -6208,8 +6208,8 @@ danmakufu_compile_to_bytecode_helper(cadr(cddr(p)), code, pos);
 
 code[for_fork] = *pos - for_fork;
 
-code[*pos++] = bc_scope_pop;
-code[*pos++] = bc_ret;
+code[(*pos)++] = bc_scope_pop;
+code[(*pos)++] = bc_ret;
 
 code[for_goto] = *pos;
 @}
@@ -6218,15 +6218,15 @@ code[for_goto] = *pos;
 Передача управления следующей задаче:
 @d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper cons @{
 else if((AstSymbol*)car(p) == ast_yield) {
-	code[*pos++] = bc_yield;
+	code[(*pos)++] = bc_yield;
 }
 @}
 
 @d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper cons @{
 else if((AstSymbol*)car(p) == ast_block) {
-	code[*pos++] = bc_scope_push;
+	code[(*pos)++] = bc_scope_push;
 	danmakufu_compile_to_bytecode_helper(cadr(p), code, pos);
-	code[*pos++] = bc_scope_pop;
+	code[(*pos)++] = bc_scope_pop;
 }
 @}
 
@@ -6272,17 +6272,17 @@ int last_goto_to_begin_case = 0;
 @d danmakufu_bytecode.c alternative cases @{
 AstCons *z;
 for(z = cdar(cdar(s)); cdr(z) != NULL; z = cdr(z)) {
-	code[*pos++] = bc_dup;
+	code[(*pos)++] = bc_dup;
 
 	danmakufu_compile_to_bytecode_helper(car(z), code, pos);
-	code[*pos++] = (intptr_t)ast_add_symbol_to_tbl("equalp");
-	code[*pos++] = bc_if;
+	code[(*pos)++] = (intptr_t)ast_add_symbol_to_tbl("equalp");
+	code[(*pos)++] = bc_if;
 
 	code[*pos] = *pos + 3;
-	pos++;
+	(*pos)++;
 
-	code[*pos++] = bc_goto;
-	code[*pos++] = last_goto_to_begin_case;
+	code[(*pos)++] = bc_goto;
+	code[(*pos)++] = last_goto_to_begin_case;
 	last_goto_to_begin_case = *pos - 1;
 }
 @}
@@ -6293,14 +6293,14 @@ for(z = cdar(cdar(s)); cdr(z) != NULL; z = cdr(z)) {
 
 Последнее условие из текущего case:
 @d danmakufu_bytecode.c alternative cases @{
-code[*pos++] = bc_dup;
+code[(*pos)++] = bc_dup;
 
 danmakufu_compile_to_bytecode_helper(car(z), code, pos);
-code[*pos++] = (intptr_t)ast_add_symbol_to_tbl("equalp");
-code[*pos++] = bc_if;
+code[(*pos)++] = (intptr_t)ast_add_symbol_to_tbl("equalp");
+code[(*pos)++] = bc_if;
 
 int for_end_case = *pos;
-code[*pos++] = 0;
+code[(*pos)++] = 0;
 @}
 примерно тоже, что и у других условий(описаны выше), но при неудачном сравнении
   переходит в ячейку code[for_end_case], а при удачном оказывается в теле case(без
@@ -6318,15 +6318,15 @@ while(last_goto_to_begin_case != 0) {
 
 Тело case вместе с объявлением скопа:
 @d danmakufu_bytecode.c alternative cases @{
-code[*pos++] = bc_scope_push;
+code[(*pos)++] = bc_scope_push;
 danmakufu_compile_to_bytecode_helper(cadr(cdar(s)), code, pos);
-code[*pos++] = bc_scope_pop;
+code[(*pos)++] = bc_scope_pop;
 @}
 
 Когда тело выполнится, то перейти за блок alternative:
 @d danmakufu_bytecode.c alternative cases @{
-code[*pos++] = bc_goto;
-code[*pos++] = last_end;
+code[(*pos)++] = bc_goto;
+code[(*pos)++] = last_end;
 last_end = *pos - 1;
 @}
 для этого формируем цепочку из goto и переменной last_end
@@ -6340,12 +6340,12 @@ code[for_end_case] = *pos;
 Блок other:
 @d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper alternative @{
 if(cdr(cddr(p)) != NULL) {
-	code[*pos++] = bc_scope_push;
+	code[(*pos)++] = bc_scope_push;
 	danmakufu_compile_to_bytecode_helper(cadr(cddr(p)), code, pos);
-	code[*pos++] = bc_scope_pop;
+	code[(*pos)++] = bc_scope_pop;
 
-	code[*pos++] = bc_goto;
-	code[*pos++] = last_end;
+	code[(*pos)++] = bc_goto;
+	code[(*pos)++] = last_end;
 	last_end = *pos - 1;
 }
 @}
@@ -6357,7 +6357,7 @@ Other тоже нужен goto в конце, так как после него 
   который нужно перепрыгнуть в случае нормального завершения:
 @d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper alternative @{
 @<danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper restore last_break@>
-code[*pos++] = bc_scope_pop;
+code[(*pos)++] = bc_scope_pop;
 @}
 этот блок закроет скоп в случае выхода по break
 
@@ -6373,17 +6373,17 @@ while(last_end != 0) {
 Различные @BlaBla {}
 @d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper cons @{
 else if((AstSymbol*)car(p) == ast_dog_name) {
-	code[*pos++] = bc_decl;
-	code[*pos++] = (intptr_t)cadr(p);
+	code[(*pos)++] = bc_decl;
+	code[(*pos)++] = (intptr_t)cadr(p);
 
 	int for_end_dog = *pos;
-	code[*pos++] = 0;
+	code[(*pos)++] = 0;
 
-	code[*pos++] = bc_scope_push;
+	code[(*pos)++] = bc_scope_push;
 	danmakufu_compile_to_bytecode_helper(car(cddr(p)), code, pos);
-	code[*pos++] = bc_scope_pop;
+	code[(*pos)++] = bc_scope_pop;
 
-	code[*pos++] = bc_ret;
+	code[(*pos)++] = bc_ret;
 
 	code[for_end_dog] = *pos;
 }
@@ -6420,39 +6420,39 @@ danmakufu_compile_to_bytecode_helper(car(cddr(p)), code, pos);
 Сохранить в переменной:
 @d danmakufu_bytecode.c bytecode_xcent @{
 int for_begin = *pos;
-code[*pos++] = bc_dup;
+code[(*pos)++] = bc_dup;
 
 if((AstSymbol*)car(cadr(p)) == ast_implet)
-	code[*pos++] = bc_scope_push;
+	code[(*pos)++] = bc_scope_push;
 
-code[*pos++] = bc_lit;
+code[(*pos)++] = bc_lit;
 
 if((AstSymbol*)car(cadr(p)) == ast_implet)
-	code[*pos++] = (intptr_t)cadr(cadr(p));
+	code[(*pos)++] = (intptr_t)cadr(cadr(p));
 else if(cadr(p)->type == ast_symbol)
-	code[*pos++] = (intptr_t)cadr(p);
+	code[(*pos)++] = (intptr_t)cadr(p);
 else {
 	fprintf(stderr, "\nascent incorrect args\n");
 	exit(1);
 }
 
-code[*pos++] = bc_setq;
+code[(*pos)++] = bc_setq;
 @}
 если был "let", то создаётся скоп;
 for_begin - метка для перехода в начало при следующей итерации;
 
 Проверить условие:
 @d danmakufu_bytecode.c bytecode_xcent @{
-code[*pos++] = bc_2dup;
+code[(*pos)++] = bc_2dup;
 
 if((AstSymbol*)car(p) == ast_ascent)
-	code[*pos++] = (intptr_t)ast_add_symbol_to_tbl(">");
+	code[(*pos)++] = (intptr_t)ast_add_symbol_to_tbl(">");
 else
-	code[*pos++] = (intptr_t)ast_add_symbol_to_tbl("<");
-code[*pos++] = bc_if;
+	code[(*pos)++] = (intptr_t)ast_add_symbol_to_tbl("<");
+code[(*pos)++] = bc_if;
 
 int for_end_xcent = *pos;
-code[*pos++] = 0;
+code[(*pos)++] = 0;
 @}
 дублируем "до" и "от", проверяем и переходим.
 for_end_xcent - метка из цикла xcent
@@ -6461,27 +6461,27 @@ for_end_xcent - метка из цикла xcent
 @d danmakufu_bytecode.c bytecode_xcent @{
 @<danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper save last_break@>
 
-code[*pos++] = bc_scope_push;
+code[(*pos)++] = bc_scope_push;
 danmakufu_compile_to_bytecode_helper(car(cddr(cddr(p))), code, pos);
-code[*pos++] = bc_scope_pop;
+code[(*pos)++] = bc_scope_pop;
 @}
 
 Конец итерации:
 @d danmakufu_bytecode.c bytecode_xcent @{
 if((AstSymbol*)car(p) == ast_ascent)
-	code[*pos++] = bc_inc;
+	code[(*pos)++] = bc_inc;
 else
-	code[*pos++] = bc_dec;
+	code[(*pos)++] = bc_dec;
 
-code[*pos++] = bc_goto;
-code[*pos++] = for_begin;
+code[(*pos)++] = bc_goto;
+code[(*pos)++] = for_begin;
 @}
 Меняем значение счётчика и повторяем цикл.
 
 Обработка выхода по break:
 @d danmakufu_bytecode.c bytecode_xcent @{
 @<danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper restore last_break@>
-code[*pos++] = bc_scope_pop;
+code[(*pos)++] = bc_scope_pop;
 @}
 
 Чистим:
@@ -6489,9 +6489,9 @@ code[*pos++] = bc_scope_pop;
 code[for_end_xcent] = *pos;
 
 if((AstSymbol*)car(cadr(p)) == ast_implet)
-	code[*pos++] = bc_scope_pop;
+	code[(*pos)++] = bc_scope_pop;
 
-code[*pos++] = bc_2drop;
+code[(*pos)++] = bc_2drop;
 @}
 заполняем метку для выхода из цикла; закрываем внешний скоп, если был "let";
   выкидываем "от" и "до".
