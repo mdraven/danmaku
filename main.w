@@ -5994,9 +5994,11 @@ else if((AstSymbol*)car(p) == ast_if) {
 	int for_end = *pos;
 	code[(*pos)++] = 0;
 
-	code[(*pos)++] = bc_scope_push;
-	danmakufu_compile_to_bytecode_helper(car(cddr(p)), code, pos);
-	code[(*pos)++] = bc_scope_pop;
+	if(car(cddr(p)) != NULL) {
+		code[(*pos)++] = bc_scope_push;
+		danmakufu_compile_to_bytecode_helper(car(cddr(p)), code, pos);
+		code[(*pos)++] = bc_scope_pop;
+	}
 
 	code[for_end] = *pos;
 
@@ -6007,9 +6009,11 @@ else if((AstSymbol*)car(p) == ast_if) {
 
 		code[for_end] = *pos;
 
-		code[(*pos)++] = bc_scope_push;
-		danmakufu_compile_to_bytecode_helper(cadr(cddr(p)), code, pos);
-		code[(*pos)++] = bc_scope_pop;
+		if(car(cddr(p)) != NULL) {
+			code[(*pos)++] = bc_scope_push;
+			danmakufu_compile_to_bytecode_helper(cadr(cddr(p)), code, pos);
+			code[(*pos)++] = bc_scope_pop;
+		}
 
 		code[for_else] = *pos;
 	}
@@ -6084,13 +6088,13 @@ else if((AstSymbol*)car(p) == ast_while) {
 	int for_while = *pos;
 	code[(*pos)++] = 0;
 
-	code[(*pos)++] = bc_scope_push;
-
 	@<danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper save last_break@>
 
-	danmakufu_compile_to_bytecode_helper(car(cddr(p)), code, pos);
-
-	code[(*pos)++] = bc_scope_pop;
+	if(car(cddr(p)) != NULL) {
+		code[(*pos)++] = bc_scope_push;
+		danmakufu_compile_to_bytecode_helper(car(cddr(p)), code, pos);
+		code[(*pos)++] = bc_scope_pop;
+	}
 
 	code[(*pos)++] = bc_goto;
 	code[(*pos)++] = for_begin;
