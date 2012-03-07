@@ -6415,7 +6415,7 @@ while(last_end != 0) {
 Различные @BlaBla {}
 @d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper cons @{
 else if((AstSymbol*)car(p) == ast_dog_name) {
-	code[(*pos)++] = bc_decl;
+	code[(*pos)++] = bc_defun;
 	code[(*pos)++] = (intptr_t)cadr(p);
 
 	int for_end_dog = *pos;
