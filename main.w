@@ -6545,6 +6545,104 @@ code[(*pos)++] = bc_2drop;
 заполняем метку для выхода из цикла; закрываем внешний скоп, если был "let";
   выкидываем "от" и "до".
 
+Печать байткода:
+@d danmakufu_bytecode.c functions @{
+void danmakufu_print_bytecode(intptr_t *code, int size) {
+	int i;
+
+	for(i=0; i < size; i++) {
+		switch(code[i]) {
+			case bc_lit:
+				printf("bc_lit\n");
+				i++;
+				printf("%s\n", ((AstSymbol*)code[i])->name);
+				break;
+			case bc_setq:
+				printf("bc_setq\n");
+				break;
+			case bc_drop:
+				printf("bc_drop\n");
+				break;
+			case bc_2drop:
+				printf("bc_2drop\n");
+				break;
+			case bc_dup:
+				printf("bc_dup\n");
+				break;
+			case bc_2dup:
+				printf("bc_2dup\n");
+				break;
+			case bc_decl:
+				printf("bc_decl\n");
+				i++;
+				printf("%s\n", ((AstSymbol*)code[i])->name);
+				break;
+			case bc_scope_push:
+				printf("bc_scope_push\n");
+				break;
+			case bc_scope_pop:
+				printf("bc_scope_pop\n");
+				break;
+			case bc_defun:
+				printf("bc_defun\n");
+				i++;
+				printf("%s\n", ((AstSymbol*)code[i])->name);
+				break;
+			case bc_ret:
+				printf("bc_ret\n");
+				break;
+			case bc_goto:
+				printf("bc_goto\n");
+				i++;
+				printf("%ud\n", code[i]);
+				break;
+			case bc_if:
+				printf("bc_if\n");
+				i++;
+				printf("%ud\n", code[i]);
+				break;
+			case bc_repeat:
+				printf("bc_repeat\n");
+				i++;
+				printf("%ud\n", code[i]);
+				break;
+			case bc_make_array:
+				printf("bc_make_array\n");
+				i++;
+				printf("%ud\n", code[i]);
+				break;
+			case bc_fork:
+				printf("bc_fork\n");
+				i++;
+				printf("%ud\n", code[i]);
+				break;
+			case bc_yield:
+				printf("bc_yield\n");
+				break;
+			case bc_inc:
+				printf("bc_inc\n");
+				break;
+			case bc_dec:
+				printf("bc_dec\n");
+				break;
+			default:
+				if(((AstSymbol*)code[i])->type == ast_symbol)
+					printf("%s\n", ((AstSymbol*)code[i])->name);
+				else if(((AstSymbol*)code[i])->type == ast_number)
+					printf("%f\n", ((AstNumber*)code[i])->number);
+				else if(((AstSymbol*)code[i])->type == ast_string ||
+						((AstSymbol*)code[i])->type == ast_character)
+					printf("\"%s\"\n", ((AstString*)code[i])->str);
+				else
+					printf("%ud\n", code[i]);
+		}
+	}
+}
+@}
+
+@d danmakufu_bytecode.h prototypes @{
+void danmakufu_print_bytecode(intptr_t *code, int size);
+@}
 
 ===========================================================
 
