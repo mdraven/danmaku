@@ -6526,9 +6526,12 @@ code[(*pos)++] = for_begin;
 Обработка выхода по break:
 @d danmakufu_bytecode.c bytecode_xcent @{
 @<danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper restore last_break@>
-if(car(cddr(cddr(p))) != NULL)
+if(car(cddr(cddr(p))) != NULL && (AstSymbol*)car(cadr(p)) != ast_implet)
 	code[(*pos)++] = bc_scope_pop;
 @}
+условие "(AstSymbol*)car(cadr(p)) == ast_implet" нужно, чтобы bc_scope_pop не шёл два
+  раза подряд(второй bc_scope_pop описан ниже), если что-то не так, то лучше это условие
+  убрать
 
 Чистим:
 @d danmakufu_bytecode.c bytecode_xcent @{
