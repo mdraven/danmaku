@@ -5869,35 +5869,35 @@ else if((AstSymbol*)car(p) == ast_defun) {
 		exit(1);
 	}
 
-	@<danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper defun@>
+	@<danmakufu_bytecode.c defun - declare function@>
+	if(cadr(cddr(p)) != NULL) {
+		@<danmakufu_bytecode.c defun - generate parameters@>
+		@<danmakufu_bytecode.c defun - generate body@>
+	}
+	@<danmakufu_bytecode.c defun - generate return@>
 }
 @}
+Если тела нет, то параметры и тело генерировать не нужно
 
 Команда на создание функции, имя функции, команда перехода,
-зарезервированная ячейка для перехода на неё и команда создания скопа:
-@d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper defun @{
+  зарезервированная ячейка для перехода на неё:
+@d danmakufu_bytecode.c defun - declare function @{
 code[(*pos)++] = bc_defun;
 code[(*pos)++] = (intptr_t)cadr(p);
 
-int for_goto = *pos;
+int for_end_func = *pos;
 code[(*pos)++] = 0;
-
-@<danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper save last_return@>
-
-code[(*pos)++] = bc_scope_push;
 @}
 goto нужен, чтобы при объявлении функции не выполнять её тело.
 
-Для коректной работы return сохраним старое значение last_return, и
-присвоим ему 0:
-@d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper save last_return @{
-int old_last_return = last_return;
-last_return = 0;
+@d danmakufu_bytecode.c defun - generate parameters @{
+code[(*pos)++] = bc_scope_push;
 @}
+
 
 Из-за стека придётся перевернуть параметры местами. Пересчитаем количество
 ячеек необходимое для параметров:
-@d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper defun @{
+@d danmakufu_bytecode.c defun - generate parameters @{
 int reserv = 0;
 
 AstCons *s;
@@ -5914,7 +5914,7 @@ for(s = car(cddr(p)); s != NULL; s = cdr(s)) {
 @}
 
 Скомпилируем параметры в зависимости от их вида:
-@d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper defun @{
+@d danmakufu_bytecode.c defun - generate parameters @{
 *pos += reserv;
 
 for(s = car(cddr(p)); s != NULL; s = cdr(s)) {
@@ -5937,17 +5937,20 @@ for(s = car(cddr(p)); s != NULL; s = cdr(s)) {
 *pos += reserv;
 @}
 
-Скомпилируем тело функции, закроем скоп, запишем команду выхода из функции
-и заполним ячейку после bc_goto:
-@d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper defun @{
+Скомпилируем тело функции:
+@d danmakufu_bytecode.c defun - generate body @{
+@<danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper save last_return@>
+
 danmakufu_compile_to_bytecode_helper(cadr(cddr(p)), code, pos);
 
 @<danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper restore last_return@>
+@}
 
-code[(*pos)++] = bc_scope_pop;
-code[(*pos)++] = bc_ret;
-
-code[for_goto] = *pos;
+Для коректной работы return сохраним старое значение last_return, и
+присвоим ему 0:
+@d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper save last_return @{
+int old_last_return = last_return;
+last_return = 0;
 @}
 
 Восстановим last_return и заполним все return'ы значением pos:
@@ -5960,6 +5963,20 @@ while(last_return != 0) {
 
 last_return = old_last_return;
 @}
+
+Закроем скоп,
+@d danmakufu_bytecode.c defun - generate body @{
+code[(*pos)++] = bc_scope_pop;
+@}
+
+Запишем команду выхода из функции и заполним ячейку после bc_goto:
+@d danmakufu_bytecode.c defun - generate return @{
+code[(*pos)++] = bc_ret;
+
+code[for_end_func] = *pos;
+@}
+bc_ret нужно отделить от остального тела, так как тела может и не быть,
+  а возвращаться из функции надо всегда.
 
 
 Условный оператор if:
