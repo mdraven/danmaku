@@ -6587,6 +6587,8 @@ void danmakufu_print_bytecode(intptr_t *code, int size) {
 				printf("bc_defun\n");
 				i++;
 				printf("%s\n", ((AstSymbol*)code[i])->name);
+				i++;
+				printf("%ud\n", code[i]);
 				break;
 			case bc_ret:
 				printf("bc_ret\n");
