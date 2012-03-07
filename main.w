@@ -6421,9 +6421,11 @@ else if((AstSymbol*)car(p) == ast_dog_name) {
 	int for_end_dog = *pos;
 	code[(*pos)++] = 0;
 
-	code[(*pos)++] = bc_scope_push;
-	danmakufu_compile_to_bytecode_helper(car(cddr(p)), code, pos);
-	code[(*pos)++] = bc_scope_pop;
+	if(cddr(p) != NULL) {
+		code[(*pos)++] = bc_scope_push;
+		danmakufu_compile_to_bytecode_helper(car(cddr(p)), code, pos);
+		code[(*pos)++] = bc_scope_pop;
+	}
 
 	code[(*pos)++] = bc_ret;
 
