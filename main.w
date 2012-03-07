@@ -5679,22 +5679,22 @@ static void danmakufu_compile_to_bytecode_helper(void *obj, intptr_t *code, int 
 		}
 		case ast_symbol: {
 			AstSymbol *symb = obj;
-			printf("%s", symb->name);
+			code[*pos++] = (intptr_t)symb;
 			break;
 		}
 		case ast_string: {
 			AstString *str = obj;
-			printf("\"%s\"", str->str);
+			code[*pos++] = (intptr_t)str;
 			break;
 		}
 		case ast_character: {
 			AstString *chr = obj;
-			printf("'%s'", chr->str);
+			code[*pos++] = (intptr_t)chr;
 			break;
 		}
 		case ast_number: {
 			AstNumber *num = obj;
-			printf("%f", num->number);
+			code[*pos++] = (intptr_t)num;
 			break;
 		}
 		default:
