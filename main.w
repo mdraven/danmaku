@@ -5792,7 +5792,7 @@ else if((AstSymbol*)car(p) == ast_implet) {
 	code[(*pos)++] = bc_decl;
 	code[(*pos)++] = (intptr_t)cadr(p);
 
-	if(cddr(p) != NULL) {
+	if(car(cddr(p)) != NULL) {
 		danmakufu_compile_to_bytecode_helper(car(cddr(p)), code, pos);
 
 		code[(*pos)++] = bc_lit;
@@ -5842,7 +5842,7 @@ last_break = old_last_break;
 Возврат из блока:
 @d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper cons @{
 else if((AstSymbol*)car(p) == ast_return) {
-	if(cdr(p) != NULL)
+	if(cadr(p) != NULL)
 		danmakufu_compile_to_bytecode_helper(cadr(p), code, pos);
 
 	code[(*pos)++] = bc_goto;
@@ -6002,18 +6002,16 @@ else if((AstSymbol*)car(p) == ast_if) {
 
 	code[for_end] = *pos;
 
-	if(cdr(cddr(p)) != NULL) {
+	if(cadr(cddr(p)) != NULL) {
 		code[(*pos)++] = bc_goto;
 		int for_else = *pos;
 		code[(*pos)++] = 0;
 
 		code[for_end] = *pos;
 
-		if(car(cddr(p)) != NULL) {
-			code[(*pos)++] = bc_scope_push;
-			danmakufu_compile_to_bytecode_helper(cadr(cddr(p)), code, pos);
-			code[(*pos)++] = bc_scope_pop;
-		}
+		code[(*pos)++] = bc_scope_push;
+		danmakufu_compile_to_bytecode_helper(cadr(cddr(p)), code, pos);
+		code[(*pos)++] = bc_scope_pop;
 
 		code[for_else] = *pos;
 	}
@@ -6053,7 +6051,7 @@ for_loop - метка для перехода когда число повтор
 @d danmakufu_bytecode.c loop - body @{
 @<danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper save last_break@>
 
-if(cddr(p) != NULL) {
+if(car(cddr(p)) != NULL) {
 	code[(*pos)++] = bc_scope_push;
 
 	danmakufu_compile_to_bytecode_helper(car(cddr(p)), code, pos);
@@ -6072,7 +6070,7 @@ code[(*pos)++] = for_repeat;
 
 @d danmakufu_bytecode.c loop - end @{
 @<danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper restore last_break@>
-if(cddr(p) != NULL)
+if(car(cddr(p)) != NULL)
 	code[(*pos)++] = bc_scope_pop;
 @}
 заполнение break'ов и дублирование закрытия скопа(так как первое мы перепрыгним);
@@ -6120,6 +6118,8 @@ else if((AstSymbol*)car(p) == ast_setq) {
 		fprintf(stderr, "\nsetq without args\n");
 		exit(1);
 	}
+
+	code[(*pos)++] = (intptr_t)car(cddr(p));
 
 	if(cadr(p)->type == ast_symbol) {
 		code[(*pos)++] = bc_lit;
@@ -6264,7 +6264,7 @@ else if((AstSymbol*)car(p) == ast_yield) {
 @d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper cons @{
 else if((AstSymbol*)car(p) == ast_block) {
 	code[(*pos)++] = bc_scope_push;
-	if(cdr(p) != NULL)
+	if(cadr(p) != NULL)
 		danmakufu_compile_to_bytecode_helper(cadr(p), code, pos);
 	code[(*pos)++] = bc_scope_pop;
 }
@@ -6381,7 +6381,7 @@ code[for_end_case] = *pos;
 
 Блок other:
 @d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper alternative @{
-if(cdr(cddr(p)) != NULL) {
+if(cadr(cddr(p)) != NULL) {
 	code[(*pos)++] = bc_scope_push;
 	danmakufu_compile_to_bytecode_helper(cadr(cddr(p)), code, pos);
 	code[(*pos)++] = bc_scope_pop;
@@ -6421,7 +6421,7 @@ else if((AstSymbol*)car(p) == ast_dog_name) {
 	int for_end_dog = *pos;
 	code[(*pos)++] = 0;
 
-	if(cddr(p) != NULL) {
+	if(car(cddr(p)) != NULL) {
 		code[(*pos)++] = bc_scope_push;
 		danmakufu_compile_to_bytecode_helper(car(cddr(p)), code, pos);
 		code[(*pos)++] = bc_scope_pop;
@@ -6504,7 +6504,7 @@ for_end_xcent - метка из цикла xcent
 Тело цикла:
 @d danmakufu_bytecode.c bytecode_xcent @{
 @<danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper save last_break@>
-if(cddr(cddr(p)) != NULL) {
+if(car(cddr(cddr(p))) != NULL) {
 	code[(*pos)++] = bc_scope_push;
 	danmakufu_compile_to_bytecode_helper(car(cddr(cddr(p))), code, pos);
 	code[(*pos)++] = bc_scope_pop;
@@ -6526,7 +6526,7 @@ code[(*pos)++] = for_begin;
 Обработка выхода по break:
 @d danmakufu_bytecode.c bytecode_xcent @{
 @<danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper restore last_break@>
-if(cddr(cddr(p)) != NULL)
+if(car(cddr(cddr(p))) != NULL)
 	code[(*pos)++] = bc_scope_pop;
 @}
 
