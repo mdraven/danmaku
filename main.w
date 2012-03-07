@@ -6126,13 +6126,13 @@ else if((AstSymbol*)car(p) == ast_setq) {
 		code[(*pos)++] = (intptr_t)cadr(p);
 		code[(*pos)++] = bc_setq;
 	} else if((AstSymbol*)car(cadr(p)) == ast_funcall) {
-		fprintf(stderr, "\nSETQ INDEX PROBLEM!!!\n");
-		exit(1);
+		code[(*pos)++] = (intptr_t)cadr(cddr(cadr(p)));
+		code[(*pos)++] = (intptr_t)car(cddr(cadr(p)));
+		code[(*pos)++] = (intptr_t)ast_add_symbol_to_tbl("index!");
 	}
 }
 @}
-FIXME: "SETQ INDEX PROBLEM" - если параметр для присваивания массив, то у нас есть проблемы.
-  Нужно дописать вызов "руками" index с параметрами(чтобы была возможность перекрытия)
+
 
 Оператор создания массива:
 @d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper cons @{
