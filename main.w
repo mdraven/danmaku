@@ -5656,7 +5656,7 @@ intptr_t *danmakufu_compile_to_bytecode(AstCons *cons);
 
 Максимальный размер буфера для байткода:
 @d danmakufu_bytecode.c structs @{
-#define DANMAKUFU_BYTECODE_MAXSIZE 65536
+#define DANMAKUFU_BYTECODE_MAXSIZE 120000
 @}
 
 
