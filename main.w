@@ -4615,10 +4615,15 @@ global_filename = &yytext[1];
 @o ast.h @{
 @<License@>
 
+#ifndef __AST_H_DANMAKU__
+#define __AST_H_DANMAKU__
+
 #include "dlist.h"
 
 @<ast.h structs@>
 @<ast.h prototypes@>
+
+#endif /* __AST_H_DANMAKU__ */
 @}
 
 
