@@ -6023,54 +6023,60 @@ else if((AstSymbol*)car(p) == ast_if) {
 Оператор цикла loop:
 @d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper cons @{
 else if((AstSymbol*)car(p) == ast_loop) {
-	if(cdr(p) == NULL || cadr(p) == NULL) {
-		fprintf(stderr, "\nloop without args\n");
-		exit(1);
+	if(cadr(p) != NULL)
+		danmakufu_compile_to_bytecode_helper(cadr(p), code, pos);
+
+	int for_repeat = *pos;
+
+	int for_loop;
+	if(cadr(p) != NULL) {
+		code[(*pos)++] = bc_repeat;
+
+		for_loop = *pos;
+		code[(*pos)++] = 0;
 	}
 
-	@<danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper loop@>
+	@<danmakufu_bytecode.c loop - body@>
+	@<danmakufu_bytecode.c loop - repeater@>
+	@<danmakufu_bytecode.c loop - end@>
+
+	if(cadr(p) != NULL)
+		code[for_loop] = *pos;
 }
 @}
-
-Число выполнений цикла:
-@d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper loop @{
-danmakufu_compile_to_bytecode_helper(cadr(p), code, pos);
-@}
-
-@d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper loop @{
-int for_repeat = *pos;
-code[(*pos)++] = bc_repeat;
-
-int for_loop = *pos;
-code[(*pos)++] = 0;
-@}
+Условие может отсутствовать, тогда ненужные части компилироваться не будут;
 for_repeat - метка куда будет делаться goto из конца цикла
 for_loop - метка для перехода когда число повторов станет 0
 
-@d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper loop @{
-code[(*pos)++] = bc_scope_push;
 
+Тело цикла:
+@d danmakufu_bytecode.c loop - body @{
 @<danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper save last_break@>
-danmakufu_compile_to_bytecode_helper(car(cddr(p)), code, pos);
 
-code[(*pos)++] = bc_scope_pop;
+if(cddr(p) != NULL) {
+	code[(*pos)++] = bc_scope_push;
+
+	danmakufu_compile_to_bytecode_helper(car(cddr(p)), code, pos);
+
+	code[(*pos)++] = bc_scope_pop;
+}
 @}
-создание и удаление скопа; сохранение метки для break; само тело цикла
+создание и удаление скопа; сохранение метки для break; само тело цикла;
+если тела нет, то ничего не компилируется
 
-@d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper loop @{
+@d danmakufu_bytecode.c loop - repeater @{
 code[(*pos)++] = bc_goto;
 code[(*pos)++] = for_repeat;
 @}
 прыжок в начало цикла
 
-@d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper loop @{
+@d danmakufu_bytecode.c loop - end @{
 @<danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper restore last_break@>
-code[(*pos)++] = bc_scope_pop;
-
-code[for_loop] = *pos;
+if(cddr(p) != NULL)
+	code[(*pos)++] = bc_scope_pop;
 @}
 заполнение break'ов и дублирование закрытия скопа(так как первое мы перепрыгним);
-заполнение метки для завершения цикла у repeat
+
 
 Оператор цикла while:
 @d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper cons @{
@@ -6158,23 +6164,30 @@ else if((AstSymbol*)car(p) == ast_task) {
 		exit(1);
 	}
 
-	@<danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper task@>
+	@<danmakufu_bytecode.c task - declare function@>
+	if(cadr(cddr(p)) != NULL) {
+		@<danmakufu_bytecode.c task - scope@>
+	}
+	@<danmakufu_bytecode.c task - generate return@>
 }
 @}
 
-@d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper task @{
+@d danmakufu_bytecode.c task - declare function @{
 code[(*pos)++] = bc_defun;
 code[(*pos)++] = (intptr_t)cadr(p);
 
 int for_goto = *pos;
 code[(*pos)++] = 0;
-
-@<danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper save last_return@>
-
-code[(*pos)++] = bc_scope_push;
 @}
 
-@d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper task @{
+@d danmakufu_bytecode.c task - scope @{
+code[(*pos)++] = bc_scope_push;
+@<danmakufu_bytecode.c task - generate parameters@>
+@<danmakufu_bytecode.c task - generate fork@>
+code[(*pos)++] = bc_scope_pop;
+@}
+
+@d danmakufu_bytecode.c task - generate parameters @{
 int reserv = 0;
 
 AstCons *s;
@@ -6190,7 +6203,7 @@ for(s = car(cddr(p)); s != NULL; s = cdr(s)) {
 }
 @}
 
-@d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper task @{
+@d danmakufu_bytecode.c task - generate parameters @{
 *pos += reserv;
 
 for(s = car(cddr(p)); s != NULL; s = cdr(s)) {
@@ -6214,22 +6227,27 @@ for(s = car(cddr(p)); s != NULL; s = cdr(s)) {
 @}
 
 bc_fork:
-@d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper task @{
+@d danmakufu_bytecode.c task - generate fork @{
 code[(*pos)++] = bc_fork;
 
 int for_fork = *pos;
 code[(*pos)++] = 0;
+
+@<danmakufu_bytecode.c task - generate body@>
+
+code[for_fork] = *pos - for_fork;
 @}
 первый процесс переходит в конец функции(там где закрытие скопа и прочее)
 
-@d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper task @{
+@d danmakufu_bytecode.c task - generate body @{
+@<danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper save last_return@>
+
 danmakufu_compile_to_bytecode_helper(cadr(cddr(p)), code, pos);
 
 @<danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper restore last_return@>
+@}
 
-code[for_fork] = *pos - for_fork;
-
-code[(*pos)++] = bc_scope_pop;
+@d danmakufu_bytecode.c task - generate return @{
 code[(*pos)++] = bc_ret;
 
 code[for_goto] = *pos;
@@ -6246,7 +6264,8 @@ else if((AstSymbol*)car(p) == ast_yield) {
 @d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper cons @{
 else if((AstSymbol*)car(p) == ast_block) {
 	code[(*pos)++] = bc_scope_push;
-	danmakufu_compile_to_bytecode_helper(cadr(p), code, pos);
+	if(cdr(p) != NULL)
+		danmakufu_compile_to_bytecode_helper(cadr(p), code, pos);
 	code[(*pos)++] = bc_scope_pop;
 }
 @}
@@ -6339,9 +6358,11 @@ while(last_goto_to_begin_case != 0) {
 
 Тело case вместе с объявлением скопа:
 @d danmakufu_bytecode.c alternative cases @{
-code[(*pos)++] = bc_scope_push;
-danmakufu_compile_to_bytecode_helper(cadr(cdar(s)), code, pos);
-code[(*pos)++] = bc_scope_pop;
+if(cadr(cdar(s)) != NULL) {
+	code[(*pos)++] = bc_scope_push;
+	danmakufu_compile_to_bytecode_helper(cadr(cdar(s)), code, pos);
+	code[(*pos)++] = bc_scope_pop;
+}
 @}
 
 Когда тело выполнится, то перейти за блок alternative:
