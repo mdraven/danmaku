@@ -5636,7 +5636,7 @@ bc_inc, bc_dec - инкрементировать, декрементирова�
 
 Компиляция в байткод:
 @d danmakufu_bytecode.c functions @{
-intptr_t *danmakufu_compile_to_bytecode(AstCons *cons) {
+intptr_t *danmakufu_compile_to_bytecode(AstCons *cons, int *size) {
 	intptr_t *code = malloc(sizeof(intptr_t)*DANMAKUFU_BYTECODE_MAXSIZE);
 	if(code == NULL) {
 		fprintf(stderr, "\nCan't allocate memory for bytecode\n");
@@ -5646,12 +5646,15 @@ intptr_t *danmakufu_compile_to_bytecode(AstCons *cons) {
 	int pos = 0;
 	danmakufu_compile_to_bytecode_helper(cons, code, &pos);
 
+	*size = pos;
+
 	return code;
 }
 @}
+через size возвращается размер байткода
 
 @d danmakufu_bytecode.h prototypes @{
-intptr_t *danmakufu_compile_to_bytecode(AstCons *cons);
+intptr_t *danmakufu_compile_to_bytecode(AstCons *cons, int *size);
 @}
 
 Максимальный размер буфера для байткода:
