@@ -4395,16 +4395,20 @@ static char *find_and_remove_quotes_in_macros(char *str, int len);
 static char *find_and_remove_quotes_in_macros(char *str, int len) {
 	int i, j;
 
-	@<find_and_remove_quotes_in_macros forward@>
-	@<find_and_remove_quotes_in_macros backward@>
+	@<find_and_remove_quotes_in_macros forward brackets@>
+	/* @<find_and_remove_quotes_in_macros forward quotation marks@> */
+	@<find_and_remove_quotes_in_macros backward brackets@>
+	/* @<find_and_remove_quotes_in_macros backward quotation marks@> */
 
 	str[j] = '\0';
 	return &str[i];
 }
 @}
+FIXME: что делать со строками вида [Taboo "Cross-Play"]? Убирать кавычки или нет? лучше пока
+  вообще не убирать нигде
 
 Ищем открывающую скобку:
-@d find_and_remove_quotes_in_macros forward @{
+@d find_and_remove_quotes_in_macros forward brackets @{
 for(i = 0; i < len-1; i++)
 	if(str[i] == '[') {
 		i++;
@@ -4416,7 +4420,7 @@ for(i = 0; i < len-1; i++)
   потому что len-1.
 
 Пропускаем пробелы и одну кавычку после них, если она есть:
-@d find_and_remove_quotes_in_macros forward @{
+@d find_and_remove_quotes_in_macros forward quotation marks @{
 for(; i < len-1; i++)
 	if(str[i] != ' ' && str[i] != '\t')
 		break;
@@ -4426,14 +4430,14 @@ if(str[i] == '\"')
 до len-1, так как там есть по крайней мере ']'
 
 Ищем закрывающую скобку:
-@d find_and_remove_quotes_in_macros backward @{
+@d find_and_remove_quotes_in_macros backward brackets @{
 for(j = len-1; j > i; j--)
 	if(str[j] == ']')
 		break;
 @}
 
 Пропускаем пробелы и одну кавычку перед ниими, если она есть:
-@d find_and_remove_quotes_in_macros backward @{
+@d find_and_remove_quotes_in_macros backward quotation marks @{
 if(j != i) {
 	for(j = j-1; j > i; j--)
 		if(str[j] != ' ' && str[j] != '\t')
