@@ -6601,7 +6601,7 @@ void danmakufu_print_bytecode(intptr_t *code, int size) {
 				i++;
 				printf("%s\n", ((AstSymbol*)code[i])->name);
 				i++;
-				printf("%ud\n", code[i]);
+				printf("%d\n", (int)code[i]);
 				break;
 			case bc_ret:
 				printf("bc_ret\n");
@@ -6609,27 +6609,27 @@ void danmakufu_print_bytecode(intptr_t *code, int size) {
 			case bc_goto:
 				printf("bc_goto\n");
 				i++;
-				printf("%ud\n", code[i]);
+				printf("%d\n", (int)code[i]);
 				break;
 			case bc_if:
 				printf("bc_if\n");
 				i++;
-				printf("%ud\n", code[i]);
+				printf("%d\n", (int)code[i]);
 				break;
 			case bc_repeat:
 				printf("bc_repeat\n");
 				i++;
-				printf("%ud\n", code[i]);
+				printf("%d\n", (int)code[i]);
 				break;
 			case bc_make_array:
 				printf("bc_make_array\n");
 				i++;
-				printf("%ud\n", code[i]);
+				printf("%d\n", (int)code[i]);
 				break;
 			case bc_fork:
 				printf("bc_fork\n");
 				i++;
-				printf("%ud\n", code[i]);
+				printf("%d\n", (int)code[i]);
 				break;
 			case bc_yield:
 				printf("bc_yield\n");
@@ -6649,7 +6649,7 @@ void danmakufu_print_bytecode(intptr_t *code, int size) {
 						((AstSymbol*)code[i])->type == ast_character)
 					printf("\"%s\"\n", ((AstString*)code[i])->str);
 				else
-					printf("%ud\n", code[i]);
+					printf("%d\n", (int)code[i]);
 		}
 	}
 }
