@@ -5658,7 +5658,7 @@ intptr_t *danmakufu_compile_to_bytecode(AstCons *cons);
 @d danmakufu_bytecode.c structs @{
 #define DANMAKUFU_BYTECODE_MAXSIZE 120000
 @}
-
+FIXME: переполнение буфера!
 
 @d danmakufu_bytecode.c prototypes @{
 static void danmakufu_compile_to_bytecode_helper(void *obj, intptr_t *code, int *pos);
