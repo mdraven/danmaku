@@ -283,7 +283,7 @@ int image_load(char *filename) {
 	}
 
 	strncpy(image_list[image_list_pos].filename, filename,
-			sizeof(image_list[image_list_pos].filename));
+			sizeof(image_list[image_list_pos].filename) - 1);
 
 	{
 		int bytes_per_pixel;
@@ -316,6 +316,8 @@ int image_load(char *filename) {
 }
 @}
 Как видно есть контроль переполнения буфера, где хранится имя файла.
+  strncpy(как и прочие strnXXX функции) -- дурацкая функция и ей надо передавать
+    размер_буфера - 1. Другим strnXXX нужно передавать и похуже вещи.
 То есть в структуре-стеке всегда валидное имя.
 Используется вспомогательная функция load_from_file, она загружает картинку по заданому пути.
 Функция image_load возвращает позицию в стеке, она служит дескриптором изображения.
