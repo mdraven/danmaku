@@ -930,10 +930,10 @@ if((AstSymbol*)car(cadr(p)) == ast_implet)
 
 code[(*pos)++] = bc_lit;
 
-if((AstSymbol*)car(cadr(p)) == ast_implet)
-    code[(*pos)++] = (intptr_t)cadr(cadr(p));
-else if(cadr(p)->type == ast_symbol)
+if(cadr(p)->type == ast_symbol)
     code[(*pos)++] = (intptr_t)cadr(p);
+else if((AstSymbol*)car(cadr(p)) == ast_implet)
+    code[(*pos)++] = (intptr_t)cadr(cadr(p));
 else {
     fprintf(stderr, "\nascent incorrect args\n");
     exit(1);
