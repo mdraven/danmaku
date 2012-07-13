@@ -3031,7 +3031,7 @@ case character_wriggle_nightbug:
 @o danmakufu_parser.h @{
 @<danmakufu_parser.h prototypes@>
 @}
-Header может генерировать и bison, но как-то там сложно с распизиванием
+Header может генерировать и bison, но как-то там сложно с распихиванием
   объектов, поэтому лучше так.
 
 @o danmakufu_parser.y @{
@@ -5608,7 +5608,7 @@ enum {
 	bc_dec,
 };
 @}
-bc_lit - положить на стек содержимое следующую ячейку
+bc_lit - положить на стек содержимое следующей ячейки
 bc_setq - принять со стека X и Y и положить в символ с адресом X Y
 bc_drop, bc_2drop - выкинуть элемент со стека
 bc_decl - отметить символ в текущем scope(bc_setq присваивает там
