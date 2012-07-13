@@ -8139,6 +8139,21 @@ void dlist_free(DList *el, DList **pool) {
 @{void dlist_free(DList *el, DList **pool);
 @}
 
+Проверяет, что это единственный элемент в списке:
+@d Dlist functions @{
+int dlist_once(const DList *el) {
+    if(el->next && el->prev)
+        return 1;
+
+    return 0;
+}
+@}
+если он один, то вернёт 1.
+
+@d Dlist public prototypes
+@{int dlist_once(DList *el);
+@}
+
 
 Охапка "волшебных" макросов.
 
@@ -8179,7 +8194,7 @@ X_end_pool_free - ссылка на последний элемент X_pool_fre
 static const int prefix##_init = init_num; \
 static const int prefix##_add = add_num;
 @}
-X_init - аллоцируется слотов в самом начале
+X_init - аллоцируется слотов в самом начале(для локальных списков не имеет значения)
 X_add - добавляется при нехватке
 
 Макрос для создания функции удаления элементов,
@@ -8247,6 +8262,54 @@ static struct_name *prefix##_get_free_cell(void) { \
     return prefix; \
 }
 @}
+
+
+Макросы для локальных списков:
+
+Макрос для создания функции удаления элементов,
+начало:
+@d Dlist public structs @{
+#define DLIST_LOCAL_FREE_FUNC(prefix, struct_name) \
+static void prefix##_free(struct_name *elm) { \
+    if(prefix##_pool_free == NULL) \
+        prefix##_end_pool_free = elm; \
+@}
+конец:
+@d Dlist public structs @{
+#define DLIST_LOCAL_END_FREE_FUNC(prefix, struct_name) \
+    dlist_free((DList*)elm, (DList**)(&prefix##_pool_free)); \
+}
+@}
+
+DLIST_POOL_FREE_TO_POOL_FUNC используется и для локальных списоков и для
+глобальных.
+
+Макрос для функции возвращающей свободный элемент:
+@d Dlist public structs @{
+#define DLIST_LOCAL_GET_FREE_CELL_FUNC(prefix, struct_name) \
+static struct_name *prefix##_get_free_cell(struct_name *elm) { \
+    if(prefix##_pool == NULL) { \
+        int k = prefix##_add; \
+        int i; \
+\
+        prefix##_pool = malloc(sizeof(struct_name)*k); \
+        if(prefix##_pool == NULL) { \
+            fprintf(stderr, "\nCan't allocate memory for "#prefix" pool\n"); \
+            exit(1); \
+        } \
+\
+        for(i = 0; i < k-1; i++) \
+            prefix##_pool[i].pool = &(prefix##_pool[i+1]); \
+        prefix##_pool[k-1].pool = NULL; \
+    } \
+\
+    elm = (struct_name*)dlist_alloc((DList*)elm, (DList**)(&prefix##_pool)); \
+\
+    return elm; \
+}
+@}
+
+
 
 =========================================================
 
