@@ -925,8 +925,12 @@ danmakufu_compile_to_bytecode_helper(car(cddr(p)), code, pos);
 int for_begin = *pos;
 code[(*pos)++] = bc_dup;
 
-if((AstSymbol*)car(cadr(p)) == ast_implet)
+if((AstSymbol*)car(cadr(p)) == ast_implet) {
     code[(*pos)++] = bc_scope_push;
+
+    code[(*pos)++] = bc_decl;
+    code[(*pos)++] = (intptr_t)cadr(cadr(p));
+}
 
 code[(*pos)++] = bc_lit;
 
