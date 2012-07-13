@@ -24,6 +24,9 @@ TODO: надо узнать, общее пространство имён(нап
 @o danmakufu.c @{
 @<License@>
 
+#include <stdlib.h>
+#include <stdio.h>
+
 #include "danmakufu.h"
 #include "danmakufu_bytecode.h"
 
