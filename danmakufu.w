@@ -86,7 +86,8 @@ typedef DanmakufuTask DanmakufuTask;
 @}
 next - указатель на следующую задачу
 ip - место выполнения процесса
-local - указатель на список локальных словарей задачи(определения могут перекрываться)
+local - указатель на список локальных словарей задачи(определения могут перекрываться);
+  используется в качестве скопа
 stack - указывает на элементы из ast(например: ast_string или ast_number)
 sp - позиция в стеке
 rstack - стек адресов возврата
@@ -114,19 +115,19 @@ DLIST_ALLOC_VARS(danmakufu_dicts, 1000, 100)
 по-идее должно совпадать с теми же параметрами для AstSymbol
 
 Функция для возвращения выделенных слотов обратно в пул:
-@d danmakufu.c structs @{
+@d danmakufu.c functions @{
 DLIST_FREE_FUNC(danmakufu_dicts, DanmakufuDict)
 DLIST_END_FREE_FUNC(danmakufu_dicts, DanmakufuDict)
 @}
 возможно сюда стоит вставить код освобождения содержимого ptr.
 
 Соединить danmakufu_dicts_pool_free с danmakufu_dicts_pool:
-@d danmakufu.c structs @{
+@d danmakufu.c functions @{
 DLIST_POOL_FREE_TO_POOL_FUNC(danmakufu_dicts, DanmakufuDict)
 @}
 
 danmakufu_dicts_get_free_cell - функция возвращающая свободный дескриптор:
-@d danmakufu.c structs @{
+@d danmakufu.c functions @{
 DLIST_GET_FREE_CELL_FUNC(danmakufu_dicts, DanmakufuDict)
 @}
 
