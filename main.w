@@ -8066,6 +8066,7 @@ pool - односвязный список в пуле свободных эле
     из списка при его обходе(не затирается указатель next).
 
 @d Dlist functions @{
+/*
 DList *dlist_create_pool(int num, size_t size) {
     DList *dl;
     int i;
@@ -8081,7 +8082,7 @@ DList *dlist_create_pool(int num, size_t size) {
     dl[num-1].pool = NULL;
 
     return dl;
-}
+}*/
 @}
 
 @d Dlist public prototypes @{
