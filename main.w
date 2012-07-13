@@ -8152,7 +8152,7 @@ int dlist_once(const DList *el) {
 если он один, то вернёт 1.
 
 @d Dlist public prototypes
-@{int dlist_once(DList *el);
+@{int dlist_once(const DList *el);
 @}
 
 
