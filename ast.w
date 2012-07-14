@@ -41,6 +41,7 @@ enum {
     ast_number,
     ast_string,
     ast_character,
+    ast_function
 };
 @}
 
@@ -502,6 +503,67 @@ static void clear_strings(void) {
 }
 @}
 
+
+Объект-функция danmakufu:
+@d ast.h structs @{
+DLIST_DEFSTRUCT(AstFunction)
+    int type;
+    int p;
+DLIST_ENDS(AstFunction)
+@}
+type - указывает тип, всегда равен ast_function.
+
+Список занятых function'ов, пулл свободных function'ов и удалённых function'ов:
+@d ast.c structs @{
+DLIST_SPECIAL_VARS(functions, AstFunction)
+@}
+
+Аллоцируется слотов в самом начале и добавляется при нехватке:
+@d ast.c structs @{
+DLIST_ALLOC_VARS(functions, 100, 10)
+@}
+
+Функция для возвращения выделенных слотов обратно в пул:
+@d ast.c functions @{
+DLIST_FREE_FUNC(functions, AstFunction)
+DLIST_END_FREE_FUNC(functions, AstFunction)
+@}
+
+Соединить functions_pool_free с functions_pool:
+@d ast.c functions @{
+DLIST_POOL_FREE_TO_POOL_FUNC(functions, AstFunction)
+@}
+
+functions_get_free_cell - функция возвращающая свободный дескриптор:
+@d ast.c functions @{
+DLIST_GET_FREE_CELL_FUNC(functions, AstFunction)
+@}
+
+Добавить functions в массив:
+@d ast.c functions @{
+AstFunction *ast_add_functions(int p) {
+    AstFunction *f = functions_get_free_cell();
+
+    f->type = ast_function;
+    f->p = p;
+
+    return f;
+}
+@}
+
+@d ast.h prototypes @{
+AstFunction *ast_add_functions(int p);
+@}
+
+Функция очистки массива function'ов:
+@d ast.c functions @{
+static void clear_functions(void) {
+    // XXXYYYZZZ
+}
+@}
+вызвать при выходе из игры
+
+
 Инициализация ast:
 @d ast.c functions @{
 void ast_init(void) {
@@ -544,6 +606,7 @@ void ast_clear(void) {
     clear_conses();
     clear_numbers();
     clear_strings();
+    clear_functions();
 }
 @}
 вызвать при выходе из игры(см. clear_symbols_tbl и clear_cons_array)
