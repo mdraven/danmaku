@@ -41,7 +41,8 @@ enum {
     ast_number,
     ast_string,
     ast_character,
-    ast_function
+    ast_function,
+    ast_array
 };
 @}
 
@@ -564,6 +565,76 @@ static void clear_functions(void) {
 вызвать при выходе из игры
 
 
+Объект-функция danmakufu:
+@d ast.h structs @{
+DLIST_DEFSTRUCT(AstArray)
+    int type;
+    void **arr;
+    int len;
+DLIST_ENDS(AstArray)
+@}
+type - указывает тип, всегда равен ast_array
+arr - массив AstXXX
+len - число элементов
+
+
+Список занятых array'ов, пулл свободных array'ов и удалённых array'ов:
+@d ast.c structs @{
+DLIST_SPECIAL_VARS(arrays, AstArray)
+@}
+
+Аллоцируется слотов в самом начале и добавляется при нехватке:
+@d ast.c structs @{
+DLIST_ALLOC_VARS(arrays, 10, 10)
+@}
+
+Функция для возвращения выделенных слотов обратно в пул:
+@d ast.c functions @{
+DLIST_FREE_FUNC(arrays, AstArray)
+DLIST_END_FREE_FUNC(arrays, AstArray)
+@}
+
+Соединить arrays_pool_free с arrays_pool:
+@d ast.c functions @{
+DLIST_POOL_FREE_TO_POOL_FUNC(arrays, AstArray)
+@}
+
+arrays_get_free_cell - функция возвращающая свободный дескриптор:
+@d ast.c functions @{
+DLIST_GET_FREE_CELL_FUNC(arrays, AstArray)
+@}
+
+Добавить arrays в массив:
+@d ast.c functions @{
+AstArray *ast_add_arrays(int len) {
+    AstArray *f = arrays_get_free_cell();
+
+    f->type = ast_array;
+    f->len = len;
+    f->arr = (void**)calloc(len, sizeof(void*));
+    if(f->arr == NULL) {
+        fprintf(stderr, "\ncalloc returned NULL\n");
+        exit(1);
+    }
+
+    return f;
+}
+@}
+под arr память выделяется, но заполнять нужно самому после вызова ast_add_arrays
+
+@d ast.h prototypes @{
+AstArray *ast_add_arrays(int len);
+@}
+
+Функция очистки массива array'ов:
+@d ast.c functions @{
+static void clear_arrays(void) {
+    // XXXYYYZZZ
+}
+@}
+вызвать при выходе из игры
+
+
 Инициализация ast:
 @d ast.c functions @{
 void ast_init(void) {
@@ -607,6 +678,7 @@ void ast_clear(void) {
     clear_numbers();
     clear_strings();
     clear_functions();
+    clear_arrays();
 }
 @}
 вызвать при выходе из игры(см. clear_symbols_tbl и clear_cons_array)
