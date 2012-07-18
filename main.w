@@ -7386,7 +7386,7 @@ void dlist_free(DList *el, DList **pool) {
 Проверяет, что это единственный элемент в списке:
 @d Dlist functions @{
 int dlist_once(const DList *el) {
-    if(el->next && el->prev)
+    if(el->next == NULL && el->prev == NULL)
         return 1;
 
     return 0;
