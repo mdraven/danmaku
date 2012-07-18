@@ -814,6 +814,61 @@ AstCons *ast_append(AstCons *cons, AstCons *to_back) {
 @}
 с той же целью, что и cdr() и car().
 
+Функция создания копии:
+@d ast.h prototypes @{
+void *ast_copy_obj(void *obj);
+@}
+
+@d ast.c functions @{
+void *ast_copy_obj(void *obj) {
+    switch(((AstCons*)obj)->type) {
+        case ast_cons: {
+            AstCons *p = obj;
+            void *car = p->car;
+            void *cdr = p->cdr;
+
+            if(car != NULL)
+                car = ast_copy_obj(car);
+            if(cdr != NULL)
+                cdr = ast_copy_obj(cdr);
+
+            return ast_add_cons(car, cdr);
+        }
+        case ast_symbol: {
+            return obj;
+        }
+        case ast_string: {
+            AstString *str = obj;
+            return ast_add_string(str->str);
+        }
+        case ast_character: {
+            AstString *chr = obj;
+            return ast_add_string(chr->str);
+        }
+        case ast_number: {
+            AstNumber *num = obj;
+            return ast_add_number(num->number);
+        }
+        case ast_function: {
+            AstFunction *func = obj;
+            return ast_add_functions(func->p);
+        }
+        case ast_array: {
+            AstArray *arr = obj;
+            AstArray *new = ast_add_arrays(arr->len);
+
+            int i;
+            for(i = 0; i < arr->len; i++)
+                new->arr[i] = ast_copy_obj(arr->arr[i]);
+        }
+        default:
+            fprintf(stderr, "\nast_copy_obj: unknown object\n");
+            exit(1);
+            break;
+    }
+}
+@}
+
 Функция печати, нужна для отладки:
 @d ast.h prototypes @{
 void ast_print(const AstCons *cons);
