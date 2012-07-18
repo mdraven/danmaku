@@ -881,9 +881,8 @@ void *ast_copy_obj(void *obj) {
 
             return ast_add_cons(car, cdr);
         }
-        case ast_symbol: {
+        case ast_symbol:
             return obj;
-        }
         case ast_string: {
             AstString *str = obj;
             return ast_add_string(str->str);
