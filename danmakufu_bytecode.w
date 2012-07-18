@@ -1018,6 +1018,7 @@ void danmakufu_print_bytecode(intptr_t *code, int size) {
     int i;
 
     for(i=0; i < size; i++) {
+        printf("%d) ", i);
         switch(code[i]) {
             case bc_lit:
                 printf("bc_lit\n");
