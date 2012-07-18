@@ -7385,18 +7385,27 @@ void dlist_free(DList *el, DList **pool) {
 
 Проверяет, что это единственный элемент в списке:
 @d Dlist functions @{
+/*
 int dlist_once(const DList *el) {
     if(el->next == NULL && el->prev == NULL)
         return 1;
 
     return 0;
-}
+}*/
 @}
 если он один, то вернёт 1.
 
 @d Dlist public prototypes
-@{int dlist_once(const DList *el);
+@{//int dlist_once(const DList *el);
 @}
+dlist_once был нужен, чтобы удалить все элементы в списке. Но вместо этого лучше использовать:
+        DList *p;
+        for(p = elm->next; p != NULL; p = elm->next)
+            xxx_free(p);
+        for(p = elm->prev; p != NULL; p = elm->prev)
+            xxx_free(p);
+        xxx_free(elm);
+где elm - это элемент с которого начинаем удалять
 
 
 Охапка "волшебных" макросов.
