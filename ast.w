@@ -681,6 +681,8 @@ AstCFunction *ast_add_cfunctions(AstCFunc func) {
 AstFunction *ast_add_functions(int p);
 @}
 
+Функция удаления и очистки AstCFunction не нужны
+
 
 Инициализация ast:
 @d ast.c functions @{
