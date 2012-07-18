@@ -42,6 +42,7 @@ enum {
     ast_string,
     ast_character,
     ast_function,
+    ast_cfunction,
     ast_array
 };
 @}
@@ -635,6 +636,52 @@ static void clear_arrays(void) {
 вызвать при выходе из игры
 
 
+AstCFunction -- костыль сделанный из-за лени. Стоит создавать такие объекты в compile-time
+и не мучится с созданием и удалением.
+
+Объект-функция на Си:
+@d ast.h structs @{
+typedef void(*AstCFunc)(void *param);
+
+DLIST_DEFSTRUCT(AstCFunction)
+    int type;
+    AstCFunc func;
+DLIST_ENDS(AstCFunction)
+@}
+
+
+Список занятых cfunction'ов, пулл свободных cfunction'ов и удалённых cfunction'ов:
+@d ast.c structs @{
+DLIST_SPECIAL_VARS(cfunctions, AstCFunction)
+@}
+
+Аллоцируется слотов в самом начале и добавляется при нехватке:
+@d ast.c structs @{
+DLIST_ALLOC_VARS(cfunctions, 100, 10)
+@}
+
+cfunctions_get_free_cell - функция возвращающая свободный дескриптор:
+@d ast.c functions @{
+DLIST_GET_FREE_CELL_FUNC(cfunctions, AstCFunction)
+@}
+
+Добавить cfunctions в массив:
+@d ast.c functions @{
+AstCFunction *ast_add_cfunctions(AstCFunc func) {
+    AstCFunction *f = cfunctions_get_free_cell();
+
+    f->type = ast_cfunction;
+    f->func = func;
+
+    return f;
+}
+@}
+
+@d ast.h prototypes @{
+AstFunction *ast_add_functions(int p);
+@}
+
+
 Инициализация ast:
 @d ast.c functions @{
 void ast_init(void) {
@@ -853,6 +900,8 @@ void *ast_copy_obj(void *obj) {
             AstFunction *func = obj;
             return ast_add_functions(func->p);
         }
+        case ast_cfunction:
+            return obj;
         case ast_array: {
             AstArray *arr = obj;
             AstArray *new = ast_add_arrays(arr->len);
