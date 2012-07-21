@@ -590,6 +590,7 @@ else if((AstSymbol*)car(p) == ast_setq) {
         code[(*pos)++] = bc_setq;
     } else if((AstSymbol*)car(cadr(p)) == ast_funcall) {
         code[(*pos)++] = (intptr_t)cadr(cddr(cadr(p)));
+        code[(*pos)++] = bc_lit;
         code[(*pos)++] = (intptr_t)car(cddr(cadr(p)));
         code[(*pos)++] = (intptr_t)ast_add_symbol_to_tbl("index!");
     }
