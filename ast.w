@@ -674,7 +674,7 @@ AstCFunction *ast_add_cfunctions(AstCFunc func) {
 @}
 
 @d ast.h prototypes @{
-AstFunction *ast_add_functions(int p);
+AstCFunction *ast_add_cfunctions(AstCFunc func);
 @}
 
 Функция удаления и очистки AstCFunction не нужны
