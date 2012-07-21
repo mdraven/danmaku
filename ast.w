@@ -351,10 +351,6 @@ NULL - если не найден.
 AstNumber *ast_add_number(double num) {
     AstNumber *number;
 
-    number = find_number(num);
-    if(number != NULL)
-        return number;
-
     number = numbers_get_free_cell();
 
     number->type = ast_number;
