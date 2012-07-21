@@ -849,18 +849,18 @@ if(cadr(cddr(p)) != NULL) {
     code[(*pos)++] = bc_scope_push;
     danmakufu_compile_to_bytecode_helper(cadr(cddr(p)), code, pos);
     code[(*pos)++] = bc_scope_pop;
-
-    code[(*pos)++] = bc_goto;
-    code[(*pos)++] = last_end;
-    last_end = *pos - 1;
 }
+
+code[(*pos)++] = bc_goto;
+code[(*pos)++] = last_end;
+last_end = *pos - 1;
 @}
 если он присутствует, то он расположен как раз по-значению в code[for_end_case],
   те последний case передаст управление на other, если последний из его тестов
   будет отрицательным.
+надо, чтобы перепрыгивало через блок для break в последнем case(если есть
+  other, то это он последний case)
 
-Other тоже нужен goto в конце, так как после него идёт специальный блок,
-  который нужно перепрыгнуть в случае нормального завершения:
 @d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper alternative @{
 @<danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper restore last_break@>
 code[(*pos)++] = bc_scope_pop;
@@ -875,6 +875,12 @@ while(last_end != 0) {
     last_end = i;
 }
 @}
+
+Выкидываем элемент полученный bc_dup:
+@d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper alternative @{
+code[(*pos)++] = bc_drop;
+@}
+если case вообще нет, то надо выкинуть условие alternative
 
 Различные @BlaBla {}
 @d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper cons @{
