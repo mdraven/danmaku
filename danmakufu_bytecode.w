@@ -582,7 +582,7 @@ else if((AstSymbol*)car(p) == ast_setq) {
         exit(1);
     }
 
-    code[(*pos)++] = (intptr_t)car(cddr(p));
+    danmakufu_compile_to_bytecode_helper(car(cddr(p)), code, pos);
 
     if(cadr(p)->type == ast_symbol) {
         code[(*pos)++] = bc_lit;
