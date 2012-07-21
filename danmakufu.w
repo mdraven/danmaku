@@ -270,7 +270,7 @@ next - указатель на следующую задачу
 ip - место выполнения процесса
 local - указатель на список локальных словарей задачи(определения могут перекрываться);
   используется в качестве скопа
-stack - указывает на элементы из ast(например: ast_string или ast_number).
+stack - указывает на элементы из ast(например: ast_array или ast_number).
   Его можно сделать циклическим. Это позволит не заботится о функциях, которые что-то возвращают,
   и не дропать стек. Другой вариант(более эффективный): во время генерации байткода заполнять стек
   и использовать команду bc_stack. Те эмулировать регистры.
@@ -764,7 +764,6 @@ static int danmakufu_eval_last_task(DanmakufuMachine *machine) {
             t->ip = ((AstFunction*)obj)->p;
         }
         else if(type == ast_number ||
-                type == ast_string ||
                 type == ast_character ||
                 type == ast_array)
             danmakufu_stack_push(t, ast_copy_obj(obj));
@@ -1133,24 +1132,17 @@ static void v2_concatenate(void *arg) {
     DanmakufuMachine *machine = arg;
     DanmakufuTask *cur = machine->last_task;
 
-    AstString *X = danmakufu_stack_pop(cur);
-    AstString *Y = danmakufu_stack_pop(cur);
+    AstArray *X = danmakufu_stack_pop(cur);
+    AstArray *Y = danmakufu_stack_pop(cur);
 
-    if(X->type == ast_string && Y->type == ast_string) {
-        int szY = strlen(Y->str);
-        int szX = strlen(X->str);
-
-        Y->str = (char*)realloc(Y->str, szX + szY + 1);
-        strncat(Y->str, X->str, szX);
-        Y->str[szX + szY] = '\0';
-    } else if(X->type == ast_array && Y->type == ast_array) {
-        Y->arr = (void**)realloc(Y->arr, (X->len + Y->len)*sizeof(void*));
-        memcpy(&(Y->arr[Y->len]), X->arr, (X->len + Y->len)*sizeof(void*));
-        Y->len = X->len + Y->len;
-    } else {
+    if(X->type != ast_array || Y->type != ast_array) {
         fprintf(stderr, "\nv2_concatenate: incorrect type\n");
         exit(1);
     }
+
+    Y->arr = (void**)realloc(Y->arr, (X->len + Y->len)*sizeof(void*));
+    memcpy(&(Y->arr[Y->len]), X->arr, X->len*sizeof(void*));
+    Y->len = X->len + Y->len;
 
     danmakufu_stack_push(cur, Y);
 }

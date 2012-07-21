@@ -4308,8 +4308,8 @@ DIGIT               [0-9]
 @}
 
 @d danmakufu_lexer.lex vocabulary @{
-{STRING}            { yylval = ast_add_string(remove_quotes(yytext, yyleng)); return STRING; }
-{CHARACTER}         { yylval = ast_add_string(remove_quotes(yytext, yyleng)); return CHARACTER; }
+{STRING}            { yylval = ast_latin_string(remove_quotes(yytext, yyleng)); return STRING; }
+{CHARACTER}         { yylval = ast_latin_string(remove_quotes(yytext, yyleng)); return CHARACTER; }
 @}
 
 @d danmakufu_lexer.lex Lex defines @{
@@ -4382,7 +4382,7 @@ IN_BRACKETS         \[[^\]]*\]
 
 Достанем текст из квадратных скобок и вернём объект "строка":
 @d danmakufu_lexer.lex vocabulary to-string @{
-yylval = ast_add_string(find_and_remove_quotes_in_macros(yytext, yyleng));
+yylval = ast_latin_string(find_and_remove_quotes_in_macros(yytext, yyleng));
 @}
 
 

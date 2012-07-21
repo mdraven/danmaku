@@ -137,13 +137,13 @@ static void danmakufu_compile_to_bytecode_helper(void *obj, intptr_t *code, int 
             code[(*pos)++] = (intptr_t)symb;
             break;
         }
-        case ast_string: {
-            AstString *str = obj;
-            code[(*pos)++] = (intptr_t)str;
+        case ast_array: {
+            AstArray *arr = obj;
+            code[(*pos)++] = (intptr_t)arr;
             break;
         }
         case ast_character: {
-            AstString *chr = obj;
+            AstCharacter *chr = obj;
             code[(*pos)++] = (intptr_t)chr;
             break;
         }
@@ -1100,9 +1100,9 @@ void danmakufu_print_bytecode(intptr_t *code, int size) {
                     printf("%s\n", ((AstSymbol*)code[i])->name);
                 else if(((AstSymbol*)code[i])->type == ast_number)
                     printf("%f\n", ((AstNumber*)code[i])->number);
-                else if(((AstSymbol*)code[i])->type == ast_string ||
+                else if(((AstSymbol*)code[i])->type == ast_array ||
                         ((AstSymbol*)code[i])->type == ast_character)
-                    printf("\"%s\"\n", ((AstString*)code[i])->str);
+                    ast_print((void*)code[i]), printf("\n");
                 else
                     printf("%d\n", (int)code[i]);
         }

@@ -39,7 +39,6 @@ enum {
     ast_symbol,
     ast_cons,
     ast_number,
-    ast_string,
     ast_character,
     ast_function,
     ast_cfunction,
@@ -371,132 +370,117 @@ static void clear_numbers(void) {
 }
 @}
 
-Строка:
+Буква:
 @d ast.h structs @{
-struct AstString {
-    struct AstString *prev;
-    struct AstString *next;
-    struct AstString *pool;
+struct AstCharacter {
+    struct AstCharacter *prev;
+    struct AstCharacter *next;
+    struct AstCharacter *pool;
     int type;
-    char *str;
+    char *bytes;
     unsigned int len;
 };
 
-typedef struct AstString AstString;
+typedef struct AstCharacter AstCharacter;
 @}
-type == ast_string или ast_character
-len - число байтов
+type == ast_character
+len - число байтов в букве
 
-Список строк:
+Список букв:
 @d ast.c structs @{
-static AstString *strings;
+static AstCharacter *characters;
 @}
 
-Пулл строк и удалённых строк:
+Пулл строк и удалённых букв:
 @d ast.c structs @{
-static AstString *strings_pool;
+static AstCharacter *characters_pool;
 
-static AstString *strings_pool_free;
-static AstString *strings_end_pool_free;
+static AstCharacter *characters_pool_free;
+static AstCharacter *characters_end_pool_free;
 @}
-strings_end_pool_free - ссылка на последний элемент strings_pool_free
+characters_end_pool_free - ссылка на последний элемент characters_pool_free
 
-STRING_ALLOC - аллоцируется слотов в самом начале
-STRING_ADD - добавляется при нехватке
+CHARACTER_ALLOC - аллоцируется слотов в самом начале
+CHARACTER_ADD - добавляется при нехватке
 @d ast.c structs @{
-#define STRING_ALLOC 300
-#define STRING_ADD 50
+#define CHARACTER_ALLOC 300
+#define CHARACTER_ADD 50
 @}
 
 Функция для возвращения выделенных слотов обратно в пул:
 @d ast.c functions @{
-DLIST_FREE_FUNC(strings, AstString)
-    free(elm->str);
-    elm->str = NULL;
-DLIST_END_FREE_FUNC(strings, AstString)
+DLIST_FREE_FUNC(characters, AstCharacter)
+    free(elm->bytes);
+    elm->bytes = NULL;
+DLIST_END_FREE_FUNC(characters, AstCharacter)
 @}
 
-Соединить strings_pool_free с strings_pool:
+Соединить characters_pool_free с characters_pool:
 @d ast.c functions @{
-static void strings_pool_free_to_pool(void) {
-    if(strings_end_pool_free == NULL)
+static void characters_pool_free_to_pool(void) {
+    if(characters_end_pool_free == NULL)
         return;
 
-    strings_end_pool_free->pool = strings_pool;
-    strings_pool = strings_pool_free;
+    characters_end_pool_free->pool = characters_pool;
+    characters_pool = characters_pool_free;
 
-    strings_pool_free = NULL;
-    strings_end_pool_free = NULL;
+    characters_pool_free = NULL;
+    characters_end_pool_free = NULL;
 }
 @}
 
-strings_get_free_cell - функция возвращающая свободный дескриптор:
+characters_get_free_cell - функция возвращающая свободный дескриптор:
 @d ast.c functions @{
-static AstString *strings_get_free_cell(void) {
-    if(strings_pool == NULL) {
-        int k = (strings == NULL) ? STRING_ALLOC : STRING_ADD;
+static AstCharacter *characters_get_free_cell(void) {
+    if(characters_pool == NULL) {
+        int k = (characters == NULL) ? CHARACTER_ALLOC : CHARACTER_ADD;
         int i;
 
-        strings_pool = malloc(sizeof(AstString)*k);
-        if(strings_pool == NULL) {
-            fprintf(stderr, "\nCan't allocate memory for strings' pool\n");
+        characters_pool = malloc(sizeof(AstCharacter)*k);
+        if(characters_pool == NULL) {
+            fprintf(stderr, "\nCan't allocate memory for characters' pool\n");
             exit(1);
         }
 
         for(i = 0; i < k-1; i++)
-            strings_pool[i].pool = &(strings_pool[i+1]);
-        strings_pool[k-1].pool = NULL;
+            characters_pool[i].pool = &(characters_pool[i+1]);
+        characters_pool[k-1].pool = NULL;
     }
 
-    strings = (AstString*)dlist_alloc((DList*)strings, (DList**)(&strings_pool));
+    characters = (AstCharacter*)dlist_alloc((DList*)characters, (DList**)(&characters_pool));
 
-    return strings;
+    return characters;
 }
 @}
 
 
-Добавить строку в таблицу:
+Добавить букву в таблицу:
 @d ast.c functions @{
-AstString *ast_add_string(const char *str) {
-    AstString *string = strings_get_free_cell();
+AstCharacter *ast_add_character(const char *bytes, int len) {
+    AstCharacter *character = characters_get_free_cell();
 
-    string->type = ast_string;
+    character->type = ast_character;
 
-    string->len = strlen(str);
+    character->len = len;
 
-    string->str = malloc((string->len + 1)*sizeof(char));
-    if(string->str == NULL) {
-        fprintf(stderr, "\nCan't allocate memory for symbols' pool\n");
+    character->bytes = malloc(character->len*sizeof(char));
+    if(character->bytes == NULL) {
+        fprintf(stderr, "\nCan't allocate memory for characters' pool\n");
         exit(1);
     }
 
-    strcpy(string->str, str);
+    memcpy(character->bytes, bytes, len*sizeof(char));
 
-    return string;
+    return character;
 }
 @}
 
 @d ast.h prototypes @{
-AstString *ast_add_string(const char *str);
+AstCharacter *ast_add_character(const char *bytes, int len);
 @}
 
-Добавить символ в таблицу:
 @d ast.c functions @{
-AstString *ast_add_character(const char *str) {
-    AstString *string = ast_add_string(str);
-    string->type = ast_character;
-
-    return string;
-}
-@}
-
-@d ast.h prototypes @{
-AstString *ast_add_character(const char *str);
-@}
-
-Функция очистки:
-@d ast.c functions @{
-static void clear_strings(void) {
+static void clear_characters(void) {
     // BLA-BLA
 }
 @}
@@ -721,7 +705,6 @@ void ast_clear(void) {
     clear_symbols();
     clear_conses();
     clear_numbers();
-    clear_strings();
     clear_functions();
     clear_arrays();
 }
@@ -866,7 +849,9 @@ void *ast_copy_obj(void *obj);
 
 @d ast.c functions @{
 void *ast_copy_obj(void *obj) {
-    switch(((AstCons*)obj)->type) {
+    int type = ((AstCons*)obj)->type;
+
+    switch(type) {
         case ast_cons: {
             AstCons *p = obj;
             void *car = p->car;
@@ -881,13 +866,9 @@ void *ast_copy_obj(void *obj) {
         }
         case ast_symbol:
             return obj;
-        case ast_string: {
-            AstString *str = obj;
-            return ast_add_string(str->str);
-        }
         case ast_character: {
-            AstString *chr = obj;
-            return ast_add_string(chr->str);
+            AstCharacter *chr = obj;
+            return ast_add_character(chr->bytes, chr->len);
         }
         case ast_number: {
             AstNumber *num = obj;
@@ -906,11 +887,13 @@ void *ast_copy_obj(void *obj) {
             int i;
             for(i = 0; i < arr->len; i++)
                 new->arr[i] = ast_copy_obj(arr->arr[i]);
+
+            return new;
         }
-        default:
-            fprintf(stderr, "\nast_copy_obj: unknown object\n");
+        default: {
+            fprintf(stderr, "\nast_copy_obj: unknown object %d\n", type);
             exit(1);
-            break;
+        }
     }
 }
 @}
@@ -975,14 +958,25 @@ static void ast_print_helper(const void *obj, int shift, int skip_first_shift) {
             printf("%s", symb->name);
             break;
         }
-        case ast_string: {
-            const AstString *str = obj;
-            printf("\"%s\"", str->str);
+        case ast_array: {
+            const AstArray *arr = obj;
+            printf("[");
+            int i;
+            if(arr->len > 0)
+                ast_print_helper(arr->arr[0], 0, 0);
+            for(i = 1; i < arr->len; i++) {
+                printf(", ");
+                ast_print_helper(arr->arr[i], 0, 0);
+            }
+            printf("]");
             break;
         }
         case ast_character: {
-            const AstString *chr = obj;
-            printf("'%s'", chr->str);
+            const AstCharacter *chr = obj;
+            if(chr->len == 1)
+                printf("%c", chr->bytes[0]);
+            else
+                printf("<UNK>");
             break;
         }
         case ast_number: {
@@ -995,5 +989,22 @@ static void ast_print_helper(const void *obj, int shift, int skip_first_shift) {
             exit(1);
             break;
     }
+}
+@}
+
+@d ast.h prototypes @{
+AstArray *ast_latin_string(const char *str);@}
+
+@d ast.c functions @{
+AstArray *ast_latin_string(const char *str) {
+    int len = strlen(str);
+
+    AstArray *string = ast_add_arrays(len);
+
+    int i;
+    for(i = 0; i < len; i++)
+        string->arr[i] = ast_add_character(&str[i], 1);
+
+    return string;
 }
 @}
