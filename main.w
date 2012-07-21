@@ -4267,6 +4267,8 @@ script_event        { yylval=ast_add_symbol_to_tbl(yytext); return SCRIPT_CHILD;
 ==                  return EQUAL_OP;
 !=                  return NOT_EQUAL_OP;
 
+\|                  return '|';
+
 false               { yylval = ast_false; return NUM; }
 true                { yylval = ast_true; return NUM; }
 pi                  { yylval = ast_pi; return NUM; }
