@@ -926,15 +926,15 @@ danmakufu_compile_to_bytecode_helper(car(cddr(p)), code, pos);
 
 Сохранить в переменной:
 @d danmakufu_bytecode.c bytecode_xcent @{
-int for_begin = *pos;
-code[(*pos)++] = bc_dup;
-
 if((AstSymbol*)car(cadr(p)) == ast_implet) {
     code[(*pos)++] = bc_scope_push;
 
     code[(*pos)++] = bc_decl;
     code[(*pos)++] = (intptr_t)cadr(cadr(p));
 }
+
+int for_begin = *pos;
+code[(*pos)++] = bc_dup;
 
 code[(*pos)++] = bc_lit;
 
