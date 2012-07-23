@@ -3743,6 +3743,8 @@ indexing         : array '[' ret_expr ']'                         { @<danmakufu_
                  | array '[' ret_expr DOUBLE_DOT ret_expr ']'     { @<danmakufu_parser.y grammar slice@> }
                  | SYMB '[' ret_expr ']'                          { @<danmakufu_parser.y grammar index@> }
                  | SYMB '[' ret_expr DOUBLE_DOT ret_expr ']'      { @<danmakufu_parser.y grammar slice@> }
+                 | STRING '[' ret_expr ']'                        { @<danmakufu_parser.y grammar index@> }
+                 | STRING '[' ret_expr DOUBLE_DOT ret_expr ']'    { @<danmakufu_parser.y grammar slice@> }
                  | call_func '[' ret_expr ']'                     { @<danmakufu_parser.y grammar index@> }
                  | call_func '[' ret_expr DOUBLE_DOT ret_expr ']' { @<danmakufu_parser.y grammar slice@> }
                  | indexing '[' ret_expr ']'                      { @<danmakufu_parser.y grammar index@> }
