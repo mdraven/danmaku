@@ -210,17 +210,23 @@ TODO: ещё нет проверки на то, что символ уже оп�
 
 @d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper cons @{
 else if((AstSymbol*)car(p) == ast_defscriptmain) {
-    // cadr(p) contains type of scriptmain
     if(cdr(p) == NULL || cddr(p) == NULL) {
         fprintf(stderr, "\ndefscriptmain without args\n");
         exit(1);
     }
+
+    // cadr(p) contains type of scriptmain
+    code[(*pos)++] = bc_lit;
+    code[(*pos)++] = (intptr_t)cadr(p);
+    code[(*pos)++] = bc_lit;
+    code[(*pos)++] = (intptr_t)ast_add_symbol_to_tbl("@script_type");
+    code[(*pos)++] = bc_setq;
+
     // code[(*pos)++] = bc_scope_push;
     danmakufu_compile_to_bytecode_helper(car(cddr(p)), code, pos);
     // code[(*pos)++] = bc_scope_pop;
 }
 @}
-не учитываем тип скрипта, так как я не знаю зачем он :(
 FIXME: зачем я тут созадаю скоп? из-за этого @blabla не попадают в глобальный скоп.
   Возможно скоп и нужен, но именованный, а ещё лучше просто создавать новую машину
 
