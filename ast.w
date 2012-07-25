@@ -1008,3 +1008,32 @@ AstArray *ast_latin_string(const char *str) {
     return string;
 }
 @}
+
+@d ast.h prototypes @{
+char *ast_char_from_array(AstArray *str);@}
+
+
+@d ast.c functions @{
+#define AST_CHAR_FROM_ARRAY_SZ 200
+
+char *ast_char_from_array(AstArray *str) {
+    static char buf[AST_CHAR_FROM_ARRAY_SZ];
+
+    if(AST_CHAR_FROM_ARRAY_SZ-1 < str->len) {
+        fprintf(stderr, "\nast_char_from_array: buffer overflow\n");
+        exit(1);
+    }
+
+    int i;
+    for(i = 0; i < str->len; i++) {
+        AstCharacter *chr = str->arr[i];
+        if(chr->len != 1) {
+            fprintf(stderr, "\nast_char_from_array: multibyte\n");
+            exit(1);
+        }
+        buf[i] = chr->bytes[0];
+    }
+
+    return buf;
+}
+@}
