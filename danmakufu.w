@@ -417,6 +417,9 @@ DanmakufuMachine *danmakufu_load_file(char *filename, void *script_object) {
     machine->type = danmakufu_bytecode;
     machine->code = danmakufu_compile_to_bytecode(cons, &machine->code_size);
 
+    ast_free_recursive_conses(cons);
+    cons = NULL;
+
     machine->tasks = NULL;
     machine->last_task = NULL;
 
