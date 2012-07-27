@@ -30,6 +30,8 @@
 
 @<ast.c structs@>
 @<ast.c prototypes@>
+@<ast.c dlist free functions@>
+@<ast.c dlist pool free to pool functions@>
 @<ast.c functions@>
 @}
 
@@ -44,6 +46,27 @@ enum {
     ast_cfunction,
     ast_array
 };
+@}
+
+@d ast.h prototypes @{
+void ast_free_exclude_symbol_and_cons(void *obj);
+@}
+
+Функция подобная ast_copy_obj, но не удаляет консы и не следует по консам:
+@d ast.c functions @{
+void ast_free_exclude_symbol_and_cons(void *obj) {
+    if(obj == NULL)
+        return;
+
+    int type = ((AstSymbol*)obj)->type;
+
+    switch(type) {
+    @<ast_free_exclude_symbol_and_cons cases@>
+    default:
+        fprintf(stderr, "\nast_free_exclude_symbol_and_cons: Undefined ast type\n");
+        exit(1);
+    }
+}
 @}
 
 Символ danmakufu:
@@ -84,7 +107,7 @@ SYMBOL_ADD - добавляется при нехватке
 @}
 
 Функция для возвращения выделенных слотов обратно в пул:
-@d ast.c functions @{
+@d ast.c dlist free functions @{
 static void symbols_free(AstSymbol *symbol) {
     if(symbol == symbols)
         symbols = symbols->next;
@@ -95,6 +118,12 @@ static void symbols_free(AstSymbol *symbol) {
     dlist_free((DList*)symbol, (DList**)(&symbols_pool_free));
 }
 @}
+
+@d ast_free_exclude_symbol_and_cons cases @{
+case ast_symbol:
+    break;
+@}
+символы и консы не удаляются этой функцией
 
 Соединить symbols_pool_free с symbols_pool:
 @d ast.c functions @{
@@ -203,10 +232,17 @@ DLIST_ALLOC_VARS(conses, 10000, 1000)
 @}
 
 Функция для возвращения выделенных слотов обратно в пул:
-@d ast.c functions @{
+@d ast.c dlist free functions @{
 DLIST_FREE_FUNC(conses, AstCons)
 DLIST_END_FREE_FUNC(conses, AstCons)
 @}
+не удаляет car и cdr, так как иногда надо сохранить то, что там лежит
+
+@d ast_free_exclude_symbol_and_cons cases @{
+case ast_cons:
+    break;
+@}
+символы и консы не удаляются этой функцией
 
 Соединить conses_pool_free с conses_pool:
 @d ast.c functions @{
@@ -280,7 +316,7 @@ NUMBER_ADD - добавляется при нехватке
 @}
 
 Функция для возвращения выделенных слотов обратно в пул:
-@d ast.c functions @{
+@d ast.c dlist free functions @{
 static void numbers_free(AstNumber *number) {
     if(number == numbers)
         numbers = numbers->next;
@@ -292,8 +328,15 @@ static void numbers_free(AstNumber *number) {
 }
 @}
 
+@d ast_free_exclude_symbol_and_cons cases @{
+case ast_number:
+    numbers_free((AstNumber*)obj);
+    numbers_pool_free_to_pool();
+    break;
+@}
+
 Соединить numbers_pool_free с numbers_pool:
-@d ast.c functions @{
+@d ast.c dlist pool free to pool functions @{
 static void numbers_pool_free_to_pool(void) {
     if(numbers_end_pool_free == NULL)
         return;
@@ -408,15 +451,23 @@ CHARACTER_ADD - добавляется при нехватке
 @}
 
 Функция для возвращения выделенных слотов обратно в пул:
-@d ast.c functions @{
+@d ast.c dlist free functions @{
 DLIST_FREE_FUNC(characters, AstCharacter)
     free(elm->bytes);
     elm->bytes = NULL;
+    elm->len = 0;
 DLIST_END_FREE_FUNC(characters, AstCharacter)
 @}
 
+@d ast_free_exclude_symbol_and_cons cases @{
+case ast_character:
+    characters_free((AstCharacter*)obj);
+    characters_pool_free_to_pool();
+    break;
+@}
+
 Соединить characters_pool_free с characters_pool:
-@d ast.c functions @{
+@d ast.c dlist pool free to pool functions @{
 static void characters_pool_free_to_pool(void) {
     if(characters_end_pool_free == NULL)
         return;
@@ -506,13 +557,20 @@ DLIST_ALLOC_VARS(functions, 100, 10)
 @}
 
 Функция для возвращения выделенных слотов обратно в пул:
-@d ast.c functions @{
+@d ast.c dlist free functions @{
 DLIST_FREE_FUNC(functions, AstFunction)
 DLIST_END_FREE_FUNC(functions, AstFunction)
 @}
 
+@d ast_free_exclude_symbol_and_cons cases @{
+case ast_function:
+    functions_free((AstFunction*)obj);
+    functions_pool_free_to_pool();
+    break;
+@}
+
 Соединить functions_pool_free с functions_pool:
-@d ast.c functions @{
+@d ast.c dlist pool free to pool functions @{
 DLIST_POOL_FREE_TO_POOL_FUNC(functions, AstFunction)
 @}
 
@@ -570,13 +628,34 @@ DLIST_ALLOC_VARS(arrays, 10, 10)
 @}
 
 Функция для возвращения выделенных слотов обратно в пул:
-@d ast.c functions @{
+@d ast.c dlist free functions @{
 DLIST_FREE_FUNC(arrays, AstArray)
+    free(elm->arr);
+    elm->arr = NULL;
+    elm->len = 0;
 DLIST_END_FREE_FUNC(arrays, AstArray)
 @}
+не удаляет содержимое arr, так как она туда сама(ast_array) ничего не пишет
+
+@d ast_free_exclude_symbol_and_cons cases @{
+case ast_array: {
+    AstArray *arr = obj;
+
+    int i;
+    if(arr->arr != NULL)
+        for(i = 0; i < arr->len; i++)
+            ast_free_exclude_symbol_and_cons(arr->arr[i]);
+
+    arrays_free(arr);
+
+    arrays_pool_free_to_pool();
+    break;
+}
+@}
+удаляет содержимое массивов, так как ast_copy_obj их копирует
 
 Соединить arrays_pool_free с arrays_pool:
-@d ast.c functions @{
+@d ast.c dlist pool free to pool functions @{
 DLIST_POOL_FREE_TO_POOL_FUNC(arrays, AstArray)
 @}
 
@@ -640,6 +719,24 @@ DLIST_SPECIAL_VARS(cfunctions, AstCFunction)
 DLIST_ALLOC_VARS(cfunctions, 100, 10)
 @}
 
+Функция для возвращения выделенных слотов обратно в пул:
+@d ast.c dlist free functions @{
+DLIST_FREE_FUNC(cfunctions, AstCFunction)
+DLIST_END_FREE_FUNC(cfunctions, AstCFunction)
+@}
+
+@d ast_free_exclude_symbol_and_cons cases @{
+case ast_cfunction:
+    cfunctions_free((AstCFunction*)obj);
+    cfunctions_pool_free_to_pool();
+    break;
+@}
+
+Соединить cfunctions_pool_free с cfunctions_pool:
+@d ast.c dlist pool free to pool functions @{
+DLIST_POOL_FREE_TO_POOL_FUNC(cfunctions, AstCFunction)
+@}
+
 cfunctions_get_free_cell - функция возвращающая свободный дескриптор:
 @d ast.c functions @{
 DLIST_GET_FREE_CELL_FUNC(cfunctions, AstCFunction)
@@ -661,7 +758,15 @@ AstCFunction *ast_add_cfunctions(AstCFunc func) {
 AstCFunction *ast_add_cfunctions(AstCFunc func);
 @}
 
-Функция удаления и очистки AstCFunction не нужны
+
+Функция очистки массива cfunction'ов:
+@d ast.c functions @{
+static void clear_cfunctions(void) {
+    // XXXYYYZZZ
+}
+@}
+вызвать при выходе из игры
+
 
 
 Инициализация ast:
@@ -706,6 +811,7 @@ void ast_clear(void) {
     clear_conses();
     clear_numbers();
     clear_functions();
+    clear_cfunctions();
     clear_arrays();
 }
 @}
@@ -878,8 +984,10 @@ void *ast_copy_obj(void *obj) {
             AstFunction *func = obj;
             return ast_add_functions(func->p);
         }
-        case ast_cfunction:
-            return obj;
+        case ast_cfunction: {
+            AstCFunction *cfunc = obj;
+            return ast_add_cfunctions(cfunc->func);
+        }
         case ast_array: {
             AstArray *arr = obj;
             AstArray *new = ast_add_arrays(arr->len);
@@ -1035,5 +1143,122 @@ char *ast_char_from_array(AstArray *str) {
     }
 
     return buf;
+}
+@}
+
+
+@d ast.h prototypes @{
+void ast_print_status(void);@}
+
+
+@d ast.c functions @{
+void ast_print_status(void) {
+    int i;
+
+    {
+        AstSymbol *p;
+
+        i = 0;
+        for(p = symbols; p != NULL; p = p->next)
+            i++;
+
+        printf("Symbols: %d\n", i);
+
+        i = 0;
+        for(p = symbols_pool; p != NULL; p = p->pool)
+            i++;
+
+        printf("Pool symbols: %d\n\n", i);
+    }
+    {
+        AstCons *p;
+
+        i = 0;
+        for(p = conses; p != NULL; p = p->next)
+            i++;
+
+        printf("Conses: %d\n", i);
+
+        i = 0;
+        for(p = conses_pool; p != NULL; p = p->pool)
+            i++;
+
+        printf("Pool conses: %d\n\n", i);
+    }
+    {
+        AstNumber *p;
+
+        i = 0;
+        for(p = numbers; p != NULL; p = p->next)
+            i++;
+
+        printf("Numbers: %d\n", i);
+
+        i = 0;
+        for(p = numbers_pool; p != NULL; p = p->pool)
+            i++;
+
+        printf("Pool numbers: %d\n\n", i);
+    }
+    {
+        AstCharacter *p;
+
+        i = 0;
+        for(p = characters; p != NULL; p = p->next)
+            i++;
+
+        printf("Characters: %d\n", i);
+
+        i = 0;
+        for(p = characters_pool; p != NULL; p = p->pool)
+            i++;
+
+        printf("Pool characters: %d\n\n", i);
+    }
+    {
+        AstFunction *p;
+
+        i = 0;
+        for(p = functions; p != NULL; p = p->next)
+            i++;
+
+        printf("Functions: %d\n", i);
+
+        i = 0;
+        for(p = functions_pool; p != NULL; p = p->pool)
+            i++;
+
+        printf("Pool functions: %d\n\n", i);
+    }
+    {
+        AstArray *p;
+
+        i = 0;
+        for(p = arrays; p != NULL; p = p->next)
+            i++;
+
+        printf("Arrays: %d\n", i);
+
+        i = 0;
+        for(p = arrays_pool; p != NULL; p = p->pool)
+            i++;
+
+        printf("Pool arrays: %d\n\n", i);
+    }
+    {
+        AstCFunction *p;
+
+        i = 0;
+        for(p = cfunctions; p != NULL; p = p->next)
+            i++;
+
+        printf("CFunctions: %d\n", i);
+
+        i = 0;
+        for(p = cfunctions_pool; p != NULL; p = p->pool)
+            i++;
+
+        printf("Pool cfunctions: %d\n\n", i);
+    }
 }
 @}
