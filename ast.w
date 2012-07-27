@@ -271,6 +271,28 @@ AstCons *ast_add_cons(void *car, void *cdr) {
 AstCons *ast_add_cons(void *car, void *cdr);
 @}
 
+@d ast.h prototypes @{
+void ast_free_recursive_conses(AstCons *cons);
+@}
+
+Удалить все консы рекурсивно, но не трогать другие типы объектов:
+@d ast.c functions @{
+void ast_free_recursive_conses(AstCons *cons) {
+    if(cons == NULL || cons->type != ast_cons)
+        return;
+
+    void *car = cons->car;
+    void *cdr = cons->cdr;
+
+    if(car != NULL)
+        ast_free_recursive_conses(car);
+    if(cdr != NULL)
+        ast_free_recursive_conses(cdr);
+
+    conses_free(cons);
+}
+@}
+
 Функция очистки массива cons'ов:
 @d ast.c functions @{
 static void clear_conses(void) {
