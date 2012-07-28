@@ -171,7 +171,7 @@ if((AstSymbol*)car(p) == ast_progn) {
     AstCons *s;
     for(s = cdr(p); cdr(s) != NULL; s = cdr(s)) {
         danmakufu_compile_to_bytecode_helper(car(s), code, pos);
-        code[(*pos)++] = bc_drop;
+        // code[(*pos)++] = bc_drop;
     }
 
     danmakufu_compile_to_bytecode_helper(car(s), code, pos);
@@ -182,6 +182,9 @@ if((AstSymbol*)car(p) == ast_progn) {
 Выкидываем один элемент со стека после вызова, кроме последнего.
 FIXME: на самом деле, многие вообще ничего не возвращают(пока),
   поэтому в vm надо временно отключить bc_drop для тестирования.
+  Добавлено позже: похоже можно обойтись без этого drop вообще.
+  Проблема возникает только при создании "висячих" выражений,
+  результат которых ничему не присваивается.
 
 @d danmakufu_bytecode.c danmakufu_compile_to_bytecode_helper cons @{
 else if((AstSymbol*)car(p) == ast_defvar) {
