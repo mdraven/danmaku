@@ -4271,9 +4271,9 @@ script_event        { yylval=ast_add_symbol_to_tbl(yytext); return SCRIPT_CHILD;
 
 \|                  return '|';
 
-false               { yylval = ast_false; return NUM; }
-true                { yylval = ast_true; return NUM; }
-pi                  { yylval = ast_pi; return NUM; }
+false               { yylval = ast_copy_obj(ast_false); return NUM; }
+true                { yylval = ast_copy_obj(ast_true); return NUM; }
+pi                  { yylval = ast_copy_obj(ast_pi); return NUM; }
 @}
 
 Будем возвращаеть перед каждым '}' ещё и ';':
