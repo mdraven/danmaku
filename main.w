@@ -3318,9 +3318,9 @@ void *ast_dimplet(void *name, void *exprs);
 Вернуть объект implet:
 @d danmakufu_parser.y code @{
 void *ast_dimplet(void *name, void *exprs) {
+    void *t = (exprs != NULL) ? ast_add_cons(exprs, NULL) : NULL;
     return ast_add_cons(ast_implet,
-            ast_add_cons(name,
-                ast_add_cons(exprs, NULL)));
+            ast_add_cons(name, t));
 }
 @}
 
@@ -3331,7 +3331,6 @@ printf("LET %s\n", ((AstSymbol*)$2)->name);
 
 @d danmakufu_parser.y grammar let without set @{
 $$ = ast_dimplet($2, NULL);
-$$ = ast_add_cons(ast_implet, ast_add_cons($2, NULL));
 printf("LET %s\n", ((AstSymbol*)$2)->name);
 @}
 
