@@ -48,27 +48,6 @@ enum {
 };
 @}
 
-@d ast.h prototypes @{
-void ast_free_exclude_symbol_and_cons(void *obj);
-@}
-
-Функция подобная ast_copy_obj, но не удаляет консы и не следует по консам:
-@d ast.c functions @{
-void ast_free_exclude_symbol_and_cons(void *obj) {
-    if(obj == NULL)
-        return;
-
-    int type = ((AstSymbol*)obj)->type;
-
-    switch(type) {
-    @<ast_free_exclude_symbol_and_cons cases@>
-    default:
-        fprintf(stderr, "\nast_free_exclude_symbol_and_cons: Undefined ast type\n");
-        exit(1);
-    }
-}
-@}
-
 Символ danmakufu:
 @d ast.h structs @{
 #define SYMBOL_MAX_LEN 40
@@ -118,12 +97,6 @@ static void symbols_free(AstSymbol *symbol) {
     dlist_free((DList*)symbol, (DList**)(&symbols_pool_free));
 }
 @}
-
-@d ast_free_exclude_symbol_and_cons cases @{
-case ast_symbol:
-    break;
-@}
-символы и консы не удаляются этой функцией
 
 Соединить symbols_pool_free с symbols_pool:
 @d ast.c functions @{
@@ -238,12 +211,6 @@ DLIST_END_FREE_FUNC(conses, AstCons)
 @}
 не удаляет car и cdr, так как иногда надо сохранить то, что там лежит
 
-@d ast_free_exclude_symbol_and_cons cases @{
-case ast_cons:
-    break;
-@}
-символы и консы не удаляются этой функцией
-
 Соединить conses_pool_free с conses_pool:
 @d ast.c functions @{
 DLIST_POOL_FREE_TO_POOL_FUNC(conses, AstCons)
@@ -269,28 +236,6 @@ AstCons *ast_add_cons(void *car, void *cdr) {
 
 @d ast.h prototypes @{
 AstCons *ast_add_cons(void *car, void *cdr);
-@}
-
-@d ast.h prototypes @{
-void ast_free_recursive_conses(AstCons *cons);
-@}
-
-Удалить все консы рекурсивно, но не трогать другие типы объектов:
-@d ast.c functions @{
-void ast_free_recursive_conses(AstCons *cons) {
-    if(cons == NULL || cons->type != ast_cons)
-        return;
-
-    void *car = cons->car;
-    void *cdr = cons->cdr;
-
-    if(car != NULL)
-        ast_free_recursive_conses(car);
-    if(cdr != NULL)
-        ast_free_recursive_conses(cdr);
-
-    conses_free(cons);
-}
 @}
 
 Функция очистки массива cons'ов:
@@ -407,13 +352,6 @@ DLIST_FREE_FUNC(characters, AstCharacter)
 DLIST_END_FREE_FUNC(characters, AstCharacter)
 @}
 
-@d ast_free_exclude_symbol_and_cons cases @{
-case ast_character:
-    characters_free((AstCharacter*)obj);
-    characters_pool_free_to_pool();
-    break;
-@}
-
 Соединить characters_pool_free с characters_pool:
 @d ast.c dlist pool free to pool functions @{
 static void characters_pool_free_to_pool(void) {
@@ -510,13 +448,6 @@ DLIST_FREE_FUNC(functions, AstFunction)
 DLIST_END_FREE_FUNC(functions, AstFunction)
 @}
 
-@d ast_free_exclude_symbol_and_cons cases @{
-case ast_function:
-    functions_free((AstFunction*)obj);
-    functions_pool_free_to_pool();
-    break;
-@}
-
 Соединить functions_pool_free с functions_pool:
 @d ast.c dlist pool free to pool functions @{
 DLIST_POOL_FREE_TO_POOL_FUNC(functions, AstFunction)
@@ -584,23 +515,6 @@ DLIST_FREE_FUNC(arrays, AstArray)
 DLIST_END_FREE_FUNC(arrays, AstArray)
 @}
 не удаляет содержимое arr, так как она туда сама(ast_array) ничего не пишет
-
-@d ast_free_exclude_symbol_and_cons cases @{
-case ast_array: {
-    AstArray *arr = obj;
-
-    int i;
-    if(arr->arr != NULL)
-        for(i = 0; i < arr->len; i++)
-            ast_free_exclude_symbol_and_cons(arr->arr[i]);
-
-    arrays_free(arr);
-
-    arrays_pool_free_to_pool();
-    break;
-}
-@}
-удаляет содержимое массивов, так как ast_copy_obj их копирует
 
 Соединить arrays_pool_free с arrays_pool:
 @d ast.c dlist pool free to pool functions @{
@@ -671,13 +585,6 @@ DLIST_ALLOC_VARS(cfunctions, 100, 10)
 @d ast.c dlist free functions @{
 DLIST_FREE_FUNC(cfunctions, AstCFunction)
 DLIST_END_FREE_FUNC(cfunctions, AstCFunction)
-@}
-
-@d ast_free_exclude_symbol_and_cons cases @{
-case ast_cfunction:
-    cfunctions_free((AstCFunction*)obj);
-    cfunctions_pool_free_to_pool();
-    break;
 @}
 
 Соединить cfunctions_pool_free с cfunctions_pool:
@@ -953,6 +860,71 @@ void *ast_copy_obj(void *obj) {
     }
 }
 @}
+
+@d ast.h prototypes @{
+void ast_free_recursive(void *obj);
+@}
+
+@d ast.c functions @{
+void ast_free_recursive(void *obj) {
+    if(obj == NULL)
+        return;
+
+    int type = ((AstSymbol*)obj)->type;
+
+    switch(type) {
+    case ast_symbol:
+        break;
+    case ast_cons: {
+        AstCons *cons = obj;
+        void *car = cons->car;
+        void *cdr = cons->cdr;
+
+        if(car != NULL)
+            ast_free_recursive(car);
+        if(cdr != NULL)
+            ast_free_recursive(cdr);
+
+        conses_free(cons);
+        conses_pool_free_to_pool();
+        break;
+    }
+    case ast_number:
+        numbers_free((AstNumber*)obj);
+        numbers_pool_free_to_pool();
+        break;
+    case ast_character:
+        characters_free((AstCharacter*)obj);
+        characters_pool_free_to_pool();
+        break;
+    case ast_function:
+        functions_free((AstFunction*)obj);
+        functions_pool_free_to_pool();
+        break;
+    case ast_array: {
+        AstArray *arr = obj;
+
+        int i;
+        if(arr->arr != NULL)
+            for(i = 0; i < arr->len; i++)
+                ast_free_recursive(arr->arr[i]);
+
+        arrays_free(arr);
+
+        arrays_pool_free_to_pool();
+        break;
+    }
+    case ast_cfunction:
+        cfunctions_free((AstCFunction*)obj);
+        cfunctions_pool_free_to_pool();
+        break;
+    default:
+        fprintf(stderr, "\nast_free_recursive: Undefined ast type\n");
+        exit(1);
+    }
+}
+@}
+
 
 Функция печати, нужна для отладки:
 @d ast.h prototypes @{
