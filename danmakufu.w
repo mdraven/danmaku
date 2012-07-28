@@ -76,7 +76,7 @@ DLIST_ALLOC_VARS(danmakufu_dicts, 0xdead, 100)
 Функция для возвращения выделенных слотов обратно в пул:
 @d danmakufu.c functions @{
 DLIST_LOCAL_FREE_FUNC(danmakufu_dicts, DanmakufuDict)
-    ast_free_exclude_symbol_and_cons(elm->ptr);
+    ast_free_recursive(elm->ptr);
 DLIST_LOCAL_END_FREE_FUNC(danmakufu_dicts, DanmakufuDict)
 @}
 
@@ -312,7 +312,7 @@ DLIST_LOCAL_FREE_FUNC(danmakufu_tasks, DanmakufuTask)
     danmakufu_dict_list_clear(elm->local);
 
     while(!stack_empty(elm))
-        ast_free_exclude_symbol_and_cons(danmakufu_stack_pop(elm));
+        ast_free_recursive(danmakufu_stack_pop(elm));
 
 DLIST_LOCAL_END_FREE_FUNC(danmakufu_tasks, DanmakufuTask)
 @}
@@ -417,7 +417,7 @@ DanmakufuMachine *danmakufu_load_file(char *filename, void *script_object) {
     machine->type = danmakufu_bytecode;
     machine->code = danmakufu_compile_to_bytecode(cons, &machine->code_size);
 
-    ast_free_recursive_conses(cons);
+    ast_free_recursive(cons);
     cons = NULL;
 
     machine->tasks = NULL;
@@ -512,7 +512,7 @@ static void danmakufu_stack_drop(DanmakufuTask *task, int num) {
 
     int i;
     for(i = task->sp - num; i < task->sp; i++)
-        ast_free_exclude_symbol_and_cons(task->stack[i]);
+        ast_free_recursive(task->stack[i]);
 
     task->sp -= num;
 }
@@ -673,7 +673,7 @@ static int danmakufu_eval_last_task(DanmakufuMachine *machine) {
 
             double number = ast_num->number;
 
-            ast_free_exclude_symbol_and_cons(ast_num);
+            ast_free_recursive(ast_num);
             ast_num = NULL;
 
             if(number == ast_true->number)
@@ -772,7 +772,7 @@ static int danmakufu_eval_last_task(DanmakufuMachine *machine) {
     t->ip++;
     int after_func = machine->code[t->ip];
     t->ip++;
-    ast_free_exclude_symbol_and_cons(d->ptr);
+    ast_free_recursive(d->ptr);
     d->ptr = ast_add_functions(t->ip);
     t->ip = after_func;
     break;
@@ -822,7 +822,7 @@ case bc_2dup: {
         }
     }
 
-    ast_free_exclude_symbol_and_cons(d->ptr);
+    ast_free_recursive(d->ptr);
     d->ptr = Y;
 
     t->ip++;
@@ -998,14 +998,14 @@ static void v2_gt(void *arg) {
     danmakufu_stack_push(cur, Y->number > X->number ? ast_copy_obj(ast_true)
                                                     : ast_copy_obj(ast_false));
 
-    ast_free_exclude_symbol_and_cons(X);
-    ast_free_exclude_symbol_and_cons(Y);
+    ast_free_recursive(X);
+    ast_free_recursive(Y);
 }
 @}
 
 @d add_danmakufu_v2_funcs_to_dict functions @{
 t = intern_to_dict(dict, ast_add_symbol_to_tbl(">"));
-ast_free_exclude_symbol_and_cons(t->ptr);
+ast_free_recursive(t->ptr);
 t->ptr = ast_add_cfunctions(v2_gt);@}
 
 @d danmakufu.c danmakufu v2 functions @{
@@ -1024,14 +1024,14 @@ static void v2_lt(void *arg) {
     danmakufu_stack_push(cur, Y->number < X->number ? ast_copy_obj(ast_true)
                                                     : ast_copy_obj(ast_false));
 
-    ast_free_exclude_symbol_and_cons(X);
-    ast_free_exclude_symbol_and_cons(Y);
+    ast_free_recursive(X);
+    ast_free_recursive(Y);
 }
 @}
 
 @d add_danmakufu_v2_funcs_to_dict functions @{
 t = intern_to_dict(dict, ast_add_symbol_to_tbl("<"));
-ast_free_exclude_symbol_and_cons(t->ptr);
+ast_free_recursive(t->ptr);
 t->ptr = ast_add_cfunctions(v2_lt);@}
 
 @d danmakufu.c danmakufu v2 functions @{
@@ -1049,14 +1049,14 @@ static void v2_ge(void *arg) {
 
     danmakufu_stack_push(cur, Y->number >= X->number ? ast_copy_obj(ast_true)
                                                      : ast_copy_obj(ast_false));
-    ast_free_exclude_symbol_and_cons(X);
-    ast_free_exclude_symbol_and_cons(Y);
+    ast_free_recursive(X);
+    ast_free_recursive(Y);
 }
 @}
 
 @d add_danmakufu_v2_funcs_to_dict functions @{
 t = intern_to_dict(dict, ast_add_symbol_to_tbl(">="));
-ast_free_exclude_symbol_and_cons(t->ptr);
+ast_free_recursive(t->ptr);
 t->ptr = ast_add_cfunctions(v2_ge);@}
 
 @d danmakufu.c danmakufu v2 functions @{
@@ -1075,14 +1075,14 @@ static void v2_le(void *arg) {
     danmakufu_stack_push(cur, Y->number <= X->number ? ast_copy_obj(ast_true)
                                                      : ast_copy_obj(ast_false));
 
-    ast_free_exclude_symbol_and_cons(X);
-    ast_free_exclude_symbol_and_cons(Y);
+    ast_free_recursive(X);
+    ast_free_recursive(Y);
 }
 @}
 
 @d add_danmakufu_v2_funcs_to_dict functions @{
 t = intern_to_dict(dict, ast_add_symbol_to_tbl("<="));
-ast_free_exclude_symbol_and_cons(t->ptr);
+ast_free_recursive(t->ptr);
 t->ptr = ast_add_cfunctions(v2_le);@}
 
 @d danmakufu.c danmakufu v2 functions @{
@@ -1100,14 +1100,14 @@ static void v2_add(void *arg) {
 
     danmakufu_stack_push(cur, ast_add_number(Y->number + X->number));
 
-    ast_free_exclude_symbol_and_cons(X);
-    ast_free_exclude_symbol_and_cons(Y);
+    ast_free_recursive(X);
+    ast_free_recursive(Y);
 }
 @}
 
 @d add_danmakufu_v2_funcs_to_dict functions @{
 t = intern_to_dict(dict, ast_add_symbol_to_tbl("add"));
-ast_free_exclude_symbol_and_cons(t->ptr);
+ast_free_recursive(t->ptr);
 t->ptr = ast_add_cfunctions(v2_add);@}
 
 @d danmakufu.c danmakufu v2 functions @{
@@ -1125,14 +1125,14 @@ static void v2_subtract(void *arg) {
 
     danmakufu_stack_push(cur, ast_add_number(Y->number - X->number));
 
-    ast_free_exclude_symbol_and_cons(X);
-    ast_free_exclude_symbol_and_cons(Y);
+    ast_free_recursive(X);
+    ast_free_recursive(Y);
 }
 @}
 
 @d add_danmakufu_v2_funcs_to_dict functions @{
 t = intern_to_dict(dict, ast_add_symbol_to_tbl("subtract"));
-ast_free_exclude_symbol_and_cons(t->ptr);
+ast_free_recursive(t->ptr);
 t->ptr = ast_add_cfunctions(v2_subtract);@}
 
 @d danmakufu.c danmakufu v2 functions @{
@@ -1150,14 +1150,14 @@ static void v2_multiply(void *arg) {
 
     danmakufu_stack_push(cur, ast_add_number(Y->number * X->number));
 
-    ast_free_exclude_symbol_and_cons(X);
-    ast_free_exclude_symbol_and_cons(Y);
+    ast_free_recursive(X);
+    ast_free_recursive(Y);
 }
 @}
 
 @d add_danmakufu_v2_funcs_to_dict functions @{
 t = intern_to_dict(dict, ast_add_symbol_to_tbl("multiply"));
-ast_free_exclude_symbol_and_cons(t->ptr);
+ast_free_recursive(t->ptr);
 t->ptr = ast_add_cfunctions(v2_multiply);@}
 
 @d danmakufu.c danmakufu v2 functions @{
@@ -1175,14 +1175,14 @@ static void v2_divide(void *arg) {
 
     danmakufu_stack_push(cur, ast_add_number(Y->number / X->number));
 
-    ast_free_exclude_symbol_and_cons(X);
-    ast_free_exclude_symbol_and_cons(Y);
+    ast_free_recursive(X);
+    ast_free_recursive(Y);
 }
 @}
 
 @d add_danmakufu_v2_funcs_to_dict functions @{
 t = intern_to_dict(dict, ast_add_symbol_to_tbl("divide"));
-ast_free_exclude_symbol_and_cons(t->ptr);
+ast_free_recursive(t->ptr);
 t->ptr = ast_add_cfunctions(v2_divide);@}
 
 @d danmakufu.c danmakufu v2 functions @{
@@ -1200,14 +1200,14 @@ static void v2_remainder(void *arg) {
 
     danmakufu_stack_push(cur, ast_add_number((int)Y->number % (int)X->number));
 
-    ast_free_exclude_symbol_and_cons(X);
-    ast_free_exclude_symbol_and_cons(Y);
+    ast_free_recursive(X);
+    ast_free_recursive(Y);
 }
 @}
 
 @d add_danmakufu_v2_funcs_to_dict functions @{
 t = intern_to_dict(dict, ast_add_symbol_to_tbl("remainder"));
-ast_free_exclude_symbol_and_cons(t->ptr);
+ast_free_recursive(t->ptr);
 t->ptr = ast_add_cfunctions(v2_remainder);@}
 
 @d danmakufu.c danmakufu v2 functions @{
@@ -1221,7 +1221,7 @@ static void v2_successor(void *arg) {
 
 @d add_danmakufu_v2_funcs_to_dict functions @{
 t = intern_to_dict(dict, ast_add_symbol_to_tbl("successor"));
-ast_free_exclude_symbol_and_cons(t->ptr);
+ast_free_recursive(t->ptr);
 t->ptr = ast_add_cfunctions(v2_successor);@}
 
 @d danmakufu.c danmakufu v2 functions @{
@@ -1235,7 +1235,7 @@ static void v2_predcessor(void *arg) {
 
 @d add_danmakufu_v2_funcs_to_dict functions @{
 t = intern_to_dict(dict, ast_add_symbol_to_tbl("predcessor"));
-ast_free_exclude_symbol_and_cons(t->ptr);
+ast_free_recursive(t->ptr);
 t->ptr = ast_add_cfunctions(v2_predcessor);@}
 
 @d danmakufu.c danmakufu v2 functions @{
@@ -1253,14 +1253,14 @@ static void v2_power(void *arg) {
 
     danmakufu_stack_push(cur, ast_add_number(pow(Y->number, X->number)));
 
-    ast_free_exclude_symbol_and_cons(X);
-    ast_free_exclude_symbol_and_cons(Y);
+    ast_free_recursive(X);
+    ast_free_recursive(Y);
 }
 @}
 
 @d add_danmakufu_v2_funcs_to_dict functions @{
 t = intern_to_dict(dict, ast_add_symbol_to_tbl("power"));
-ast_free_exclude_symbol_and_cons(t->ptr);
+ast_free_recursive(t->ptr);
 t->ptr = ast_add_cfunctions(v2_power);@}
 
 @d danmakufu.c danmakufu v2 functions @{
@@ -1284,7 +1284,7 @@ static void v2_concatenate(void *arg) {
     X->arr = NULL;
     X->len = 0;
 
-    ast_free_exclude_symbol_and_cons(X);
+    ast_free_recursive(X);
 
     danmakufu_stack_push(cur, Y);
 }
@@ -1293,7 +1293,7 @@ X удаляется из стека и поэтому его элементы �
 
 @d add_danmakufu_v2_funcs_to_dict functions @{
 t = intern_to_dict(dict, ast_add_symbol_to_tbl("concatenate"));
-ast_free_exclude_symbol_and_cons(t->ptr);
+ast_free_recursive(t->ptr);
 t->ptr = ast_add_cfunctions(v2_concatenate);@}
 
 @d danmakufu.c danmakufu v2 functions @{
@@ -1362,14 +1362,14 @@ static void v2_equalp(void *arg) {
 
     danmakufu_stack_push(cur, ast_copy_obj(ret));
 
-    ast_free_exclude_symbol_and_cons(X);
-    ast_free_exclude_symbol_and_cons(Y);
+    ast_free_recursive(X);
+    ast_free_recursive(Y);
 }
 @}
 
 @d add_danmakufu_v2_funcs_to_dict functions @{
 t = intern_to_dict(dict, ast_add_symbol_to_tbl("equalp"));
-ast_free_exclude_symbol_and_cons(t->ptr);
+ast_free_recursive(t->ptr);
 t->ptr = ast_add_cfunctions(v2_equalp);@}
 
 @d danmakufu.c danmakufu v2 functions @{
@@ -1388,16 +1388,16 @@ static void v2_index(void *arg) {
     danmakufu_stack_push(cur, Y->arr[(int)X->number]);
 
     Y->arr[(int)X->number] = NULL;
-    ast_free_exclude_symbol_and_cons(Y);
+    ast_free_recursive(Y);
 
-    ast_free_exclude_symbol_and_cons(X);
+    ast_free_recursive(X);
 }
 @}
 FIXME: уж очень жуткий костыль с занулением элемента для удаления всех кроме него
 
 @d add_danmakufu_v2_funcs_to_dict functions @{
 t = intern_to_dict(dict, ast_add_symbol_to_tbl("index"));
-ast_free_exclude_symbol_and_cons(t->ptr);
+ast_free_recursive(t->ptr);
 t->ptr = ast_add_cfunctions(v2_index);@}
 
 @d danmakufu.c danmakufu v2 functions @{
@@ -1430,21 +1430,21 @@ static void v2_index_set(void *arg) {
     }
 
     int ind = (int)Y->number;
-    ast_free_exclude_symbol_and_cons(Y);
+    ast_free_recursive(Y);
 
     if(ind >= arr->len || ind < 0) {
         fprintf(stderr, "\nv2_index: out range\n");
         exit(1);
     }
 
-    ast_free_exclude_symbol_and_cons(arr->arr[ind]);
+    ast_free_recursive(arr->arr[ind]);
     arr->arr[ind] = Z;
 }
 @}
 
 @d add_danmakufu_v2_funcs_to_dict functions @{
 t = intern_to_dict(dict, ast_add_symbol_to_tbl("index!"));
-ast_free_exclude_symbol_and_cons(t->ptr);
+ast_free_recursive(t->ptr);
 t->ptr = ast_add_cfunctions(v2_index_set);@}
 
 @d danmakufu.c danmakufu v2 functions @{
@@ -1461,13 +1461,13 @@ static void v2_length(void *arg) {
 
     danmakufu_stack_push(cur, ast_add_number(X->len));
 
-    ast_free_exclude_symbol_and_cons(X);
+    ast_free_recursive(X);
 }
 @}
 
 @d add_danmakufu_v2_funcs_to_dict functions @{
 t = intern_to_dict(dict, ast_add_symbol_to_tbl("length"));
-ast_free_exclude_symbol_and_cons(t->ptr);
+ast_free_recursive(t->ptr);
 t->ptr = ast_add_cfunctions(v2_length);@}
 
 @d danmakufu.c danmakufu v2 functions @{
@@ -1484,14 +1484,14 @@ static void v2_erase(void *arg) {
     }
 
     int ind = (int)X->number;
-    ast_free_exclude_symbol_and_cons(X);
+    ast_free_recursive(X);
 
     if(ind >= Y->len || ind < 0) {
         fprintf(stderr, "\nv2_erase: out range\n");
         exit(1);
     }
 
-    ast_free_exclude_symbol_and_cons(Y->arr[ind]);
+    ast_free_recursive(Y->arr[ind]);
 
     int i;
     for(i = ind+1; i < Y->len; i++)
@@ -1504,7 +1504,7 @@ static void v2_erase(void *arg) {
 
 @d add_danmakufu_v2_funcs_to_dict functions @{
 t = intern_to_dict(dict, ast_add_symbol_to_tbl("erase"));
-ast_free_exclude_symbol_and_cons(t->ptr);
+ast_free_recursive(t->ptr);
 t->ptr = ast_add_cfunctions(v2_erase);@}
 
 @d danmakufu.c danmakufu v2 functions @{
@@ -1525,14 +1525,14 @@ static void v2_or(void *arg) {
 
     danmakufu_stack_push(cur, ast_copy_obj((a || b) ? ast_true : ast_false));
 
-    ast_free_exclude_symbol_and_cons(X);
-    ast_free_exclude_symbol_and_cons(Y);
+    ast_free_recursive(X);
+    ast_free_recursive(Y);
 }
 @}
 
 @d add_danmakufu_v2_funcs_to_dict functions @{
 t = intern_to_dict(dict, ast_add_symbol_to_tbl("or"));
-ast_free_exclude_symbol_and_cons(t->ptr);
+ast_free_recursive(t->ptr);
 t->ptr = ast_add_cfunctions(v2_or);@}
 
 @d danmakufu.c danmakufu v2 functions @{
@@ -1553,14 +1553,14 @@ static void v2_and(void *arg) {
 
     danmakufu_stack_push(cur, ast_copy_obj((a && b) ? ast_true : ast_false));
 
-    ast_free_exclude_symbol_and_cons(X);
-    ast_free_exclude_symbol_and_cons(Y);
+    ast_free_recursive(X);
+    ast_free_recursive(Y);
 }
 @}
 
 @d add_danmakufu_v2_funcs_to_dict functions @{
 t = intern_to_dict(dict, ast_add_symbol_to_tbl("and"));
-ast_free_exclude_symbol_and_cons(t->ptr);
+ast_free_recursive(t->ptr);
 t->ptr = ast_add_cfunctions(v2_and);@}
 
 @d danmakufu.c danmakufu v2 functions @{
@@ -1579,13 +1579,13 @@ static void v2_not(void *arg) {
 
     danmakufu_stack_push(cur, ast_copy_obj(!a ? ast_true : ast_false));
 
-    ast_free_exclude_symbol_and_cons(X);
+    ast_free_recursive(X);
 }
 @}
 
 @d add_danmakufu_v2_funcs_to_dict functions @{
 t = intern_to_dict(dict, ast_add_symbol_to_tbl("not"));
-ast_free_exclude_symbol_and_cons(t->ptr);
+ast_free_recursive(t->ptr);
 t->ptr = ast_add_cfunctions(v2_not);@}
 
 @d danmakufu.c danmakufu v2 functions @{
@@ -1604,8 +1604,8 @@ static void v2_slice(void *arg) {
 
     int ind1 = (int)X->number;
     int ind2 = (int)Y->number;
-    ast_free_exclude_symbol_and_cons(X);
-    ast_free_exclude_symbol_and_cons(Y);
+    ast_free_recursive(X);
+    ast_free_recursive(Y);
 
     if(ind1 >= Z->len || ind1 < 0) {
         fprintf(stderr, "\nv2_erase: out range\n");
@@ -1625,7 +1625,7 @@ static void v2_slice(void *arg) {
         Z->arr[i] = NULL;
     }
 
-    ast_free_exclude_symbol_and_cons(Z);
+    ast_free_recursive(Z);
 
     danmakufu_stack_push(cur, new);
 }
@@ -1634,7 +1634,7 @@ FIXME: костыль с удалением как и в v2_index
 
 @d add_danmakufu_v2_funcs_to_dict functions @{
 t = intern_to_dict(dict, ast_add_symbol_to_tbl("slice"));
-ast_free_exclude_symbol_and_cons(t->ptr);
+ast_free_recursive(t->ptr);
 t->ptr = ast_add_cfunctions(v2_slice);@}
 
 @d danmakufu.c danmakufu v2 functions @{
@@ -1656,7 +1656,7 @@ static void v2_negative(void *arg) {
 
 @d add_danmakufu_v2_funcs_to_dict functions @{
 t = intern_to_dict(dict, ast_add_symbol_to_tbl("negative"));
-ast_free_exclude_symbol_and_cons(t->ptr);
+ast_free_recursive(t->ptr);
 t->ptr = ast_add_cfunctions(v2_negative);@}
 
 @d danmakufu.c danmakufu v2 functions @{
@@ -1678,7 +1678,7 @@ static void v2_absolute(void *arg) {
 
 @d add_danmakufu_v2_funcs_to_dict functions @{
 t = intern_to_dict(dict, ast_add_symbol_to_tbl("absolute"));
-ast_free_exclude_symbol_and_cons(t->ptr);
+ast_free_recursive(t->ptr);
 t->ptr = ast_add_cfunctions(v2_absolute);@}
 
 @d danmakufu.c danmakufu v2 functions @{
@@ -1701,7 +1701,7 @@ static void v2_cos(void *arg) {
 
 @d add_danmakufu_v2_funcs_to_dict functions @{
 t = intern_to_dict(dict, ast_add_symbol_to_tbl("cos"));
-ast_free_exclude_symbol_and_cons(t->ptr);
+ast_free_recursive(t->ptr);
 t->ptr = ast_add_cfunctions(v2_cos);@}
 
 @d danmakufu.c danmakufu v2 functions @{
@@ -1724,7 +1724,7 @@ static void v2_sin(void *arg) {
 
 @d add_danmakufu_v2_funcs_to_dict functions @{
 t = intern_to_dict(dict, ast_add_symbol_to_tbl("sin"));
-ast_free_exclude_symbol_and_cons(t->ptr);
+ast_free_recursive(t->ptr);
 t->ptr = ast_add_cfunctions(v2_sin);@}
 
 @d danmakufu.c danmakufu v2 functions @{
@@ -1747,7 +1747,7 @@ static void v2_tan(void *arg) {
 
 @d add_danmakufu_v2_funcs_to_dict functions @{
 t = intern_to_dict(dict, ast_add_symbol_to_tbl("tan"));
-ast_free_exclude_symbol_and_cons(t->ptr);
+ast_free_recursive(t->ptr);
 t->ptr = ast_add_cfunctions(v2_tan);@}
 
 @d danmakufu.c danmakufu v2 functions @{
@@ -1770,7 +1770,7 @@ static void v2_acos(void *arg) {
 
 @d add_danmakufu_v2_funcs_to_dict functions @{
 t = intern_to_dict(dict, ast_add_symbol_to_tbl("acos"));
-ast_free_exclude_symbol_and_cons(t->ptr);
+ast_free_recursive(t->ptr);
 t->ptr = ast_add_cfunctions(v2_acos);@}
 
 @d danmakufu.c danmakufu v2 functions @{
@@ -1793,7 +1793,7 @@ static void v2_asin(void *arg) {
 
 @d add_danmakufu_v2_funcs_to_dict functions @{
 t = intern_to_dict(dict, ast_add_symbol_to_tbl("asin"));
-ast_free_exclude_symbol_and_cons(t->ptr);
+ast_free_recursive(t->ptr);
 t->ptr = ast_add_cfunctions(v2_asin);@}
 
 @d danmakufu.c danmakufu v2 functions @{
@@ -1816,7 +1816,7 @@ static void v2_atan(void *arg) {
 
 @d add_danmakufu_v2_funcs_to_dict functions @{
 t = intern_to_dict(dict, ast_add_symbol_to_tbl("atan"));
-ast_free_exclude_symbol_and_cons(t->ptr);
+ast_free_recursive(t->ptr);
 t->ptr = ast_add_cfunctions(v2_atan);@}
 
 @d danmakufu.c danmakufu v2 functions @{
@@ -1840,7 +1840,7 @@ static void v2_atan2(void *arg) {
 
 @d add_danmakufu_v2_funcs_to_dict functions @{
 t = intern_to_dict(dict, ast_add_symbol_to_tbl("atan2"));
-ast_free_exclude_symbol_and_cons(t->ptr);
+ast_free_recursive(t->ptr);
 t->ptr = ast_add_cfunctions(v2_atan2);@}
 
 @d danmakufu.c danmakufu v2 functions @{
@@ -1862,7 +1862,7 @@ static void v2_log(void *arg) {
 
 @d add_danmakufu_v2_funcs_to_dict functions @{
 t = intern_to_dict(dict, ast_add_symbol_to_tbl("log"));
-ast_free_exclude_symbol_and_cons(t->ptr);
+ast_free_recursive(t->ptr);
 t->ptr = ast_add_cfunctions(v2_log);@}
 
 @d danmakufu.c danmakufu v2 functions @{
@@ -1884,7 +1884,7 @@ static void v2_log10(void *arg) {
 
 @d add_danmakufu_v2_funcs_to_dict functions @{
 t = intern_to_dict(dict, ast_add_symbol_to_tbl("log10"));
-ast_free_exclude_symbol_and_cons(t->ptr);
+ast_free_recursive(t->ptr);
 t->ptr = ast_add_cfunctions(v2_log10);@}
 
 @d danmakufu.c danmakufu v2 functions @{
@@ -1907,13 +1907,13 @@ static void v2_rand(void *arg) {
     X->number = (max->number - min->number) * rnd + min->number;
     danmakufu_stack_push(cur, X);
 
-    ast_free_exclude_symbol_and_cons(Y);
+    ast_free_recursive(Y);
 }
 @}
 
 @d add_danmakufu_v2_funcs_to_dict functions @{
 t = intern_to_dict(dict, ast_add_symbol_to_tbl("rand"));
-ast_free_exclude_symbol_and_cons(t->ptr);
+ast_free_recursive(t->ptr);
 t->ptr = ast_add_cfunctions(v2_rand);@}
 
 @d danmakufu.c danmakufu v2 functions @{
@@ -1935,13 +1935,13 @@ static void v2_rand_int(void *arg) {
     X->number = rand()%(int)(max->number - min->number) + (int)min->number;
     danmakufu_stack_push(cur, X);
 
-    ast_free_exclude_symbol_and_cons(Y);
+    ast_free_recursive(Y);
 }
 @}
 
 @d add_danmakufu_v2_funcs_to_dict functions @{
 t = intern_to_dict(dict, ast_add_symbol_to_tbl("rand_int"));
-ast_free_exclude_symbol_and_cons(t->ptr);
+ast_free_recursive(t->ptr);
 t->ptr = ast_add_cfunctions(v2_rand_int);@}
 
 @d danmakufu.c danmakufu v2 functions @{
@@ -1963,10 +1963,10 @@ static void v2_truncate(void *arg) {
 
 @d add_danmakufu_v2_funcs_to_dict functions @{
 t = intern_to_dict(dict, ast_add_symbol_to_tbl("truncate"));
-ast_free_exclude_symbol_and_cons(t->ptr);
+ast_free_recursive(t->ptr);
 t->ptr = ast_add_cfunctions(v2_truncate);
 t = intern_to_dict(dict, ast_add_symbol_to_tbl("trunc"));
-ast_free_exclude_symbol_and_cons(t->ptr);
+ast_free_recursive(t->ptr);
 t->ptr = ast_add_cfunctions(v2_truncate);@}
 
 @d danmakufu.c danmakufu v2 functions @{
@@ -1988,7 +1988,7 @@ static void v2_round(void *arg) {
 
 @d add_danmakufu_v2_funcs_to_dict functions @{
 t = intern_to_dict(dict, ast_add_symbol_to_tbl("round"));
-ast_free_exclude_symbol_and_cons(t->ptr);
+ast_free_recursive(t->ptr);
 t->ptr = ast_add_cfunctions(v2_round);@}
 
 @d danmakufu.c danmakufu v2 functions @{
@@ -2010,7 +2010,7 @@ static void v2_ceil(void *arg) {
 
 @d add_danmakufu_v2_funcs_to_dict functions @{
 t = intern_to_dict(dict, ast_add_symbol_to_tbl("ceil"));
-ast_free_exclude_symbol_and_cons(t->ptr);
+ast_free_recursive(t->ptr);
 t->ptr = ast_add_cfunctions(v2_ceil);@}
 
 @d danmakufu.c danmakufu v2 functions @{
@@ -2032,7 +2032,7 @@ static void v2_floor(void *arg) {
 
 @d add_danmakufu_v2_funcs_to_dict functions @{
 t = intern_to_dict(dict, ast_add_symbol_to_tbl("floor"));
-ast_free_exclude_symbol_and_cons(t->ptr);
+ast_free_recursive(t->ptr);
 t->ptr = ast_add_cfunctions(v2_floor);@}
 
 @d danmakufu.c danmakufu v2 functions @{
@@ -2050,7 +2050,7 @@ static void v2_ToString(void *arg) {
     char buf[100];
     sprintf(buf, "%f", X->number);
 
-    ast_free_exclude_symbol_and_cons(X);
+    ast_free_recursive(X);
 
     danmakufu_stack_push(cur, ast_latin_string(buf));
 }
@@ -2058,7 +2058,7 @@ static void v2_ToString(void *arg) {
 
 @d add_danmakufu_v2_funcs_to_dict functions @{
 t = intern_to_dict(dict, ast_add_symbol_to_tbl("ToString"));
-ast_free_exclude_symbol_and_cons(t->ptr);
+ast_free_recursive(t->ptr);
 t->ptr = ast_add_cfunctions(v2_ToString);@}
 
 @d danmakufu.c danmakufu v2 functions @{
@@ -2091,18 +2091,18 @@ static void v2_CreateEnemyFromFile(void *arg) {
                                   velocity->number, direction->number,
                                   user_arg);*/
 
-    ast_free_exclude_symbol_and_cons(x);
-    ast_free_exclude_symbol_and_cons(y);
-    ast_free_exclude_symbol_and_cons(velocity);
-    ast_free_exclude_symbol_and_cons(direction);
-    ast_free_exclude_symbol_and_cons(path);
-    // ast_free_exclude_symbol_and_cons(user_arg);
+    ast_free_recursive(x);
+    ast_free_recursive(y);
+    ast_free_recursive(velocity);
+    ast_free_recursive(direction);
+    ast_free_recursive(path);
+    // ast_free_recursive(user_arg);
 }
 @}
 
 @d add_danmakufu_v2_funcs_to_dict functions @{
 t = intern_to_dict(dict, ast_add_symbol_to_tbl("CreateEnemyFromFile"));
-ast_free_exclude_symbol_and_cons(t->ptr);
+ast_free_recursive(t->ptr);
 t->ptr = ast_add_cfunctions(v2_CreateEnemyFromFile);@}
 
 @d danmakufu.c danmakufu v2 functions @{
@@ -2127,13 +2127,13 @@ static void v2_SetLife(void *arg) {
     CharacterList *character = d->ptr;
     character->hp = (int)X->number;
 
-    ast_free_exclude_symbol_and_cons(X);
+    ast_free_recursive(X);
 }
 @}
 
 @d add_danmakufu_v2_funcs_to_dict functions @{
 t = intern_to_dict(dict, ast_add_symbol_to_tbl("SetLife"));
-ast_free_exclude_symbol_and_cons(t->ptr);
+ast_free_recursive(t->ptr);
 t->ptr = ast_add_cfunctions(v2_SetLife);@}
 "The argument of the first instance of SetLife in each enemy script (even if it is in comments) is used in plural-scripts to determine the relative lengths of the health bars" из wiki
 
@@ -2166,7 +2166,7 @@ static void v2_SetPlayerX(void *arg) {
 
 @d add_danmakufu_v2_funcs_to_dict functions @{
 t = intern_to_dict(dict, ast_add_symbol_to_tbl("SetPlayerX"));
-ast_free_exclude_symbol_and_cons(t->ptr);
+ast_free_recursive(t->ptr);
 t->ptr = ast_add_cfunctions(v2_SetPlayerX);@}
 
 @d danmakufu.c danmakufu v2 functions @{
@@ -2195,7 +2195,7 @@ static void v2_SetPlayerY(void *arg) {
 
 @d add_danmakufu_v2_funcs_to_dict functions @{
 t = intern_to_dict(dict, ast_add_symbol_to_tbl("SetPlayerY"));
-ast_free_exclude_symbol_and_cons(t->ptr);
+ast_free_recursive(t->ptr);
 t->ptr = ast_add_cfunctions(v2_SetPlayerY);@}
 
 
@@ -2212,13 +2212,13 @@ static void my_print(void *arg) {
     ast_print(X);
     printf("\n");
 
-    ast_free_exclude_symbol_and_cons(X);
+    ast_free_recursive(X);
 }
 @}
 
 @d add_danmakufu_my_funcs_to_dict functions @{
 t = intern_to_dict(dict, ast_add_symbol_to_tbl("special_print"));
-ast_free_exclude_symbol_and_cons(t->ptr);
+ast_free_recursive(t->ptr);
 t->ptr = ast_add_cfunctions(my_print);@}
 
 @d danmakufu.c danmakufu my functions @{
@@ -2232,7 +2232,7 @@ static void my_stack(void *arg) {
 
 @d add_danmakufu_my_funcs_to_dict functions @{
 t = intern_to_dict(dict, ast_add_symbol_to_tbl("special_stack"));
-ast_free_exclude_symbol_and_cons(t->ptr);
+ast_free_recursive(t->ptr);
 t->ptr = ast_add_cfunctions(my_stack);@}
 
 @d danmakufu.c danmakufu my functions @{
@@ -2246,7 +2246,7 @@ static void my_rstack(void *arg) {
 
 @d add_danmakufu_my_funcs_to_dict functions @{
 t = intern_to_dict(dict, ast_add_symbol_to_tbl("special_rstack"));
-ast_free_exclude_symbol_and_cons(t->ptr);
+ast_free_recursive(t->ptr);
 t->ptr = ast_add_cfunctions(my_rstack);@}
 
 
@@ -2302,7 +2302,7 @@ CharacterList *character_danmakufu_v2_create(char *filename,
     character->args[CMA(danmakufu_v2, danmakufu_machine)] = machine;
 
     DanmakufuDict *d = intern_to_dict(&machine->global, ast_add_symbol_to_tbl("@user_arg"));
-    ast_free_exclude_symbol_and_cons(d->ptr);
+    ast_free_recursive(d->ptr);
     d->ptr = ast_copy_obj(user_arg);
 
     int stop = 0;
@@ -2431,6 +2431,4 @@ static void character_danmakufu_v2_draw(CharacterList *character) {
 
 
 ===========================================================
-
-
 
