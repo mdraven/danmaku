@@ -139,17 +139,17 @@ static void danmakufu_compile_to_bytecode_helper(void *obj, intptr_t *code, int 
         }
         case ast_array: {
             AstArray *arr = obj;
-            code[(*pos)++] = (intptr_t)arr;
+            code[(*pos)++] = (intptr_t)ast_copy_obj(arr);
             break;
         }
         case ast_character: {
             AstCharacter *chr = obj;
-            code[(*pos)++] = (intptr_t)chr;
+            code[(*pos)++] = (intptr_t)ast_copy_obj(chr);
             break;
         }
         case ast_number: {
             AstNumber *num = obj;
-            code[(*pos)++] = (intptr_t)num;
+            code[(*pos)++] = (intptr_t)ast_copy_obj(num);
             break;
         }
         default:
@@ -595,7 +595,7 @@ else if((AstSymbol*)car(p) == ast_setq) {
         code[(*pos)++] = (intptr_t)cadr(p);
         code[(*pos)++] = bc_setq;
     } else if((AstSymbol*)car(cadr(p)) == ast_funcall) {
-        code[(*pos)++] = (intptr_t)cadr(cddr(cadr(p)));
+        code[(*pos)++] = (intptr_t)ast_copy_obj(cadr(cddr(cadr(p))));
         code[(*pos)++] = bc_lit;
         code[(*pos)++] = (intptr_t)car(cddr(cadr(p)));
         code[(*pos)++] = (intptr_t)ast_add_symbol_to_tbl("index!");
