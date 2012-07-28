@@ -7349,7 +7349,7 @@ DList *dlist_create_pool(int num, size_t size) {
 DList *dlist_alloc(DList *dlist, DList **pool) {
     DList *p;
 
-    if(pool == NULL) {
+    if(*pool == NULL) {
         fprintf(stderr, "\nEmpty pool\n");
         exit(1);
     }
