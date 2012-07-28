@@ -304,118 +304,44 @@ static void clear_conses(void) {
 
 Тип число:
 @d ast.h structs @{
-struct AstNumber {
-    struct AstNumber *prev;
-    struct AstNumber *next;
-    struct AstNumber *pool;
+DLIST_DEFSTRUCT(AstNumber)
     int type;
     double number;
-};
-
-typedef struct AstNumber AstNumber;
+DLIST_ENDS(AstNumber);
 @}
 type == ast_number
 
-Список чисел:
-@d ast.c structs @{
-static AstNumber *numbers;
-@}
-
 Пулл чисел и удалённых чисел:
 @d ast.c structs @{
-static AstNumber *numbers_pool;
-
-static AstNumber *numbers_pool_free;
-static AstNumber *numbers_end_pool_free;
+DLIST_SPECIAL_VARS(numbers, AstNumber)
 @}
-numbers_end_pool_free - ссылка на последний элемент numbers_pool_free
 
-NUMBER_ALLOC - аллоцируется слотов в самом начале
-NUMBER_ADD - добавляется при нехватке
+Аллоцируется слотов в самом начале,  добавляется при нехватке:
 @d ast.c structs @{
-#define NUMBER_ALLOC 1000
-#define NUMBER_ADD 300
+DLIST_ALLOC_VARS(numbers, 1000, 300)
 @}
 
 Функция для возвращения выделенных слотов обратно в пул:
 @d ast.c dlist free functions @{
-static void numbers_free(AstNumber *number) {
-    if(number == numbers)
-        numbers = numbers->next;
-
-    if(numbers_pool_free == NULL)
-        numbers_end_pool_free = number;
-
-    dlist_free((DList*)number, (DList**)(&numbers_pool_free));
-}
-@}
-
-@d ast_free_exclude_symbol_and_cons cases @{
-case ast_number:
-    numbers_free((AstNumber*)obj);
-    numbers_pool_free_to_pool();
-    break;
+DLIST_FREE_FUNC(numbers, AstNumber)
+DLIST_END_FREE_FUNC(numbers, AstNumber)
 @}
 
 Соединить numbers_pool_free с numbers_pool:
 @d ast.c dlist pool free to pool functions @{
-static void numbers_pool_free_to_pool(void) {
-    if(numbers_end_pool_free == NULL)
-        return;
-
-    numbers_end_pool_free->pool = numbers_pool;
-    numbers_pool = numbers_pool_free;
-
-    numbers_pool_free = NULL;
-    numbers_end_pool_free = NULL;
-}
+DLIST_POOL_FREE_TO_POOL_FUNC(numbers, AstNumber)
 @}
 
 numbers_get_free_cell - функция возвращающая свободный дескриптор:
 @d ast.c functions @{
-static AstNumber *numbers_get_free_cell(void) {
-    if(numbers_pool == NULL) {
-        int k = (numbers == NULL) ? NUMBER_ALLOC : NUMBER_ADD;
-        int i;
-
-        numbers_pool = malloc(sizeof(AstNumber)*k);
-        if(numbers_pool == NULL) {
-            fprintf(stderr, "\nCan't allocate memory for numbers' pool\n");
-            exit(1);
-        }
-
-        for(i = 0; i < k-1; i++)
-            numbers_pool[i].pool = &(numbers_pool[i+1]);
-        numbers_pool[k-1].pool = NULL;
-    }
-
-    numbers = (AstNumber*)dlist_alloc((DList*)numbers, (DList**)(&numbers_pool));
-
-    return numbers;
-}
+DLIST_GET_FREE_CELL_FUNC(numbers, AstNumber)
 @}
 
-
-Функция поиска числа в таблице:
-@d ast.c functions @{
-static AstNumber *find_number(double num) {
-    AstNumber *number;
-
-    for(number = numbers; number != NULL; number = number->next)
-        if(number->number == num)
-            return number;
-
-    return NULL;
-}
-@}
-NULL - если не найден.
 
 Добавить number в массив:
 @d ast.c functions @{
 AstNumber *ast_add_number(double num) {
-    AstNumber *number;
-
-    number = numbers_get_free_cell();
+    AstNumber *number = numbers_get_free_cell();
 
     number->type = ast_number;
     number->number = num;
