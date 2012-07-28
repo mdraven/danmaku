@@ -198,9 +198,6 @@ else if((AstSymbol*)car(p) == ast_defvar) {
         exit(1);
     }
 
-    code[(*pos)++] = bc_decl;
-    code[(*pos)++] = (intptr_t)cadr(p);
-
     if(car(cddr(p)) != NULL) {
         danmakufu_compile_to_bytecode_helper(car(cddr(p)), code, pos);
         code[(*pos)++] = bc_lit;
