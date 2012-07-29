@@ -212,7 +212,7 @@ DLIST_END_FREE_FUNC(conses, AstCons)
 не удаляет car и cdr, так как иногда надо сохранить то, что там лежит
 
 Соединить conses_pool_free с conses_pool:
-@d ast.c functions @{
+@d ast.c dlist pool free to pool functions @{
 DLIST_POOL_FREE_TO_POOL_FUNC(conses, AstCons)
 @}
 
