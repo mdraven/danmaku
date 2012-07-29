@@ -880,6 +880,7 @@ bc_lit помещает в стек сырые данные. То есть их 
 }
 @}
 если после fork'а должна выполняться текущая задача, а не дочерняя, то стересть return 0
+В данный момент копируется весь скоп, а не последний.
 
 @d danmakufu.c eval_last_task -- bytecodes
 @{case bc_ret: {
@@ -893,7 +894,7 @@ bc_lit помещает в стек сырые данные. То есть их 
 Не совсем правильный, но простой способ немного ускорить код в циклах:
 @d danmakufu_eval_last_task fix functions into bytecode @{
 // if(type == ast_cfunction || type == ast_function)
-//     machine->code[t->ip-1] = (intptr_t)obj;
+//     machine->code[t->ip-1] = (intptr_t)ast_copy_obj(obj);
 @}
 правильно было бы патчить код во время генерации, а не исполнения. Но и так
   тоже подойдёт(убедиться, что code копируется)
