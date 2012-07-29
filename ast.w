@@ -665,6 +665,7 @@ void ast_clear(void) {
     clear_symbols();
     clear_conses();
     clear_numbers();
+    clear_characters();
     clear_functions();
     clear_cfunctions();
     clear_arrays();
