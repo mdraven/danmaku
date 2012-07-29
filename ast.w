@@ -48,6 +48,47 @@ enum {
 };
 @}
 
+
+Функция создания копии объектов ast:
+@d ast.h prototypes @{
+void *ast_copy_obj(void *obj);
+@}
+
+@d ast.c functions @{
+void *ast_copy_obj(void *obj) {
+    int type = ((AstCons*)obj)->type;
+
+    switch(type) {
+        @<ast_copy_obj copy cases@>
+        default: {
+            fprintf(stderr, "\nast_copy_obj: unknown object %d\n", type);
+            exit(1);
+        }
+    }
+}
+@}
+
+Рекурсивное освобождение объектов:
+@d ast.h prototypes @{
+void ast_free_recursive(void *obj);
+@}
+
+@d ast.c functions @{
+void ast_free_recursive(void *obj) {
+    if(obj == NULL)
+        return;
+
+    int type = ((AstSymbol*)obj)->type;
+
+    switch(type) {
+        @<ast_free_recursive free cases@>
+        default:
+            fprintf(stderr, "\nast_free_recursive: Undefined ast type\n");
+            exit(1);
+    }
+}
+@}
+
 Символ danmakufu:
 @d ast.h structs @{
 #define SYMBOL_MAX_LEN 40
@@ -175,6 +216,16 @@ AstSymbol *ast_add_symbol_to_tbl(const char *name) {
 AstSymbol *ast_add_symbol_to_tbl(const char *name);
 @}
 
+@d ast_copy_obj copy cases @{
+case ast_symbol:
+    return obj;
+@}
+
+@d ast_free_recursive free cases @{
+case ast_symbol:
+    break;
+@}
+
 Функция очистки:
 @d ast.c functions @{
 static void clear_symbols(void) {
@@ -238,6 +289,38 @@ AstCons *ast_add_cons(void *car, void *cdr) {
 AstCons *ast_add_cons(void *car, void *cdr);
 @}
 
+@d ast_copy_obj copy cases @{
+case ast_cons: {
+    AstCons *p = obj;
+    void *car = p->car;
+    void *cdr = p->cdr;
+
+    if(car != NULL)
+        car = ast_copy_obj(car);
+    if(cdr != NULL)
+        cdr = ast_copy_obj(cdr);
+
+    return ast_add_cons(car, cdr);
+}
+@}
+
+@d ast_free_recursive free cases @{
+case ast_cons: {
+    AstCons *cons = obj;
+    void *car = cons->car;
+    void *cdr = cons->cdr;
+
+    if(car != NULL)
+        ast_free_recursive(car);
+    if(cdr != NULL)
+        ast_free_recursive(cdr);
+
+    conses_free(cons);
+    conses_pool_free_to_pool();
+    break;
+}
+@}
+
 Функция очистки массива cons'ов:
 @d ast.c functions @{
 static void clear_conses(void) {
@@ -297,6 +380,20 @@ AstNumber *ast_add_number(double num) {
 
 @d ast.h prototypes @{
 AstNumber *ast_add_number(double num);
+@}
+
+@d ast_copy_obj copy cases @{
+case ast_number: {
+    AstNumber *num = obj;
+    return ast_add_number(num->number);
+}
+@}
+
+@d ast_free_recursive free cases @{
+case ast_number:
+    numbers_free((AstNumber*)obj);
+    numbers_pool_free_to_pool();
+    break;
 @}
 
 Функция очистки:
@@ -416,6 +513,20 @@ AstCharacter *ast_add_character(const char *bytes, int len) {
 AstCharacter *ast_add_character(const char *bytes, int len);
 @}
 
+@d ast_copy_obj copy cases @{
+case ast_character: {
+    AstCharacter *chr = obj;
+    return ast_add_character(chr->bytes, chr->len);
+}
+@}
+
+@d ast_free_recursive free cases @{
+case ast_character:
+    characters_free((AstCharacter*)obj);
+    characters_pool_free_to_pool();
+    break;
+@}
+
 @d ast.c functions @{
 static void clear_characters(void) {
     // BLA-BLA
@@ -472,6 +583,20 @@ AstFunction *ast_add_functions(int p) {
 
 @d ast.h prototypes @{
 AstFunction *ast_add_functions(int p);
+@}
+
+@d ast_copy_obj copy cases @{
+case ast_function: {
+    AstFunction *func = obj;
+    return ast_add_functions(func->p);
+}
+@}
+
+@d ast_free_recursive free cases @{
+case ast_function:
+    functions_free((AstFunction*)obj);
+    functions_pool_free_to_pool();
+    break;
 @}
 
 Функция очистки массива function'ов:
@@ -548,6 +673,35 @@ AstArray *ast_add_arrays(int len) {
 AstArray *ast_add_arrays(int len);
 @}
 
+@d ast_copy_obj copy cases @{
+case ast_array: {
+    AstArray *arr = obj;
+    AstArray *new = ast_add_arrays(arr->len);
+
+    int i;
+    for(i = 0; i < arr->len; i++)
+        new->arr[i] = ast_copy_obj(arr->arr[i]);
+
+    return new;
+}
+@}
+
+@d ast_free_recursive free cases @{
+case ast_array: {
+    AstArray *arr = obj;
+
+    int i;
+    if(arr->arr != NULL)
+        for(i = 0; i < arr->len; i++)
+            ast_free_recursive(arr->arr[i]);
+
+    arrays_free(arr);
+
+    arrays_pool_free_to_pool();
+    break;
+}
+@}
+
 Функция очистки массива array'ов:
 @d ast.c functions @{
 static void clear_arrays(void) {
@@ -613,6 +767,19 @@ AstCFunction *ast_add_cfunctions(AstCFunc func) {
 AstCFunction *ast_add_cfunctions(AstCFunc func);
 @}
 
+@d ast_copy_obj copy cases @{
+case ast_cfunction: {
+    AstCFunction *cfunc = obj;
+    return ast_add_cfunctions(cfunc->func);
+}
+@}
+
+@d ast_free_recursive free cases @{
+case ast_cfunction:
+    cfunctions_free((AstCFunction*)obj);
+    cfunctions_pool_free_to_pool();
+    break;
+@}
 
 Функция очистки массива cfunction'ов:
 @d ast.c functions @{
@@ -803,128 +970,6 @@ AstCons *ast_append(AstCons *cons, AstCons *to_back) {
 }
 @}
 с той же целью, что и cdr() и car().
-
-Функция создания копии:
-@d ast.h prototypes @{
-void *ast_copy_obj(void *obj);
-@}
-
-@d ast.c functions @{
-void *ast_copy_obj(void *obj) {
-    int type = ((AstCons*)obj)->type;
-
-    switch(type) {
-        case ast_cons: {
-            AstCons *p = obj;
-            void *car = p->car;
-            void *cdr = p->cdr;
-
-            if(car != NULL)
-                car = ast_copy_obj(car);
-            if(cdr != NULL)
-                cdr = ast_copy_obj(cdr);
-
-            return ast_add_cons(car, cdr);
-        }
-        case ast_symbol:
-            return obj;
-        case ast_character: {
-            AstCharacter *chr = obj;
-            return ast_add_character(chr->bytes, chr->len);
-        }
-        case ast_number: {
-            AstNumber *num = obj;
-            return ast_add_number(num->number);
-        }
-        case ast_function: {
-            AstFunction *func = obj;
-            return ast_add_functions(func->p);
-        }
-        case ast_cfunction: {
-            AstCFunction *cfunc = obj;
-            return ast_add_cfunctions(cfunc->func);
-        }
-        case ast_array: {
-            AstArray *arr = obj;
-            AstArray *new = ast_add_arrays(arr->len);
-
-            int i;
-            for(i = 0; i < arr->len; i++)
-                new->arr[i] = ast_copy_obj(arr->arr[i]);
-
-            return new;
-        }
-        default: {
-            fprintf(stderr, "\nast_copy_obj: unknown object %d\n", type);
-            exit(1);
-        }
-    }
-}
-@}
-
-@d ast.h prototypes @{
-void ast_free_recursive(void *obj);
-@}
-
-@d ast.c functions @{
-void ast_free_recursive(void *obj) {
-    if(obj == NULL)
-        return;
-
-    int type = ((AstSymbol*)obj)->type;
-
-    switch(type) {
-    case ast_symbol:
-        break;
-    case ast_cons: {
-        AstCons *cons = obj;
-        void *car = cons->car;
-        void *cdr = cons->cdr;
-
-        if(car != NULL)
-            ast_free_recursive(car);
-        if(cdr != NULL)
-            ast_free_recursive(cdr);
-
-        conses_free(cons);
-        conses_pool_free_to_pool();
-        break;
-    }
-    case ast_number:
-        numbers_free((AstNumber*)obj);
-        numbers_pool_free_to_pool();
-        break;
-    case ast_character:
-        characters_free((AstCharacter*)obj);
-        characters_pool_free_to_pool();
-        break;
-    case ast_function:
-        functions_free((AstFunction*)obj);
-        functions_pool_free_to_pool();
-        break;
-    case ast_array: {
-        AstArray *arr = obj;
-
-        int i;
-        if(arr->arr != NULL)
-            for(i = 0; i < arr->len; i++)
-                ast_free_recursive(arr->arr[i]);
-
-        arrays_free(arr);
-
-        arrays_pool_free_to_pool();
-        break;
-    }
-    case ast_cfunction:
-        cfunctions_free((AstCFunction*)obj);
-        cfunctions_pool_free_to_pool();
-        break;
-    default:
-        fprintf(stderr, "\nast_free_recursive: Undefined ast type\n");
-        exit(1);
-    }
-}
-@}
 
 
 Функция печати, нужна для отладки:
