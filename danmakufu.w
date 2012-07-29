@@ -395,6 +395,28 @@ static void add_danmakufu_my_funcs_to_dict(DanmakufuDict **dict) {
 }
 @}
 
+Функция создания машины:
+@d danmakufu.c functions @{
+static DanmakufuMachine *create_machine(intptr_t *code, int size) {
+    DanmakufuMachine *machine = malloc(sizeof(DanmakufuMachine));
+    if(machine == NULL) {
+        fprintf(stderr, "\nCan't allocate memory for danmakufu_machine\n");
+        exit(1);
+    }
+
+    machine->type = danmakufu_bytecode;
+    machine->code = code;
+    machine->code_size = size;
+
+    machine->tasks = NULL;
+    machine->last_task = NULL;
+
+    machine->global = NULL;
+
+    return machine;
+}
+@}
+
 Функция загрузки скрипта:
 @d danmakufu.h prototypes @{
 DanmakufuMachine *danmakufu_load_file(char *filename, void *script_object);
@@ -408,26 +430,15 @@ DanmakufuMachine *danmakufu_load_file(char *filename, void *script_object) {
         exit(1);
     }
 
-    DanmakufuMachine *machine = malloc(sizeof(DanmakufuMachine));
-    if(machine == NULL) {
-        fprintf(stderr, "\nCan't allocate memory for danmakufu_machine\n");
-        exit(1);
-    }
-
-    machine->type = danmakufu_bytecode;
-    machine->code = danmakufu_compile_to_bytecode(cons, &machine->code_size);
+    int code_size;
+    intptr_t *code = danmakufu_compile_to_bytecode(cons, &code_size);
+    DanmakufuMachine *machine = create_machine(code, code_size);
 
     ast_free_recursive(cons);
     cons = NULL;
 
-    machine->tasks = NULL;
-    machine->last_task = NULL;
-
-    machine->global = NULL;
-
     DanmakufuDict *d = intern_to_dict(&machine->global, ast_add_symbol_to_tbl("@script_object"));
     d->ptr = script_object;
-
 
     add_danmakufu_v2_funcs_to_dict(&machine->global);
     add_danmakufu_my_funcs_to_dict(&machine->global);
