@@ -1126,3 +1126,67 @@ void danmakufu_print_bytecode(intptr_t *code, int size) {
 @d danmakufu_bytecode.h prototypes @{
 void danmakufu_print_bytecode(intptr_t *code, int size);
 @}
+
+
+@d danmakufu_bytecode.c functions @{
+void danmakufu_free_bytecode_ast_obj(intptr_t *code, int size) {
+    int i;
+
+    for(i=0; i < size; i++) {
+        switch(code[i]) {
+            case bc_lit:
+                i++;
+                break;
+            case bc_setq:
+            case bc_drop:
+            case bc_2drop:
+            case bc_dup:
+            case bc_2dup:
+                break;
+            case bc_decl:
+                i++;
+                break;
+            case bc_scope_push:
+            case bc_scope_pop:
+                break;
+            case bc_defun:
+                i += 2;
+                break;
+            case bc_ret:
+                break;
+            case bc_goto:
+                i++;
+                break;
+            case bc_if:
+                i++;
+                break;
+            case bc_repeat:
+                i++;
+                break;
+            case bc_make_array:
+                i++;
+                break;
+            case bc_fork:
+                i++;
+                break;
+            case bc_yield:
+                break;
+            case bc_inc:
+                break;
+            case bc_dec:
+                break;
+            default:
+                if(((AstSymbol*)code[i])->type == ast_number ||
+                   ((AstSymbol*)code[i])->type == ast_array ||
+                   ((AstSymbol*)code[i])->type == ast_character)
+                    ast_free_recursive(code[i]);
+        }
+    }
+
+    free(code);
+}
+@}
+
+@d danmakufu_bytecode.h prototypes @{
+void danmakufu_free_bytecode_ast_obj(intptr_t *code, int size);
+@}
