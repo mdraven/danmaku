@@ -440,6 +440,8 @@ static CodeCache *add_code_cache(char *filename) {
     return cc;
 }
 @}
+TODO: тип объекта можно определять с помощью функции использующую cons'ы. Написать её
+TODO: написать обработку ошибок при парсинге скрипта
 
 @d danmakufu.h prototypes @{
 void danmakufu_free_code_cache(void);
@@ -526,6 +528,9 @@ static DanmakufuMachine *create_machine(intptr_t *code, int size, int type) {
     return machine;
 }
 @}
+code - код(байткод, или для native-архитектуры)
+size - длина кода
+type - тип кода
 
 Функция загрузки скрипта:
 @d danmakufu.h prototypes @{
@@ -553,8 +558,6 @@ DanmakufuMachine *danmakufu_load_file(char *filename, void *script_object) {
 }
 @}
 script_object - объект скрипта, например: персонажи, пули...
-TODO: тип объекта можно определять с помощью функции использующую cons'ы. Написать её
-TODO: написать обработку ошибок при парсинге скрипта
 
 
 
