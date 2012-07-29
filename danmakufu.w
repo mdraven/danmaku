@@ -347,6 +347,116 @@ enum {
 };
 @}
 
+Структура для механизма кеширования кода(байткода или другого):
+@d danmakufu.c structs @{
+#define CODECACHE_PATH_MAXLEN 256
+DLIST_DEFSTRUCT(CodeCache)
+    int type;
+    char path[CODECACHE_PATH_MAXLEN];
+    intptr_t *code;
+    int sz;
+DLIST_ENDS(CodeCache);
+@}
+type - тип кода
+path - полный путь до файла
+code - код
+sz - длина кода
+
+Список занятых, пулл свободных и удалённых:
+@d danmakufu.c structs @{
+DLIST_SPECIAL_VARS(code_cache, CodeCache)
+@}
+
+Аллоцируется слотов в самом начале и добавляется при нехватке:
+@d danmakufu.c structs @{
+DLIST_ALLOC_VARS(code_cache, 50, 5)
+@}
+
+Функция для возвращения выделенных слотов обратно в пул:
+@d danmakufu.c functions @{
+DLIST_FREE_FUNC(code_cache, CodeCache)
+    danmakufu_free_bytecode_ast_obj(elm->code, elm->sz);
+    elm->code = NULL;
+DLIST_END_FREE_FUNC(code_cache, CodeCache)
+@}
+
+Соединить code_cache_pool_free с code_cache_pool:
+@d danmakufu.c functions @{
+DLIST_POOL_FREE_TO_POOL_FUNC(code_cache, CodeCache)
+@}
+
+code_cache_get_free_cell - функция возвращающая свободный дескриптор:
+@d danmakufu.c functions @{
+DLIST_GET_FREE_CELL_FUNC(code_cache, CodeCache)
+@}
+
+@d danmakufu.c functions @{
+static CodeCache *find_code_cache(const char *abs_filename) {
+    CodeCache *p;
+
+    for(p = code_cache; p != NULL; p = p->next)
+        if(strcmp(p->path, abs_filename) == 0)
+            return p;
+
+    return NULL;
+}
+@}
+
+@d danmakufu.c functions @{
+static CodeCache *add_code_cache(char *filename) {
+    char *t = realpath(filename, NULL);
+    if(strlen(t) > CODECACHE_PATH_MAXLEN-1) {
+        fprintf(stderr, "\nadd_code_cache: filename too long\n");
+        exit(1);
+    }
+
+    CodeCache *cc;
+
+    cc = find_code_cache(t);
+    if(cc != NULL)
+        return cc;
+
+    cc = code_cache_get_free_cell();
+
+    strncpy(cc->path, t, CODECACHE_PATH_MAXLEN);
+    t[CODECACHE_PATH_MAXLEN-1] = '\0';
+
+    free(t);
+
+    cc->type = danmakufu_bytecode;
+
+    AstCons *cons = danmakufu_parse(filename);
+    if(cons == NULL) {
+        fprintf(stderr, "\ndanmakufu_parse error\n");
+        exit(1);
+    }
+
+    cc->code = danmakufu_compile_to_bytecode(cons, &cc->sz);
+
+    ast_free_recursive(cons);
+    cons = NULL;
+
+
+    return cc;
+}
+@}
+
+@d danmakufu.h prototypes @{
+void danmakufu_free_code_cache(void);
+@}
+
+@d danmakufu.c functions @{
+void danmakufu_free_code_cache(void) {
+    CodeCache *p;
+
+    for(p = code_cache; p != NULL; p = p->next)
+        code_cache_free(p);
+
+    code_cache_pool_free_to_pool();
+}
+@}
+
+
 Структура машины исполняющий байткод или native-код danmakufu:
 @d danmakufu.h structs @{
 struct DanmakufuMachine {
@@ -397,14 +507,14 @@ static void add_danmakufu_my_funcs_to_dict(DanmakufuDict **dict) {
 
 Функция создания машины:
 @d danmakufu.c functions @{
-static DanmakufuMachine *create_machine(intptr_t *code, int size) {
+static DanmakufuMachine *create_machine(intptr_t *code, int size, int type) {
     DanmakufuMachine *machine = malloc(sizeof(DanmakufuMachine));
     if(machine == NULL) {
         fprintf(stderr, "\nCan't allocate memory for danmakufu_machine\n");
         exit(1);
     }
 
-    machine->type = danmakufu_bytecode;
+    machine->type = type;
     machine->code = code;
     machine->code_size = size;
 
@@ -424,25 +534,15 @@ DanmakufuMachine *danmakufu_load_file(char *filename, void *script_object);
 
 @d danmakufu.c functions @{
 DanmakufuMachine *danmakufu_load_file(char *filename, void *script_object) {
-    AstCons *cons = danmakufu_parse(filename);
-    if(cons == NULL) {
-        fprintf(stderr, "\ndanmakufu_parse error\n");
-        exit(1);
-    }
+    CodeCache *cc = add_code_cache(filename);
 
-    int code_size;
-    intptr_t *code = danmakufu_compile_to_bytecode(cons, &code_size);
-    DanmakufuMachine *machine = create_machine(code, code_size);
-
-    ast_free_recursive(cons);
-    cons = NULL;
+    DanmakufuMachine *machine = create_machine(cc->code, cc->sz, cc->type);
 
     DanmakufuDict *d = intern_to_dict(&machine->global, ast_add_symbol_to_tbl("@script_object"));
     d->ptr = script_object;
 
     add_danmakufu_v2_funcs_to_dict(&machine->global);
     add_danmakufu_my_funcs_to_dict(&machine->global);
-
 
     danmakufu_add_task(machine, NULL);
     int stop = 0;
@@ -980,7 +1080,6 @@ void danmakufu_free_machine(DanmakufuMachine *machine) {
     if(machine == NULL)
         return;
 
-    //free(machine->code);
     machine->code = NULL;
 
     while(machine->last_task)
