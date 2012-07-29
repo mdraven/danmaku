@@ -44,14 +44,6 @@ TODO: надо узнать, общее пространство имён(нап
 @}
 
 
-Типы кода:
-@d danmakufu.h structs @{
-enum {
-    danmakufu_bytecode,
-    danmakufu_i386,
-};
-@}
-
 Словарь:
 @d danmakufu.h structs @{
 DLIST_DEFSTRUCT(DanmakufuDict)
@@ -346,6 +338,14 @@ static DanmakufuTask *danmakufu_create_new_task(DanmakufuTask *next_task) {
 }
 @}
 
+
+Типы кода:
+@d danmakufu.h structs @{
+enum {
+    danmakufu_bytecode,
+    danmakufu_i386,
+};
+@}
 
 Структура машины исполняющий байткод или native-код danmakufu:
 @d danmakufu.h structs @{
