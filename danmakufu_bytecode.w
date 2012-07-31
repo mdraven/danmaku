@@ -219,7 +219,7 @@ else if((AstSymbol*)car(p) == ast_defscriptmain) {
     code[(*pos)++] = bc_lit;
     code[(*pos)++] = (intptr_t)cadr(p);
     code[(*pos)++] = bc_lit;
-    code[(*pos)++] = (intptr_t)ast_add_symbol_to_tbl("@script_type");
+    code[(*pos)++] = (intptr_t)ast_add_symbol_to_tbl("*script_type*");
     code[(*pos)++] = bc_setq;
 
     // code[(*pos)++] = bc_scope_push;

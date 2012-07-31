@@ -543,7 +543,7 @@ DanmakufuMachine *danmakufu_load_file(char *filename, void *script_object) {
 
     DanmakufuMachine *machine = create_machine(cc->code, cc->sz, cc->type);
 
-    DanmakufuDict *d = intern_to_dict(&machine->global, ast_add_symbol_to_tbl("@script_object"));
+    DanmakufuDict *d = intern_to_dict(&machine->global, ast_add_symbol_to_tbl("*script_object*"));
     d->ptr = script_object;
 
     add_danmakufu_v2_funcs_to_dict(&machine->global);
@@ -2232,9 +2232,9 @@ static void v2_SetLife(void *arg) {
     }
 
     DanmakufuDict *d = danmakufu_dict_find_symbol(machine->global,
-                                                  ast_add_symbol_to_tbl("@script_object"));
+                                                  ast_add_symbol_to_tbl("*script_object*"));
     if(d == NULL) {
-        fprintf(stderr, "\nv2_SetLife: @script_object\n");
+        fprintf(stderr, "\nv2_SetLife: *script_object*\n");
         exit(1);
     }
 
@@ -2267,9 +2267,9 @@ static void v2_SetPlayerX(void *arg) {
     }
 
     DanmakufuDict *d = danmakufu_dict_find_symbol(machine->global,
-                                                  ast_add_symbol_to_tbl("@script_object"));
+                                                  ast_add_symbol_to_tbl("*script_object*"));
     if(d == NULL) {
-        fprintf(stderr, "\nv2_SetPlayerX: @script_object\n");
+        fprintf(stderr, "\nv2_SetPlayerX: *script_object*\n");
         exit(1);
     }
 
@@ -2296,9 +2296,9 @@ static void v2_SetPlayerY(void *arg) {
     }
 
     DanmakufuDict *d = danmakufu_dict_find_symbol(machine->global,
-                                                  ast_add_symbol_to_tbl("@script_object"));
+                                                  ast_add_symbol_to_tbl("*script_object*"));
     if(d == NULL) {
-        fprintf(stderr, "\nv2_SetPlayerY: @script_object\n");
+        fprintf(stderr, "\nv2_SetPlayerY: *script_object*\n");
         exit(1);
     }
 
@@ -2415,7 +2415,7 @@ CharacterList *character_danmakufu_v2_create(char *filename,
     DanmakufuMachine *machine = danmakufu_load_file(filename, character);
     character->args[CMA(danmakufu_v2, danmakufu_machine)] = machine;
 
-    DanmakufuDict *d = intern_to_dict(&machine->global, ast_add_symbol_to_tbl("@user_arg"));
+    DanmakufuDict *d = intern_to_dict(&machine->global, ast_add_symbol_to_tbl("*user_arg*"));
     ast_free_recursive(d->ptr);
     d->ptr = ast_copy_obj(user_arg);
 
