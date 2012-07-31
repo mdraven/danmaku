@@ -874,11 +874,16 @@ int is_rad_collide(int x1, int y1, int r1, int x2, int y2, int r2) {
 @o characters.h @{
 @<License@>
 
+#ifndef __CHARACTERS_H__
+#define __CHARACTERS_H__
+
 #include <stdint.h>
 
 @<Character public macros@>
 @<Character public structs@>
 @<Character public prototypes@>
+
+#endif /* __CHARACTERS_H__ */
 @}
 
 
