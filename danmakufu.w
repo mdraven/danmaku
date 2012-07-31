@@ -2467,13 +2467,14 @@ CharacterList *character_danmakufu_v2_create(char *filename,
     character->args[CMA(danmakufu_v2, time_point_for_movement_x)] = 0;
     character->args[CMA(danmakufu_v2, time_point_for_movement_y)] = 0;
 
-    character->args[CMA(danmakufu_v2, move_x)] = to_x;
-    character->args[CMA(danmakufu_v2, move_y)] = to_y;
+    character->args[CMA(danmakufu_v2, move_x)] = 0;
+    character->args[CMA(danmakufu_v2, move_y)] = 0;
 
     character->args[CMA(danmakufu_v2, last_horizontal)] = 0;
     character->args[CMA(danmakufu_v2, movement_animation)] = 0;
 
-    character->args[CMA(danmakufu_v2, speed)] = 0;
+    character->args[CMA(danmakufu_v2, velocity)] = velocity;
+    character->args[CMA(danmakufu_v2, direction)] = direction;
 
     character->args[CMA(danmakufu_v2, step_of_movement)] = 0;
 
@@ -2504,19 +2505,20 @@ user_arg - объект из ast для передачи в другой скр�
 
 @d Character public structs @{
 enum {
-    CMA(danmakufu_v2, danmakufu_machine) = 0,
-    CMA(danmakufu_v2, time_point_for_movement_x),
+    CMA(danmakufu_v2, time_point_for_movement_x) = 0,
     CMA(danmakufu_v2, time_point_for_movement_y),
     CMA(danmakufu_v2, move_x),
     CMA(danmakufu_v2, move_y),
     CMA(danmakufu_v2, last_horizontal),
     CMA(danmakufu_v2, movement_animation),
-    CMA(danmakufu_v2, speed),
+    CMA(danmakufu_v2, velocity),
+    CMA(danmakufu_v2, direction),
     CMA(danmakufu_v2, step_of_movement),
     CMA(danmakufu_v2, move_percent),
     CMA(danmakufu_v2, move_begin_x),
     CMA(danmakufu_v2, move_begin_y),
-    CMA(danmakufu_v2, time)
+    CMA(danmakufu_v2, time),
+    CMA(danmakufu_v2, danmakufu_machine)
 };
 @}
 
@@ -2574,13 +2576,6 @@ static void character_danmakufu_v2_update_time_points(CharacterList *character) 
 static void character_danmakufu_v2_ai_control(CharacterList *character) {
     int *const move_x = &character->args[CMA(danmakufu_v2, move_x)];
     int *const move_y = &character->args[CMA(danmakufu_v2, move_y)];
-    int *const end_x = &character->args[CMA(danmakufu_v2, end_x)];
-    int *const end_y = &character->args[CMA(danmakufu_v2, end_y)];
-    int *const speed = &character->args[CMA(danmakufu_v2, speed)];
-    int *const step_of_movement = &character->args[CMA(danmakufu_v2, step_of_movement)];
-    int *const move_percent = &character->args[CMA(danmakufu_v2, move_percent)];
-    int *const time = &character->args[CMA(danmakufu_v2, time)];
-
 
 }
 @}
