@@ -29,6 +29,7 @@ TODO: надо узнать, общее пространство имён(нап
 
 #include <stdlib.h>
 #include <string.h>
+#include <libgen.h>
 #include <stdio.h>
 #include <math.h>
 
@@ -2265,6 +2266,30 @@ ast_free_recursive(t->ptr);
 t->ptr = ast_add_cfunctions(v2_SetLife);@}
 "The argument of the first instance of SetLife in each enemy script (even if it is in comments) is used in plural-scripts to determine the relative lengths of the health bars" из wiki
 
+@d danmakufu.c danmakufu v2 functions @{
+static void v2_GetCurrentScriptDirectory(void *arg) {
+    DanmakufuMachine *machine = arg;
+    DanmakufuTask *cur = machine->last_task;
+
+    DanmakufuDict *d = danmakufu_dict_find_symbol(machine->global,
+                                                  ast_add_symbol_to_tbl("*filename*"));
+    if(d == NULL) {
+        fprintf(stderr, "\nv2_GetCurrentScriptDirectory: *filename*\n");
+        exit(1);
+    }
+
+    AstArray *arr = d->ptr;
+    char *str = ast_char_from_array(arr);
+    char *dir = dirname(str);
+
+    danmakufu_stack_push(cur, ast_latin_string(dir));
+}
+@}
+
+@d add_danmakufu_v2_funcs_to_dict functions @{
+t = intern_to_dict(dict, ast_add_symbol_to_tbl("GetCurrentScriptDirectory"));
+ast_free_recursive(t->ptr);
+t->ptr = ast_add_cfunctions(v2_GetCurrentScriptDirectory);@}
 
 
 
