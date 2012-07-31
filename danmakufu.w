@@ -411,6 +411,10 @@ static CodeCache *find_code_cache(const char *abs_filename) {
 @d danmakufu.c functions @{
 static CodeCache *add_code_cache(char *filename) {
     char *t = realpath(filename, NULL);
+    if(t == NULL) {
+        fprintf(stderr, "add_code_cache: incorrect path for file: %s\n", filename);
+        exit(1);
+    }
     if(strlen(t) > CODECACHE_PATH_MAXLEN-1) {
         fprintf(stderr, "\nadd_code_cache: filename too long\n");
         exit(1);
