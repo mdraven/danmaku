@@ -142,9 +142,13 @@ static void danmakufu_dict_clear(DanmakufuDict *dict) {
 }
 @}
 
+Определить в словаре символ:
+@d danmakufu.h functions @{
+DanmakufuDict *intern_to_dict(DanmakufuDict **head, AstSymbol *symb);
+@}
 
 @d danmakufu.c functions @{
-static DanmakufuDict *intern_to_dict(DanmakufuDict **head, AstSymbol *symb) {
+DanmakufuDict *intern_to_dict(DanmakufuDict **head, AstSymbol *symb) {
     DanmakufuDict *dict;
 
     dict = danmakufu_dict_find_symbol(*head, symb);
