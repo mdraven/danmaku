@@ -1179,7 +1179,7 @@ void danmakufu_free_bytecode_ast_obj(intptr_t *code, int size) {
                 if(((AstSymbol*)code[i])->type == ast_number ||
                    ((AstSymbol*)code[i])->type == ast_array ||
                    ((AstSymbol*)code[i])->type == ast_character)
-                    ast_free_recursive(code[i]);
+                    ast_free_recursive((void*)code[i]);
         }
     }
 
