@@ -1083,6 +1083,7 @@ AstArray *ast_latin_string(const char *str) {
 }
 @}
 
+Получить utf-8 строку из array с characters:
 @d ast.h prototypes @{
 char *ast_char_from_array(AstArray *str);@}
 
@@ -1111,7 +1112,7 @@ char *ast_char_from_array(AstArray *str) {
     return buf;
 }
 @}
-
+возвращённый буфер можно изменять
 
 @d ast.h prototypes @{
 void ast_print_status(void);@}
