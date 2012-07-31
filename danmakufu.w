@@ -36,6 +36,7 @@ TODO: надо узнать, общее пространство имён(нап
 #include "danmakufu.h"
 #include "danmakufu_bytecode.h"
 #include "danmakufu_parser.h"
+#include "os_specific.h"
 
 @<danmakufu.c structs@>
 @<danmakufu.c prototypes@>
@@ -2290,6 +2291,29 @@ static void v2_GetCurrentScriptDirectory(void *arg) {
 t = intern_to_dict(dict, ast_add_symbol_to_tbl("GetCurrentScriptDirectory"));
 ast_free_recursive(t->ptr);
 t->ptr = ast_add_cfunctions(v2_GetCurrentScriptDirectory);@}
+
+@d danmakufu.c danmakufu v2 functions @{
+static void v2_LoadGraphic(void *arg) {
+    DanmakufuMachine *machine = arg;
+    DanmakufuTask *cur = machine->last_task;
+
+    AstArray *X = danmakufu_stack_pop(cur);
+
+    if(X->type != ast_array) {
+        fprintf(stderr, "\nv2_LoadGraphic: incorrect type\n");
+        exit(1);
+    }
+
+    image_load(ast_char_from_array(X));
+
+    ast_free_recursive(X);
+}
+@}
+
+@d add_danmakufu_v2_funcs_to_dict functions @{
+t = intern_to_dict(dict, ast_add_symbol_to_tbl("LoadGraphic"));
+ast_free_recursive(t->ptr);
+t->ptr = ast_add_cfunctions(v2_LoadGraphic);@}
 
 
 
