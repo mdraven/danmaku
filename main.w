@@ -252,13 +252,14 @@ id который возвращает image_load и есть номер эле�
 
 Опишем структуру в которой будет храниться список открытых изображений:
 @d os_specific structs @{
-#define IMAGE_LIST_LEN 1024
-#define IMG_FILE_NAME_SIZE 30
+#define IMAGE_LIST_LEN 128
+#define IMG_FILE_NAME_SIZE 256
 
 typedef struct {
     char filename[IMG_FILE_NAME_SIZE];
     int w, h;
     unsigned int tex_id;
+    int ref;
 } ImageList;
 
 static ImageList image_list[IMAGE_LIST_LEN];
@@ -267,23 +268,35 @@ static int image_list_pos;
 Это стек, image_list_pos его вершина.
 IMG_FILE_NAME_SIZE длинна массива под имя файла включая и путь к файлу.
 IMAGE_LIST_LEN количество изображений или иными словами размер стека.
+ref - число ссылок
 
 filename - имя файла с картинкой
 w, h - размеры картинки
 tex_id - дескриптор текстуры в opengl
 
 
-
-Функция загрузки изображения image_load:
 @d os_specific functions @{
-int image_load(char *filename) {
-    if(image_list_pos == IMAGE_LIST_LEN) {
+static int find_image(char *abs_filename) {
+    int i;
+    for(i = 0; i < image_list_pos; i++)
+        if(strcmp(abs_filename, image_list[i].filename) == 0)
+            return i;
+
+    return -1;
+}
+@}
+
+@d os_specific functions @{
+static int add_image(char *abs_filename) {
+   if(image_list_pos == IMAGE_LIST_LEN) {
         fprintf(stderr, "\nImage list full\n");
         exit(1);
     }
 
-    strncpy(image_list[image_list_pos].filename, filename,
+    strncpy(image_list[image_list_pos].filename, abs_filename,
             sizeof(image_list[image_list_pos].filename) - 1);
+
+    image_list[image_list_pos].ref = 1;
 
     {
         int bytes_per_pixel;
@@ -291,7 +304,7 @@ int image_load(char *filename) {
 
         ImageList *image = &image_list[image_list_pos];
 
-        SDL_Surface *img = load_from_file(filename);
+        SDL_Surface *img = load_from_file(abs_filename);
 
         @<os_specific image file size check@>
         @<os_specific set bytes_per_pixel and texture_format@>
@@ -322,16 +335,12 @@ int image_load(char *filename) {
 Используется вспомогательная функция load_from_file, она загружает картинку по заданому пути.
 Функция image_load возвращает позицию в стеке, она служит дескриптором изображения.
 
-@d os_specific public prototypes @{
-int image_load(char *filename);
-@}
-
 
 Размер должен быть кратен 2:
 @d os_specific image file size check @{
 if((img->w & (img->w - 1)) != 0 ||
     (img->h & (img->h - 1)) != 0) {
-    fprintf(stderr, "\nImage size isn't power of 2: %s\n", filename);
+    fprintf(stderr, "\nImage size isn't power of 2: %s\n", abs_filename);
     exit(1);
 }
 @}
@@ -354,7 +363,7 @@ switch(bytes_per_pixel) {
             texture_format = GL_BGR;
         break;
     default:
-        fprintf(stderr, "\nIncorect color type: %s\n", filename);
+        fprintf(stderr, "\nIncorect color type: %s\n", abs_filename);
         exit(1);
 }
 @}
@@ -389,6 +398,31 @@ static SDL_Surface *load_from_file(char *filename) {
 static SDL_Surface *load_from_file(char *filename);
 @}
 
+
+Функция загрузки изображения image_load:
+@d os_specific functions @{
+int image_load(char *filename) {
+    int ret;
+
+    char *t = realpath(filename, NULL);
+
+    ret = find_image(t);
+    if(ret != -1) {
+        image_list[ret].ref++;
+        goto end;
+    }
+
+    ret = add_image(t);
+end:
+    free(t);
+
+    return ret;
+}
+@}
+
+@d os_specific public prototypes @{
+int image_load(char *filename);
+@}
 
 
 
