@@ -242,9 +242,6 @@ void window_update(void);
 
 Перейдём к функциям по работе с изображениями.
 
-image_load будет кроме возвращения дескриптора ещё сохранять имя файла для защиты от
-двойной загрузки файла(FIXME:надо реализовать).
-
 Так как нам придётся проверять все рисунки, то мы будем их хранить в массиве.
 Для начала, почему массив? Этот массив похож на стек. Список рисунков всё равно не
 имеет дыр, поэтому будем использовать этот достаточно простой вариант.
@@ -375,13 +372,8 @@ switch(bytes_per_pixel) {
 @d os_specific functions @{
 static SDL_Surface *load_from_file(char *filename) {
     SDL_Surface *img;
-    char dirname[] = "images/";
-    char buf[IMG_FILE_NAME_SIZE + sizeof(dirname) + 1];
 
-    strcpy(buf, dirname);
-    strcat(buf, filename);
-
-    img = IMG_Load(buf);
+    img = IMG_Load(filename);
     if(img == 0) {
         fprintf(stderr, "IMG_Load: %s\n", IMG_GetError());
         exit(1);
@@ -405,6 +397,10 @@ int image_load(char *filename) {
     int ret;
 
     char *t = realpath(filename, NULL);
+    if(t == NULL) {
+        fprintf(stderr, "Incorrect path for image file: %s\n", filename);
+        exit(1);
+    }
 
     ret = find_image(t);
     if(ret != -1) {
@@ -938,6 +934,7 @@ CharacterMacroArgument
 #include "bullets.h"
 #include "timers.h"
 #include "dlist.h"
+#include "danmakufu.h"
 
 @<Character private macros@>
 @<Character private structs@>
@@ -1594,7 +1591,7 @@ static void character_reimu_draw(CharacterList *character) {
     static int id = -1;
 
     if(id == -1)
-        id = image_load("aya.png");
+        id = image_load("images/aya.png");
 
     image_draw_center(id,
         GAME_FIELD_X + character->x,
@@ -1606,7 +1603,7 @@ static void character_marisa_draw(CharacterList *character) {
     static int id = -1;
 
     if(id == -1)
-        id = image_load("marisa.png");
+        id = image_load("images/marisa.png");
 
     image_draw_center(id,
         GAME_FIELD_X + character->x,
@@ -1930,7 +1927,7 @@ static void character_blue_moon_fairy_draw(CharacterList *character) {
     static int id = -1;
 
     if(id == -1)
-        id = image_load("blue_fairy.png");
+        id = image_load("images/blue_fairy.png");
 
     if(character->x == *move_x) {
         if(*movement_animation > 200)
@@ -2295,7 +2292,7 @@ static void character_blue_moon_bunny_fairy_draw(CharacterList *character) {
     static int id = -1;
 
     if(id == -1)
-        id = image_load("blue_fairy.png");
+        id = image_load("images/blue_fairy.png");
 
     if(character->x == *move_x) {
         if(*movement_animation > 200)
@@ -2628,7 +2625,7 @@ static void character_yellow_fire_draw(CharacterList *character) {
     static int id = -1;
 
     if(id == -1)
-        id = image_load("sparks.png");
+        id = image_load("images/sparks.png");
 
     const double deg2rad = M_PI/180.0;
 
@@ -2802,7 +2799,7 @@ static void character_gray_swirl_draw(CharacterList *character) {
     static int id = -1;
 
     if(id == -1)
-        id = image_load("sparks.png");
+        id = image_load("images/sparks.png");
 
     if(*movement_animation >= 720)
         *movement_animation = 0;
@@ -3036,7 +3033,7 @@ static void character_wriggle_nightbug_draw(CharacterList *character) {
     static int id = -1;
 
     if(id == -1)
-        id = image_load("aya.png");
+        id = image_load("images/aya.png");
 
     image_draw_center(id,
         GAME_FIELD_X + character->x,
@@ -5022,7 +5019,7 @@ void player_draw(void) {
             static int last_toward = 0;
 
             if(id == -1)
-                id = image_load("reimu.png");
+                id = image_load("images/reimu.png");
 
             if(player_move_horizontal == 0) {
                 @<player_draw fly to forward@>
@@ -5733,7 +5730,7 @@ static void bullet_white_draw(BulletList *bullet) {
     static int id = -1;
 
     if(id == -1)
-        id = image_load("bullet_green.png");
+        id = image_load("images/bullet_green.png");
 
     image_draw_center(id,
         GAME_FIELD_X + bullet->x,
@@ -5745,7 +5742,7 @@ static void bullet_red_draw(BulletList *bullet) {
     static int id = -1;
 
     if(id == -1)
-        id = image_load("bullet_green.png");
+        id = image_load("images/bullet_green.png");
 
     image_draw_center(id,
         GAME_FIELD_X + bullet->x,
@@ -5869,7 +5866,7 @@ static void bullet_reimu_first_draw(BulletList *bullet) {
     static int id = -1;
 
     if(id == -1)
-        id = image_load("bullet_white_card.png");
+        id = image_load("images/bullet_white_card.png");
 
     image_draw_center(id,
         GAME_FIELD_X + bullet->x,
@@ -6303,7 +6300,7 @@ case background_forest: {
     float shiftx;
 
     if(id == -1)
-        id = image_load("forest.png");
+        id = image_load("images/forest.png");
 
     @<background_draw sync forest@>
     @<background_draw calculate shiftx@>
@@ -6398,13 +6395,13 @@ sh - получает делением shiftx на 2, тк отсчёт коор
     static int tree_id[4] = {-1, -1, -1, -1};
 
     if(tree_id[0] == -1)
-        tree_id[0] = image_load("tree1.png");
+        tree_id[0] = image_load("images/tree1.png");
     if(tree_id[1] == -1)
-        tree_id[1] = image_load("tree2.png");
+        tree_id[1] = image_load("images/tree2.png");
     if(tree_id[2] == -1)
-        tree_id[2] = image_load("tree3.png");
+        tree_id[2] = image_load("images/tree3.png");
     if(tree_id[3] == -1)
-        tree_id[3] = image_load("tree4.png");
+        tree_id[3] = image_load("images/tree4.png");
 
     if(background_animation == 0)
         t1 = sizeof(trees)/sizeof(Tree) - 1;
@@ -7161,7 +7158,7 @@ static void bonus_small_score_draw(BonusList *bonus) {
     static int id = -1;
 
     if(id == -1)
-        id = image_load("bonus_small_score.png");
+        id = image_load("images/bonus_small_score.png");
 
     image_draw_center(id,
         GAME_FIELD_X + bonus->x,
@@ -7173,7 +7170,7 @@ static void bonus_medium_score_draw(BonusList *bonus) {
     static int id = -1;
 
     if(id == -1)
-        id = image_load("bonus_medium_score.png");
+        id = image_load("images/bonus_medium_score.png");
 
     image_draw_center(id,
         GAME_FIELD_X + bonus->x,
@@ -7185,7 +7182,7 @@ static void bonus_power_draw(BonusList *bonus) {
     static int id = -1;
 
     if(id == -1)
-        id = image_load("bonuses.png");
+        id = image_load("images/bonuses.png");
 
     if(bonus->y < 0)
         image_draw_center_t(id,
@@ -8282,7 +8279,7 @@ void dialog_draw(void) {
     static int id = -1;
 
     if(id == -1)
-        id = image_load("dialog.png");
+        id = image_load("images/dialog.png");
 
     image_draw_corner(id, 20, 650 - anim_step*2, 0, 0, 256, 66, 1.9f, color_white);
 }
@@ -8500,10 +8497,10 @@ static void dialog_true_end(void) {
     static int angry = -1;
 
     if(normal == -1)
-        normal = image_load("reimu_normal_l.png");
+        normal = image_load("images/reimu_normal_l.png");
 
     if(angry == -1)
-        angry = image_load("reimu_angry_l.png");
+        angry = image_load("images/reimu_angry_l.png");
 
 
     if(left[i].move == left[i].position && speaker == dialog_reimu)
@@ -8532,7 +8529,7 @@ static void dialog_true_end(void) {
     static int normal = -1;
 
     if(normal == -1)
-        normal = image_load("yukari_normal_l.png");
+        normal = image_load("images/yukari_normal_l.png");
 
     image_draw_corner(normal, x, 250, 0, 0, 128, 256, 1.0f, color_white);
     break;
@@ -8548,7 +8545,7 @@ static void dialog_true_end(void) {
     static int normal = -1;
 
     if(normal == -1)
-        normal = image_load("marisa_normal_r.png");
+        normal = image_load("images/marisa_normal_r.png");
 
     image_draw_corner(normal, x, 250, 0, 0, 128, 256, 1.0f, color_white);
     break;
@@ -8604,7 +8601,7 @@ void panel_draw(void) {
 
 
     if(dialog == -1)
-        dialog = image_load("dialog.png");
+        dialog = image_load("images/dialog.png");
 
     if(fd == -1)
         fd = load_font("big_font1.txt");
