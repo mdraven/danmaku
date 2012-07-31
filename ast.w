@@ -411,7 +411,7 @@ struct AstCharacter {
     struct AstCharacter *pool;
     int type;
     char *bytes;
-    unsigned int len;
+    int len;
 };
 
 typedef struct AstCharacter AstCharacter;
