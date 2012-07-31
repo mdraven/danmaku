@@ -543,8 +543,8 @@ DanmakufuMachine *danmakufu_load_file(char *filename, void *script_object) {
 
     DanmakufuMachine *machine = create_machine(cc->code, cc->sz, cc->type);
 
-    DanmakufuDict *d = intern_to_dict(&machine->global, ast_add_symbol_to_tbl("*script_object*"));
-    d->ptr = script_object;
+    @<danmakufu_load_file save script_object@>
+    @<danmakufu_load_file save filename@>
 
     add_danmakufu_v2_funcs_to_dict(&machine->global);
     add_danmakufu_my_funcs_to_dict(&machine->global);
@@ -559,7 +559,21 @@ DanmakufuMachine *danmakufu_load_file(char *filename, void *script_object) {
 @}
 script_object - объект скрипта, например: персонажи, пули...
 
+Сохраним объект скрипта(персонаж, пуля):
+@d danmakufu_load_file save script_object @{
+{
+    DanmakufuDict *d = intern_to_dict(&machine->global, ast_add_symbol_to_tbl("*script_object*"));
+    d->ptr = script_object;
+}
+@}
 
+Имя файла(и путь) скрипта:
+@d danmakufu_load_file save filename @{
+{
+    DanmakufuDict *d = intern_to_dict(&machine->global, ast_add_symbol_to_tbl("*filename*"));
+    d->ptr = ast_latin_string(filename);
+}
+@}
 
 Удалить последнюю в списке задачу у виртуальной машины:
 @d danmakufu.c functions @{
